@@ -95,6 +95,12 @@ p-trip/
   시그니처 = 국도 표지판 파란 타원 뱃지 (RouteBadge 위젯).
 - 커밋: conventional commits (`feat:`, `fix:`, `data:`, `docs:`). 한 커밋 = 한 관심사.
 - API 키는 절대 커밋 금지. `.env` + `--dart-define`, TourAPI 키는 Edge Function 뒤로.
+- **⚠ Supabase는 `brrrp` 프로젝트와 섞지 않는다** (2026-08-27). 같은 사람이 두 프로젝트를 만진다.
+  - `supabase link`를 **인자 없이 실행 금지**. 반드시 `--project-ref <ref>` 명시
+  - `project_id = "p-trip"`, 로컬 포트 55321~55329 (기본 54321 대역에서 이동)
+  - 파이프라인에 오조준 가드가 있다 — `SUPABASE_URL`의 ref와 `SUPABASE_EXPECTED_REF`가
+    다르면 실행을 거부한다. 검증: `cd pipeline && npm run guard`
+  - 자세한 규칙은 `supabase/README.md`
 
 ## 자주 쓰는 명령
 

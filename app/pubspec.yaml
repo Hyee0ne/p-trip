@@ -43,17 +43,20 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  # TODO(M0.3): Pretendard Variable 폰트 파일 추가 후 아래 주석 해제
-  # fonts:
-  #   - family: Pretendard
-  #     fonts:
-  #       - asset: assets/fonts/Pretendard-Regular.otf
-  #         weight: 400
-  #       - asset: assets/fonts/Pretendard-Medium.otf
-  #         weight: 500
-  #       - asset: assets/fonts/Pretendard-SemiBold.otf
-  #         weight: 600
-  #       - asset: assets/fonts/Pretendard-Bold.otf
-  #         weight: 700
-  #       - asset: assets/fonts/Pretendard-ExtraBold.otf
-  #         weight: 800
+
+  # Pretendard — 앱 전체 단일 서체 (CLAUDE.md 서체 규칙).
+  # 이동 중 화면도 여행기도 전부 이 고딕 하나. 명조 안 씀.
+  # SIL OFL 1.1 · assets/fonts/OFL.txt 동봉
+  fonts:
+    - family: Pretendard
+      fonts:
+        - asset: assets/fonts/Pretendard-Regular.otf
+          weight: 400
+        - asset: assets/fonts/Pretendard-Medium.otf
+          weight: 500
+        - asset: assets/fonts/Pretendard-SemiBold.otf
+          weight: 600
+        - asset: assets/fonts/Pretendard-Bold.otf
+          weight: 700
+        - asset: assets/fonts/Pretendard-ExtraBold.otf
+          weight: 800

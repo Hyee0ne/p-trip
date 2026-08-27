@@ -46,7 +46,8 @@ M1이 전부 여기 걸려 있다. M0 코딩과 **동시에** 진행할 것.
 - [x] Flutter 버전 결정 → **핀 고정** (go_router 17.5.0 / flutter_riverpod 3.3.2). Flutter 업그레이드는 보류
 - [x] Riverpod + go_router 3탭 셸 + 라우트 테이블 전체 선언 + 뷰 모드 글로벌 상태
 - [x] `.env.example` + `dart_defines.example.json` + `core/env.dart`, `.gitignore` 정비
-- [ ] Supabase CLI 설치, 프로젝트 연결, PostGIS extension 활성화  ← **남음** (`brew install supabase/tap/supabase`)
+- [x] Supabase CLI 설치 + `supabase init` + **brrrp 격리**(project_id·포트·파이프라인 가드)
+- [ ] Supabase 프로젝트 연결 (`supabase link --project-ref <ref>`) + PostGIS 활성화  ← **ref 필요**
 
 ## M0.3. 디자인 시안 (1~1.5일) ★신규 — 프로토타입 HTML을 직접 만든다
 
@@ -60,6 +61,7 @@ Figma는 만들지 않는다 — CSS 변수 → `theme.dart` 1:1 이식이 목�
       CO-01 / CO-07 / CO-02 / CO-06 / DR-01 / DR-02 / MY-02
 - [x] 공통 컴포넌트 6종: RouteBadge(sm/md/lg) · 탭바 · 토스트 · 스팟카드 · 확신도 문구 · 하트
 - [x] `core/theme.dart` 이식 (RouteBadge 위젯은 M2에서 화면과 함께)
+- [x] Pretendard 폰트 5종(400~800) + OFL 라이선스 번들
 - [x] `core/strings.dart` — SCREENS.md 고정 카피 전량 상수화
 
 ## M0.5. 관통 스파이크 (반나절) — 버릴 코드 전제

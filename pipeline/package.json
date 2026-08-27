@@ -5,6 +5,7 @@
   "type": "module",
   "description": "TourAPI·공공데이터 수집 → Supabase 적재. 앱은 우리 DB만 본다 (TECH_SPEC §1).",
   "scripts": {
+    "guard": "tsx src/lib/guard.test.ts",
     "probe": "tsx src/probe-apis.ts",
     "build:routes": "tsx src/build-routes.ts",
     "fetch:spots": "tsx src/fetch-tourapi.ts",
