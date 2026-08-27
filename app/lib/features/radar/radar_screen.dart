@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -68,7 +69,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     if (!_cardVisible) {
       // ⚠ Future.delayed는 취소가 안 돼 화면이 사라진 뒤에도 남는다. Timer로 잡아둔다.
       _firstCard?.cancel();
-      _firstCard = Timer(const Duration(milliseconds: 1200), () {
+      // 레이더를 먼저 보여준 뒤 발견이 다가온다. 바로 덮으면 레이더를 못 본다.
+      _firstCard = Timer(const Duration(milliseconds: 4200), () {
         if (mounted) setState(() => _cardVisible = true);
       });
     }
@@ -108,52 +110,56 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     final queueAsync = ref.watch(radarQueueProvider);
     final base = ref.watch(baseCampProvider);
 
-    return Scaffold(
-      backgroundColor: AppColors.darkBg,
-      body: SafeArea(
-        bottom: false,
-        child: queueAsync.maybeWhen(
-          orElse: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-          data: (queue) {
-            final current = queue.isEmpty ? null : queue[_queueIndex % queue.length];
-            return Stack(
-              children: [
-                ListView(
-                  padding: const EdgeInsets.only(bottom: 40),
-                  children: [
-                    _topBar(),
-                    _baseChip(base),
-                    const SizedBox(height: AppSpace.x4),
-                    _radar(queue),
-                    const SizedBox(height: AppSpace.x5),
-                    _notRouteNotice(),
-                    const SizedBox(height: AppSpace.x4),
-                    _soloLine(),
-                    const SizedBox(height: AppSpace.x5),
-                    _finishButton(),
-                  ],
-                ),
-                if (_cardVisible && current != null)
-                  _DiscoveryCard(
-                    discovery: current,
-                    onVisit: () {
-                      HandoffSheet.show(
-                        context,
-                        mode: HandoffMode.visit,
-                        destinationName: current.spot.name,
-                      );
-                      _advance(saved: true);
-                    },
-                    onSave: () {
-                      ref.read(savesProvider.notifier).toggleLike(current.spot.id);
-                      showAppToast(context, S.toastSaved);
-                      _advance(saved: true);
-                    },
-                    onSkip: () => _advance(saved: false),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      // 어두운 배경엔 밝은 상태바 (pro-rules: 다크 대비)
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        backgroundColor: AppColors.darkBg,
+        body: SafeArea(
+          bottom: false,
+          child: queueAsync.maybeWhen(
+            orElse: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            data: (queue) {
+              final current = queue.isEmpty ? null : queue[_queueIndex % queue.length];
+              return Stack(
+                children: [
+                  ListView(
+                    padding: const EdgeInsets.only(bottom: 40),
+                    children: [
+                      _topBar(),
+                      _baseChip(base),
+                      const SizedBox(height: AppSpace.x4),
+                      _radar(queue),
+                      const SizedBox(height: AppSpace.x5),
+                      _notRouteNotice(),
+                      const SizedBox(height: AppSpace.x4),
+                      _soloLine(),
+                      const SizedBox(height: AppSpace.x5),
+                      _finishButton(),
+                    ],
                   ),
-              ],
-            );
-          },
+                  if (_cardVisible && current != null)
+                    _DiscoveryCard(
+                      discovery: current,
+                      onVisit: () {
+                        HandoffSheet.show(
+                          context,
+                          mode: HandoffMode.visit,
+                          destinationName: current.spot.name,
+                        );
+                        _advance(saved: true);
+                      },
+                      onSave: () {
+                        ref.read(savesProvider.notifier).toggleLike(current.spot.id);
+                        showAppToast(context, S.toastSaved);
+                        _advance(saved: true);
+                      },
+                      onSkip: () => _advance(saved: false),
+                    ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );

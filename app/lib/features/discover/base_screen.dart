@@ -57,7 +57,7 @@ class _BaseScreenState extends ConsumerState<BaseScreen> {
       body: Stack(
         children: [
           ListView(
-            padding: const EdgeInsets.only(bottom: 100),
+            padding: const EdgeInsets.only(bottom: 124),
             children: [
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: AppSpace.gutter),

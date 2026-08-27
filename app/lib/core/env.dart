@@ -13,6 +13,11 @@ class Env {
   static const kakaoNativeAppKey = String.fromEnvironment('KAKAO_NATIVE_APP_KEY');
   static const kakaoJsAppKey = String.fromEnvironment('KAKAO_JS_APP_KEY');
 
+  /// 개발용 — 앱을 특정 화면에서 시작시킨다.
+  /// `flutter run --dart-define=START_AT=/radar`
+  /// 스크린샷 촬영과 시연 리허설에 쓴다. 비어 있으면 '/'.
+  static const startAt = String.fromEnvironment('START_AT', defaultValue: '/');
+
   /// 필수 키가 다 들어왔는지. main()에서 확인해 조기에 실패시킨다.
   static bool get isConfigured => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
 

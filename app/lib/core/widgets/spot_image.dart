@@ -22,42 +22,75 @@ class SpotImage extends StatelessWidget {
   final double radius;
   final String? imageUrl;
 
+  /// 유형별 색. 사진이 들어오기 전까지 이 그라데이션이 자리를 지킨다.
+  /// 3스톱 선형 + 밝은 광원 + 가장자리 비네팅을 겹쳐 사진처럼 깊이를 만든다.
   static const _palettes = <SpotType, List<Color>>{
-    SpotType.market: [Color(0xFFFBD79B), Color(0xFFF0A85E), Color(0xFFDB7C4A)],
-    SpotType.view: [Color(0xFFCFE6F2), Color(0xFFFCA97E), Color(0xFFF2846C)],
-    SpotType.food: [Color(0xFFF5E2BC), Color(0xFFE0C08A), Color(0xFFC79E68)],
-    SpotType.culture: [Color(0xFFDDEFF6), Color(0xFFA9D4E6), Color(0xFF7FB6D2)],
-    SpotType.stay: [Color(0xFFDCD3EC), Color(0xFFB4A2D2), Color(0xFF8A72B8)],
-    SpotType.camp: [Color(0xFFCBE4C4), Color(0xFF8FBF96), Color(0xFF5E9270)],
-    SpotType.attraction: [Color(0xFFC7E9F5), Color(0xFF7FCCE8), Color(0xFF46A8D4)],
+    SpotType.market: [Color(0xFFFFE3B0), Color(0xFFF0A85E), Color(0xFFB85C33)],
+    SpotType.view: [Color(0xFFCFE6F2), Color(0xFFFCA97E), Color(0xFFD4604F)],
+    SpotType.food: [Color(0xFFF9EACA), Color(0xFFE0C08A), Color(0xFF9C7245)],
+    SpotType.culture: [Color(0xFFE8F3FA), Color(0xFFA9D4E6), Color(0xFF5A8FB5)],
+    SpotType.stay: [Color(0xFFE6DEF3), Color(0xFFB4A2D2), Color(0xFF6E5595)],
+    SpotType.camp: [Color(0xFFDFF0D6), Color(0xFF8FBF96), Color(0xFF44725A)],
+    SpotType.attraction: [Color(0xFFDEF4FB), Color(0xFF7FCCE8), Color(0xFF2E7BA8)],
+  };
+
+  /// 광원 위치도 유형마다 달라야 같은 그림으로 안 보인다.
+  static const _lightAt = <SpotType, Alignment>{
+    SpotType.market: Alignment(-0.5, -0.6),
+    SpotType.view: Alignment(0.1, 0.35),
+    SpotType.food: Alignment(-0.45, -0.35),
+    SpotType.culture: Alignment(0.4, -0.55),
+    SpotType.stay: Alignment(-0.2, -0.5),
+    SpotType.camp: Alignment(0.35, -0.5),
+    SpotType.attraction: Alignment(0.0, -0.7),
   };
 
   @override
   Widget build(BuildContext context) {
     final c = _palettes[type] ?? _palettes[SpotType.attraction]!;
+    final light = _lightAt[type] ?? Alignment.topLeft;
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: SizedBox(
         width: width,
         height: height,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: c,
-            ),
-          ),
-          child: DecoratedBox(
-            decoration: const BoxDecoration(
-              gradient: RadialGradient(
-                center: Alignment(-0.4, -0.5),
-                radius: 0.9,
-                colors: [Color(0x66FFFFFF), Color(0x00FFFFFF)],
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 바탕 — 밝은 곳에서 어두운 곳으로
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: c,
+                  stops: const [0, 0.52, 1],
+                ),
               ),
             ),
-            child: const SizedBox.expand(),
-          ),
+            // 광원 — 사진의 하이라이트
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: light,
+                  radius: 0.85,
+                  colors: const [Color(0x8CFFFFFF), Color(0x1AFFFFFF), Color(0x00FFFFFF)],
+                  stops: const [0, 0.45, 1],
+                ),
+              ),
+            ),
+            // 비네팅 — 가장자리를 눌러 깊이를 만든다
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.center,
+                  radius: 0.95,
+                  colors: [Color(0x00000000), Color(0x00000000), Color(0x2E000000)],
+                  stops: [0, 0.62, 1],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

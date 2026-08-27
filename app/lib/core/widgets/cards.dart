@@ -55,18 +55,15 @@ class SpotGridCard extends StatelessWidget {
               SpotImage(type: spot.type, height: 118, width: double.infinity, radius: 16),
               if (spot.timeliness != Timeliness.none)
                 Positioned(left: 8, top: 8, child: TimelinessChip(spot.timeliness, compact: true)),
+              // 터치 영역 44 · 보이는 원 30 — 한 위젯이 둘 다 소유한다
               Positioned(
-                right: 8,
-                top: 8,
-                child: DecoratedBox(
-                  decoration: const BoxDecoration(color: Color(0xE6FFFFFF), shape: BoxShape.circle),
-                  child: SizedBox(
-                    width: 30,
-                    height: 30,
-                    child: Center(
-                      child: HeartButton(spotId: spot.id, size: 15, color: AppColors.ink2),
-                    ),
-                  ),
+                right: 2,
+                top: 2,
+                child: HeartButton(
+                  spotId: spot.id,
+                  iconSize: 15,
+                  chipSize: 30,
+                  color: AppColors.ink2,
                 ),
               ),
             ],
@@ -163,12 +160,11 @@ class FullBleedSpotCard extends StatelessWidget {
     this.onSave,
     this.onSkip,
     this.drive = false,
+    this.showActions = true,
   });
 
   final Spot spot;
   final String routeName;
-
-  /// 존재형 문구. 없으면 스팟 이름을 쓴다.
   final String? headline;
   final VoidCallback? onVisit;
   final VoidCallback? onSave;
@@ -177,81 +173,170 @@ class FullBleedSpotCard extends StatelessWidget {
   /// 운전 중(DR-02)이면 제목·본문·버튼을 더 크게 잡는다.
   final bool drive;
 
+  /// 「한 곳씩」에선 액션을 카드 밖(밝은 배경)에 두므로 false로 준다.
+  final bool showActions;
+
   @override
   Widget build(BuildContext context) {
-    final primary = drive ? AppTouch.drivePrimary : 64.0;
-    final secondary = drive ? AppTouch.driveSecondary : 52.0;
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        SpotImage(type: spot.type, radius: drive ? 0 : AppRadius.hero),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(drive ? 0 : AppRadius.hero),
-            gradient: const LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              colors: [Color(0xCC140E08), Color(0x33140E08), Color(0x00140E08)],
-              stops: [0, 0.42, 0.62],
+    final radius = drive ? 0.0 : AppRadius.hero;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          SpotImage(type: spot.type, radius: 0),
+          // 아래에서 위로 어두워지는 스크림 — 글자 대비 확보 (4.5:1)
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [
+                  Color(0xF215100B),
+                  Color(0xB315100B),
+                  Color(0x2E15100B),
+                  Color(0x0015100B),
+                ],
+                stops: [0, 0.30, 0.58, 0.80],
+              ),
             ),
           ),
-        ),
-        Positioned(
-          left: 20,
-          right: 20,
-          bottom: drive ? 132 : 22,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (spot.timeliness != Timeliness.none) TimelinessChip(spot.timeliness),
-              const SizedBox(height: 12),
-              Text(
-                headline ?? spot.name,
-                style: (drive ? AppType.drive : AppType.h1).copyWith(color: Colors.white),
-              ),
-              if (spot.timelinessNote.isNotEmpty || spot.blurb.isNotEmpty) ...[
-                const SizedBox(height: 9),
+          // 내용 + 액션을 한 Column에 쌓는다. 겹치지 않는다.
+          Padding(
+            padding: EdgeInsets.fromLTRB(20, 20, 20, drive ? 26 : 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (spot.timeliness != Timeliness.none) ...[
+                  _glassChip(_timelinessLabel(spot.timeliness)),
+                  const SizedBox(height: 12),
+                ],
                 Text(
-                  spot.timelinessNote.isNotEmpty ? spot.timelinessNote : spot.blurb,
-                  style: (drive ? AppType.driveBody : AppType.body).copyWith(
-                    color: Colors.white.withValues(alpha: 0.9),
-                  ),
+                  headline ?? spot.name,
+                  style: (drive ? AppType.drive : AppType.h1).copyWith(color: Colors.white),
                 ),
-              ],
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  RouteBadge('${spot.routeId}', size: BadgeSize.sm),
-                  const SizedBox(width: 8),
+                if (spot.timelinessNote.isNotEmpty || spot.blurb.isNotEmpty) ...[
+                  const SizedBox(height: 9),
                   Text(
-                    routeName,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white.withValues(alpha: 0.85),
+                    spot.timelinessNote.isNotEmpty ? spot.timelinessNote : spot.blurb,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: (drive ? AppType.driveBody : AppType.body).copyWith(
+                      color: const Color(0xE6FFFFFF),
                     ),
                   ),
                 ],
-              ),
-            ],
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    RouteBadge('${spot.routeId}', size: BadgeSize.sm),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        routeName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xD9FFFFFF),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (showActions) ...[
+                  SizedBox(height: drive ? 26 : 20),
+                  DiscoveryActions(
+                    spotId: spot.id,
+                    drive: drive,
+                    onVisit: onVisit,
+                    onSave: onSave,
+                    onSkip: onSkip,
+                  ),
+                ],
+              ],
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  static String _timelinessLabel(Timeliness t) => switch (t) {
+    Timeliness.marketDay => '오늘만',
+    Timeliness.sunset => '일몰 전',
+    Timeliness.mealtime => '지금이 밥때',
+    Timeliness.endingSoon => '이번 주까지',
+    Timeliness.none => '',
+  };
+
+  /// 사진 위 칩 — 유리 느낌. 내용만큼만 차지한다.
+  Widget _glassChip(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0x38FFFFFF),
+        borderRadius: BorderRadius.circular(AppRadius.chip),
+        border: Border.all(color: const Color(0x3DFFFFFF)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+          height: 1,
         ),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: drive ? 26 : 0,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _circle(Icons.close, secondary, onSkip, drive, muted: true),
-              SizedBox(width: drive ? 20 : 16),
-              _primary(primary, onVisit, drive),
-              SizedBox(width: drive ? 20 : 16),
-              _saveCircle(secondary, drive),
-            ],
-          ),
+      ),
+    );
+  }
+}
+
+/// 발견 액션 3종 — 넘기기 / 들르기 / 찜 (SCREENS.md §0.2).
+///
+/// 「한 곳씩」에선 카드 밖 밝은 배경 위에([onLight]), DR-02에선 사진 위에 얹힌다.
+class DiscoveryActions extends ConsumerWidget {
+  const DiscoveryActions({
+    super.key,
+    required this.spotId,
+    this.drive = false,
+    this.onLight = false,
+    this.onVisit,
+    this.onSave,
+    this.onSkip,
+  });
+
+  final String spotId;
+  final bool drive;
+  final bool onLight;
+  final VoidCallback? onVisit;
+  final VoidCallback? onSave;
+  final VoidCallback? onSkip;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final primary = drive ? AppTouch.drivePrimary : 62.0;
+    final secondary = drive ? AppTouch.driveSecondary : 50.0;
+    final liked = ref.watch(savesProvider).isLiked(spotId);
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _circle(Icons.close_rounded, secondary, onSkip, muted: true),
+        SizedBox(width: drive ? 20 : 18),
+        _primaryBtn(primary),
+        SizedBox(width: drive ? 20 : 18),
+        _circle(
+          liked ? Icons.favorite : Icons.favorite_border,
+          secondary,
+          () {
+            final added = ref.read(savesProvider.notifier).toggleLike(spotId);
+            if (added) showAppToast(context, S.toastSaved);
+            onSave?.call();
+          },
+          tint: onLight ? AppColors.marketRed : null,
         ),
       ],
     );
@@ -260,93 +345,105 @@ class FullBleedSpotCard extends StatelessWidget {
   Widget _circle(
     IconData icon,
     double size,
-    VoidCallback? onTap,
-    bool drive, {
+    VoidCallback? onTap, {
     bool muted = false,
+    Color? tint,
   }) {
-    return GestureDetector(
+    return _Tappable(
       onTap: onTap,
       child: Container(
         width: size,
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: drive ? const Color(0x24FFFFFF) : AppColors.surface,
+          color: onLight ? AppColors.surface : const Color(0x2BFFFFFF),
           border: Border.all(
-            color: drive ? const Color(0x57FFFFFF) : AppColors.line2,
-            width: drive ? 1.5 : 1,
+            color: onLight ? AppColors.line2 : const Color(0x5EFFFFFF),
+            width: 1.4,
           ),
+          boxShadow: onLight ? AppShadow.card : null,
         ),
         child: Icon(
           icon,
-          size: drive ? 26 : 22,
-          color: drive ? Colors.white : (muted ? AppColors.ink3 : AppColors.marketRed),
+          size: size * 0.42,
+          color:
+              tint ?? (onLight ? AppColors.ink3 : (muted ? const Color(0xD1FFFFFF) : Colors.white)),
         ),
       ),
     );
   }
 
-  /// 찜 액션 — 담고 나서 다음 카드로 넘긴다.
-  Widget _saveCircle(double size, bool drive) {
-    return Consumer(
-      builder: (context, ref, _) {
-        final liked = ref.watch(savesProvider).isLiked(spot.id);
-        return GestureDetector(
-          onTap: () {
-            final added = ref.read(savesProvider.notifier).toggleLike(spot.id);
-            if (added) showAppToast(context, S.toastSaved);
-            onSave?.call();
-          },
-          child: Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: drive ? const Color(0x24FFFFFF) : AppColors.surface,
-              border: Border.all(
-                color: drive ? const Color(0x57FFFFFF) : AppColors.line2,
-                width: drive ? 1.5 : 1,
-              ),
-            ),
-            child: Icon(
-              liked ? Icons.favorite : Icons.favorite_border,
-              size: drive ? 26 : 22,
-              color: drive ? Colors.white : AppColors.marketRed,
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _primary(double size, VoidCallback? onTap, bool drive) {
-    return GestureDetector(
-      onTap: onTap,
+  Widget _primaryBtn(double size) {
+    return _Tappable(
+      onTap: onVisit,
       child: Container(
         width: size,
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: drive ? Colors.white : AppColors.routeBlue,
-          boxShadow: const [
-            BoxShadow(color: Color(0x66000000), blurRadius: 24, offset: Offset(0, 8)),
+          color: onLight ? AppColors.routeBlue : Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: onLight ? const Color(0x5C1D4ED8) : const Color(0x59000000),
+              blurRadius: 26,
+              offset: const Offset(0, 10),
+            ),
           ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.near_me, size: 26, color: drive ? const Color(0xFF12100D) : Colors.white),
+            Icon(
+              Icons.near_me_rounded,
+              size: size * 0.34,
+              color: onLight ? Colors.white : const Color(0xFF15100B),
+            ),
             if (drive)
-              const Text(
-                S.cardVisit,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF12100D),
+              const Padding(
+                padding: EdgeInsets.only(top: 1),
+                child: Text(
+                  S.cardVisit,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                    color: Color(0xFF15100B),
+                  ),
                 ),
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// 눌림 피드백 — 레이아웃을 밀지 않고 크기만 살짝 줄인다 (pro-rules: 안정적 상호작용 상태).
+class _Tappable extends StatefulWidget {
+  const _Tappable({required this.child, this.onTap});
+  final Widget child;
+  final VoidCallback? onTap;
+
+  @override
+  State<_Tappable> createState() => _TappableState();
+}
+
+class _TappableState extends State<_Tappable> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _down = true),
+      onTapCancel: () => setState(() => _down = false),
+      onTapUp: (_) => setState(() => _down = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _down ? 0.94 : 1,
+        duration: AppMotion.fast,
+        curve: AppMotion.curve,
+        child: widget.child,
       ),
     );
   }

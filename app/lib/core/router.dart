@@ -12,7 +12,8 @@ import '../features/discover/home_screen.dart';
 import '../features/discover/routes_screen.dart';
 import '../features/discover/search_screen.dart';
 import '../features/discover/spot_screen.dart';
-import 'strings.dart';
+import 'widgets/app_tab_bar.dart';
+import 'env.dart';
 import 'theme.dart';
 
 /// 라우트 테이블 — TECH_SPEC.md §5와 1:1로 맞춘다.
@@ -23,7 +24,7 @@ final _rootKey = GlobalKey<NavigatorState>();
 
 GoRouter buildRouter() => GoRouter(
   navigatorKey: _rootKey,
-  initialLocation: '/',
+  initialLocation: Env.startAt,
   routes: [
     // ── 온보딩 (최초 1회, 탭 밖) ──
     GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
@@ -101,46 +102,19 @@ class _TabScaffold extends StatelessWidget {
   const _TabScaffold({required this.shell});
   final StatefulNavigationShell shell;
 
+  /// 레이더 탭에선 탭바가 다크로 바뀐다 (SCREENS.md §0.2).
   static const _radarIndex = 1;
 
   @override
   Widget build(BuildContext context) {
-    final dark = shell.currentIndex == _radarIndex;
     return Scaffold(
+      backgroundColor: shell.currentIndex == _radarIndex ? AppColors.darkBg : AppColors.bg,
       body: shell,
-      bottomNavigationBar: NavigationBarTheme(
-        data: NavigationBarThemeData(
-          backgroundColor: dark ? AppColors.darkBg : AppColors.surface,
-          indicatorColor: Colors.transparent,
-          labelTextStyle: WidgetStatePropertyAll(
-            TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
-              color: dark ? AppColors.darkInk : AppColors.ink,
-            ),
-          ),
-        ),
-        child: NavigationBar(
-          height: 72,
-          selectedIndex: shell.currentIndex,
-          onDestinationSelected: (i) => shell.goBranch(i, initialLocation: i == shell.currentIndex),
-          destinations: [
-            _dest(Icons.signpost_outlined, Icons.signpost, S.tabDiscover, dark),
-            _dest(Icons.radar_outlined, Icons.radar, S.tabRadar, dark),
-            _dest(Icons.person_outline, Icons.person, S.tabMy, dark),
-          ],
-        ),
+      bottomNavigationBar: AppTabBar(
+        index: shell.currentIndex,
+        dark: shell.currentIndex == _radarIndex,
+        onTap: (i) => shell.goBranch(i, initialLocation: i == shell.currentIndex),
       ),
-    );
-  }
-
-  NavigationDestination _dest(IconData icon, IconData sel, String label, bool dark) {
-    final off = dark ? AppColors.darkInk3 : AppColors.ink3;
-    final on = dark ? AppColors.darkInk : AppColors.routeBlue;
-    return NavigationDestination(
-      icon: Icon(icon, color: off, size: 22),
-      selectedIcon: Icon(sel, color: on, size: 22),
-      label: label,
     );
   }
 }

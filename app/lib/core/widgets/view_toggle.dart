@@ -26,7 +26,7 @@ class ViewToggle extends ConsumerWidget {
         children: [
           _seg(
             ref,
-            Icons.crop_portrait,
+            Icons.wysiwyg_rounded,
             S.viewOneByOne,
             mode == ViewMode.oneByOne,
             ViewMode.oneByOne,
@@ -45,37 +45,50 @@ class ViewToggle extends ConsumerWidget {
   }
 
   Widget _seg(WidgetRef ref, IconData icon, String label, bool on, ViewMode target) {
-    return GestureDetector(
-      onTap: () => ref.read(viewModeProvider.notifier).set(target),
-      child: AnimatedContainer(
-        duration: AppMotion.fast,
-        curve: AppMotion.curve,
-        height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 13),
-        decoration: BoxDecoration(
-          color: on ? AppColors.surface : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.chip),
-          boxShadow: on
-              ? const [BoxShadow(color: Color(0x241E4650), blurRadius: 4, offset: Offset(0, 1))]
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: on ? AppColors.ink : AppColors.ink2),
-            if (on) ...[
-              const SizedBox(width: 5),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.ink,
-                  height: 1,
-                ),
+    return Semantics(
+      button: true,
+      selected: on,
+      label: label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => ref.read(viewModeProvider.notifier).set(target),
+        child: AnimatedContainer(
+          duration: AppMotion.base,
+          curve: AppMotion.curve,
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: on ? AppColors.surface : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadius.chip),
+            boxShadow: on
+                ? const [BoxShadow(color: Color(0x1F1E4650), blurRadius: 5, offset: Offset(0, 1))]
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 15, color: on ? AppColors.ink : AppColors.ink3),
+              // 선택된 쪽만 라벨을 편다 — 접힘/펼침이 어느 쪽이 켜졌는지 알려준다
+              AnimatedSize(
+                duration: AppMotion.base,
+                curve: AppMotion.curve,
+                child: on
+                    ? Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: Text(
+                          label,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink,
+                            height: 1,
+                          ),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
               ),
             ],
-          ],
+          ),
         ),
       ),
     );

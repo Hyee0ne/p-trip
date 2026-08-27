@@ -25,21 +25,26 @@ class RouteBadge extends StatelessWidget {
       height: h,
       constraints: BoxConstraints(minWidth: minW),
       padding: EdgeInsets.symmetric(horizontal: h * 0.34),
-      alignment: Alignment.center,
       decoration: BoxDecoration(
         color: drivable ? AppColors.routeBlue : const Color(0xFFB4C0C2),
         borderRadius: BorderRadius.circular(AppRadius.chip),
         border: Border.all(color: Colors.white, width: bw),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w800,
-          fontSize: fs,
-          height: 1,
-          fontFeatures: const [FontFeature.tabularFigures()],
-        ),
+      // ⚠ alignment를 쓰면 느슨한 제약에서 폭이 최대까지 팽창한다. Row(min)으로 감싼다.
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: fs,
+              height: 1,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
       ),
     );
   }

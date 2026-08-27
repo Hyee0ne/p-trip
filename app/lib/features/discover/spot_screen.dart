@@ -49,7 +49,7 @@ class _Body extends ConsumerWidget {
     return Stack(
       children: [
         ListView(
-          padding: const EdgeInsets.only(bottom: 100),
+          padding: const EdgeInsets.only(bottom: 124),
           children: [
             _hero(context),
             Padding(
@@ -119,14 +119,13 @@ class _Body extends ConsumerWidget {
         children: [
           btn(Icons.arrow_back_ios_new, () => context.pop()),
           const Spacer(),
-          Container(
-            width: 38,
-            height: 38,
-            alignment: Alignment.center,
-            decoration: const BoxDecoration(color: Color(0xEBFFFFFF), shape: BoxShape.circle),
-            child: HeartButton(spotId: spot.id, size: 20, color: AppColors.marketRed),
+          HeartButton(
+            spotId: spot.id,
+            iconSize: 20,
+            chipSize: 38,
+            tapSize: 44,
+            color: AppColors.ink,
           ),
-          const SizedBox(width: 9),
           btn(Icons.ios_share, () {}),
         ],
       ),

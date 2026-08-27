@@ -155,7 +155,13 @@ class AppType {
 }
 
 ThemeData buildAppTheme() {
-  final base = ThemeData.light(useMaterial3: true);
+  // ⚠ fontFamily는 ThemeData 생성자에 직접 준다. copyWith엔 이 인자가 없어서
+  //   textTheme.apply만으로는 일부 위젯에 Pretendard가 안 걸린다.
+  final base = ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.light,
+    fontFamily: AppType.family,
+  );
   return base.copyWith(
     scaffoldBackgroundColor: AppColors.bg,
     colorScheme: base.colorScheme.copyWith(
@@ -170,11 +176,24 @@ ThemeData buildAppTheme() {
       displayColor: AppColors.ink,
     ),
     splashFactory: InkRipple.splashFactory,
+    dividerTheme: const DividerThemeData(color: AppColors.line, thickness: 1, space: 1),
+    // Material 기본 스위치가 시안과 안 맞아 톤만 맞춘다
+    switchTheme: SwitchThemeData(
+      thumbColor: const WidgetStatePropertyAll(Colors.white),
+      trackColor: WidgetStateProperty.resolveWith(
+        (st) => st.contains(WidgetState.selected) ? AppColors.routeBlue : const Color(0xFFD6E2E4),
+      ),
+      trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
+    ),
   );
 }
 
 ThemeData buildRadarTheme() {
-  final base = ThemeData.dark(useMaterial3: true);
+  final base = ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.dark,
+    fontFamily: AppType.family,
+  );
   return base.copyWith(
     scaffoldBackgroundColor: AppColors.darkBg,
     colorScheme: base.colorScheme.copyWith(

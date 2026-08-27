@@ -52,7 +52,8 @@ class _Body extends ConsumerWidget {
     return Stack(
       children: [
         ListView(
-          padding: const EdgeInsets.only(bottom: 100),
+          // 하단 고정 CTA + 탭바 높이만큼 비운다
+          padding: const EdgeInsets.only(bottom: 132),
           children: [
             SafeArea(bottom: false, child: _appBar(context)),
             Padding(
@@ -215,7 +216,7 @@ class _Body extends ConsumerWidget {
   /// 「한 곳씩」 — 발견을 가로 캐러셀 전면 카드로.
   Widget _carousel(BuildContext context, List<Spot> spots) {
     return SizedBox(
-      height: 260,
+      height: 244,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),

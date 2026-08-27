@@ -19,19 +19,25 @@ class TimelinessChip extends StatelessWidget {
       Timeliness.none => ('', Colors.transparent, Colors.transparent),
     };
     if (label.isEmpty) return const SizedBox.shrink();
+    // ⚠ Container에 alignment를 주면 제약 최대까지 팽창한다. 내용만큼만 차지하게 Row로.
     return Container(
       height: compact ? 20 : 28,
       padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12),
-      alignment: Alignment.center,
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadius.chip)),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: fg,
-          fontWeight: FontWeight.w700,
-          fontSize: compact ? 10.5 : 12.5,
-          height: 1,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: fg,
+              fontWeight: FontWeight.w700,
+              fontSize: compact ? 10.5 : 12.5,
+              height: 1,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -53,19 +59,21 @@ class DiscoverFilterChip extends StatelessWidget {
       child: Container(
         height: 32,
         padding: const EdgeInsets.symmetric(horizontal: 14),
-        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? AppColors.ink : AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.chip),
           border: selected ? null : Border.all(color: AppColors.line2),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : AppColors.ink2,
-            fontWeight: FontWeight.w700,
-            fontSize: 13,
-            height: 1,
+        child: Center(
+          widthFactor: 1,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : AppColors.ink2,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              height: 1,
+            ),
           ),
         ),
       ),

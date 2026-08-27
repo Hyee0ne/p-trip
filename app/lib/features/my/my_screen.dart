@@ -36,7 +36,8 @@ class _MyScreenState extends ConsumerState<MyScreen> {
       body: SafeArea(
         bottom: false,
         child: ListView(
-          padding: const EdgeInsets.only(bottom: 24),
+          // 탭바에 가려지지 않게 여유를 둔다 (pro-rules: 스크롤/고정요소 공존)
+          padding: const EdgeInsets.only(bottom: 40),
           children: [
             _profile(tripsAsync.value?.length ?? 0, saves.liked.length + saves.passed.length),
             const SizedBox(height: AppSpace.x6),
@@ -170,19 +171,23 @@ class _MyScreenState extends ConsumerState<MyScreen> {
       child: Container(
         height: 32,
         padding: const EdgeInsets.symmetric(horizontal: 14),
-        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: on ? AppColors.ink : AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.chip),
           border: on ? null : Border.all(color: AppColors.line2),
         ),
-        child: Text(
-          '$label $count',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: on ? Colors.white : AppColors.ink2,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$label $count',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: on ? Colors.white : AppColors.ink2,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -176,14 +176,19 @@ class _Body extends StatelessWidget {
 
   /// 통계는 표가 아니라 칩으로 조용히. 허탕도 같은 크기로 담담하게.
   Widget _statChips() {
+    // ⚠ width 없는 Container에 alignment를 주면 폭이 최대까지 팽창한다 → Row(min)
     Widget chip(String label, Color bg, Color fg) => Container(
       height: 32,
       padding: const EdgeInsets.symmetric(horizontal: 14),
-      alignment: Alignment.center,
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadius.chip)),
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: fg),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: fg),
+          ),
+        ],
       ),
     );
 

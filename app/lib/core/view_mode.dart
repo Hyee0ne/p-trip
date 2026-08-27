@@ -17,7 +17,8 @@ final viewModeProvider = NotifierProvider<ViewModeNotifier, ViewMode>(ViewModeNo
 
 class ViewModeNotifier extends Notifier<ViewMode> {
   @override
-  ViewMode build() => ViewMode.oneByOne;
+  ViewMode build() =>
+      const String.fromEnvironment('START_MODE') == 'browse' ? ViewMode.browse : ViewMode.oneByOne;
 
   void toggle() => state = state == ViewMode.oneByOne ? ViewMode.browse : ViewMode.oneByOne;
 

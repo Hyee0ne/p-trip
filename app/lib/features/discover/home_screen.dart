@@ -79,19 +79,27 @@ class _OneByOneState extends ConsumerState<_OneByOne> {
               if (spots.isEmpty) return const _EmptyState();
               final i = _index.clamp(0, spots.length - 1);
               return Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                padding: const EdgeInsets.fromLTRB(AppSpace.gutter, 14, AppSpace.gutter, 10),
                 child: Column(
                   children: [
                     _Progress(count: spots.length, index: i),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 14),
                     Expanded(
                       child: FullBleedSpotCard(
+                        key: ValueKey(spots[i].id),
                         spot: spots[i],
                         routeName: '${spots[i].routeId}번 국도',
-                        onVisit: () => context.go('/spot/${spots[i].id}'),
-                        onSkip: () => setState(() => _index = (i + 1) % spots.length),
-                        onSave: () => setState(() => _index = (i + 1) % spots.length),
+                        showActions: false,
                       ),
+                    ),
+                    // 액션은 카드 밖 밝은 배경 위에 (시안 C안)
+                    const SizedBox(height: 18),
+                    DiscoveryActions(
+                      spotId: spots[i].id,
+                      onLight: true,
+                      onVisit: () => context.go('/spot/${spots[i].id}'),
+                      onSkip: () => setState(() => _index = i + 1),
+                      onSave: () => setState(() => _index = i + 1),
                     ),
                   ],
                 ),
@@ -285,7 +293,6 @@ class _RouteRail extends ConsumerWidget {
                 child: Container(
                   height: 34,
                   padding: const EdgeInsets.symmetric(horizontal: 15),
-                  alignment: Alignment.center,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(AppRadius.chip),
                     border: Border.all(color: AppColors.line2),
