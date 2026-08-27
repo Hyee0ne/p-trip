@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/base_camp.dart';
+import '../../core/env.dart';
 import '../../core/saves.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
@@ -66,6 +67,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
         if (!_cardVisible) _cardVisible = true;
       });
     });
+    if (!Env.autoCard) return;
     if (!_cardVisible) {
       // ⚠ Future.delayed는 취소가 안 돼 화면이 사라진 뒤에도 남는다. Timer로 잡아둔다.
       _firstCard?.cancel();
@@ -409,18 +411,38 @@ class _DiscoveryCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: const Color(0x38FFFFFF),
+                      color: const Color(0xF5FFFFFF),
                       borderRadius: BorderRadius.circular(AppRadius.chip),
                     ),
-                    child: Text(
-                      d.situation,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // 시의성을 색으로 먼저 알린다
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: switch (d.spot.timeliness) {
+                              Timeliness.marketDay => AppColors.marketRed,
+                              Timeliness.sunset => AppColors.fieldGreen,
+                              Timeliness.mealtime => AppColors.sun,
+                              _ => AppColors.routeBlue,
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                        Text(
+                          d.situation,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF15100B),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 15),
@@ -431,12 +453,16 @@ class _DiscoveryCard extends StatelessWidget {
                   const SizedBox(height: 14),
                   Row(
                     children: const [
-                      Icon(Icons.check, size: 14, color: Color(0xFF7FC494)),
+                      Icon(Icons.verified_outlined, size: 15, color: Color(0xFF8FD3A4)),
                       SizedBox(width: 6),
                       Expanded(
                         child: Text(
                           S.cardVerified,
-                          style: TextStyle(fontSize: 11.5, color: Color(0xB3FFFFFF)),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xCCFFFFFF),
+                          ),
                         ),
                       ),
                     ],

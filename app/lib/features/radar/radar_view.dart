@@ -67,13 +67,23 @@ class _RadarPainter extends CustomPainter {
     final r = size.width / 2 - 8;
 
     // 동심원 3링
-    final ring = Paint()
-      ..color = const Color(0x14F0EDE6)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    for (final f in [1.0, 0.68, 0.36]) {
-      canvas.drawCircle(c, r * f, ring);
+    // 링 — 바깥일수록 옅게. 너무 옅으면 계기판으로 안 읽힌다.
+    for (final (f, a) in [(1.0, 0x1F), (0.68, 0x2B), (0.36, 0x38)]) {
+      canvas.drawCircle(
+        c,
+        r * f,
+        Paint()
+          ..color = Color((a << 24) | 0xF0EDE6)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1,
+      );
     }
+    // 십자 기준선 — 방향감
+    final axis = Paint()
+      ..color = const Color(0x14F0EDE6)
+      ..strokeWidth = 1;
+    canvas.drawLine(Offset(c.dx, c.dy - r), Offset(c.dx, c.dy + r), axis);
+    canvas.drawLine(Offset(c.dx - r, c.dy), Offset(c.dx + r, c.dy), axis);
 
     // 회전 스윕 — 부채꼴 그라데이션
     canvas.save();
@@ -83,14 +93,23 @@ class _RadarPainter extends CustomPainter {
     canvas.drawArc(
       sweepRect,
       -math.pi / 2,
-      math.pi / 3.4,
+      math.pi / 2.6,
       true,
       Paint()
         ..shader = const SweepGradient(
           startAngle: 0,
-          endAngle: math.pi / 3.4,
-          colors: [Color(0x2E7FBE93), Color(0x007FBE93)],
+          endAngle: math.pi / 2.6,
+          colors: [Color(0x8A7FBE93), Color(0x2E7FBE93), Color(0x007FBE93)],
+          stops: [0, 0.5, 1],
         ).createShader(sweepRect),
+    );
+    // 스윕 앞날 — 지금 훑는 지점을 또렷하게
+    canvas.drawLine(
+      Offset.zero,
+      Offset(0, -r),
+      Paint()
+        ..color = const Color(0x8C9FD8B0)
+        ..strokeWidth = 1.6,
     );
     canvas.restore();
 
@@ -114,7 +133,43 @@ class _RadarPainter extends CustomPainter {
             ..strokeWidth = 1.6,
         );
       }
-      canvas.drawCircle(p, 6, Paint()..color = col);
+      canvas.drawCircle(p, 6.5, Paint()..color = col);
+      canvas.drawCircle(
+        p,
+        6.5,
+        Paint()
+          ..color = const Color(0x66FFFFFF)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1,
+      );
+
+      // 이름표 — 점만 있으면 뭐가 뭔지 모른다
+      final tp = TextPainter(
+        text: TextSpan(
+          text: s.name,
+          style: const TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w700,
+            color: Color(0xD9F0EDE6),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: size.width * 0.36);
+
+      // 라벨은 블립 오른쪽이 기본. 오른쪽에 자리가 없으면 왼쪽으로 넘긴다.
+      // ⚠ clamp만 쓰면 가장자리에서 블립 위로 올라타 겹친다.
+      const gap = 11.0;
+      final fitsRight = p.dx + gap + tp.width <= size.width - 2;
+      final lx = fitsRight ? p.dx + gap : p.dx - gap - tp.width;
+      final ly = (p.dy - tp.height / 2).clamp(2.0, size.height - tp.height - 2);
+
+      // 어두운 받침 — 링·스윕 위에서도 읽히게
+      final bg = RRect.fromRectAndRadius(
+        Rect.fromLTWH(lx - 5, ly - 3, tp.width + 10, tp.height + 6),
+        const Radius.circular(6),
+      );
+      canvas.drawRRect(bg, Paint()..color = const Color(0x8C0F0C09));
+      tp.paint(canvas, Offset(lx, ly));
     }
 
     // 내 위치

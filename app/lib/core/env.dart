@@ -18,6 +18,10 @@ class Env {
   /// 스크린샷 촬영과 시연 리허설에 쓴다. 비어 있으면 '/'.
   static const startAt = String.fromEnvironment('START_AT', defaultValue: '/');
 
+  /// 레이더 발견 카드를 자동으로 띄울지. 스크린샷·시연 중 수동 제어용.
+  /// `--dart-define=AUTO_CARD=false`
+  static const autoCard = String.fromEnvironment('AUTO_CARD', defaultValue: 'true') != 'false';
+
   /// 필수 키가 다 들어왔는지. main()에서 확인해 조기에 실패시킨다.
   static bool get isConfigured => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
 
