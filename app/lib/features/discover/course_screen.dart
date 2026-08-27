@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/base_camp.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/view_mode.dart';
+import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/cards.dart';
 import '../../core/widgets/chips.dart';
 import '../../core/widgets/route_badge.dart';
@@ -13,6 +15,7 @@ import '../../core/widgets/spot_image.dart';
 import '../../core/widgets/view_toggle.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/providers.dart';
+import '../handoff/handoff_sheet.dart';
 
 /// CO-02 코스 상세 (SCREENS.md CO-02).
 ///
@@ -267,6 +270,17 @@ class _Body extends ConsumerWidget {
     );
   }
 
+  /// 거점 미설정이면 CO-06으로 유도(강제하지 않는다), 설정됐으면 HND 시트.
+  void _onDepart(BuildContext context) {
+    final base = ProviderScope.containerOf(context).read(baseCampProvider);
+    if (base == null) {
+      showAppToast(context, S.courseStartWithoutBase);
+      context.push('/course/${course.id}/base');
+      return;
+    }
+    HandoffSheet.show(context, mode: HandoffMode.depart, destinationName: base.name);
+  }
+
   Widget _cta(BuildContext context) {
     return Positioned(
       left: 0,
@@ -289,7 +303,7 @@ class _Body extends ConsumerWidget {
               backgroundColor: AppColors.routeBlue,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
             ),
-            onPressed: () {},
+            onPressed: () => _onDepart(context),
             child: const Text(
               S.courseStart,
               style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700),

@@ -6,11 +6,13 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/cards.dart';
+import '../../core/widgets/heart_button.dart';
 import '../../core/widgets/chips.dart';
 import '../../core/widgets/route_badge.dart';
 import '../../core/widgets/spot_image.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/providers.dart';
+import '../handoff/handoff_sheet.dart';
 
 /// CO-03 스팟 상세 (SCREENS.md CO-03).
 ///
@@ -117,7 +119,13 @@ class _Body extends ConsumerWidget {
         children: [
           btn(Icons.arrow_back_ios_new, () => context.pop()),
           const Spacer(),
-          btn(Icons.favorite_border, () {}, color: AppColors.marketRed),
+          Container(
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(color: Color(0xEBFFFFFF), shape: BoxShape.circle),
+            child: HeartButton(spotId: spot.id, size: 20, color: AppColors.marketRed),
+          ),
           const SizedBox(width: 9),
           btn(Icons.ios_share, () {}),
         ],
@@ -318,7 +326,8 @@ class _Body extends ConsumerWidget {
               backgroundColor: AppColors.routeBlue,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
             ),
-            onPressed: () {},
+            onPressed: () =>
+                HandoffSheet.show(context, mode: HandoffMode.visit, destinationName: spot.name),
             icon: const Icon(Icons.near_me, size: 18),
             label: const Text(
               S.spotNavigate,

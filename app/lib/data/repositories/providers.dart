@@ -53,3 +53,9 @@ final courseSpotsProvider = FutureProvider.family<List<Spot>, String>((ref, id) 
   }
   return out;
 });
+
+/// CO-06 종점 근처 참고 후보 — 숙박·캠핑장. **정보 + 외부 링크까지만**.
+final baseCandidatesProvider = FutureProvider<List<Spot>>((ref) async {
+  final all = await ref.watch(discoverRepositoryProvider).spots();
+  return all.where((s) => s.type == SpotType.stay || s.type == SpotType.camp).toList();
+});

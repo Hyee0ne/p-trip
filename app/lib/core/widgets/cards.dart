@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 
+import 'heart_button.dart';
+
 import '../../data/models/models.dart';
 import '../strings.dart';
 import '../theme.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../saves.dart';
+import 'app_toast.dart';
 import 'chips.dart';
 import 'route_badge.dart';
 import 'spot_image.dart';
@@ -32,11 +38,10 @@ class SectionLabel extends StatelessWidget {
 /// 훑어보기용 2열 그리드 카드 (SCREENS.md §0.2).
 /// 보조설명은 **한 줄만**. 두 개를 붙이지 않는다.
 class SpotGridCard extends StatelessWidget {
-  const SpotGridCard({super.key, required this.spot, this.onTap, this.saved = false});
+  const SpotGridCard({super.key, required this.spot, this.onTap});
 
   final Spot spot;
   final VoidCallback? onTap;
-  final bool saved;
 
   @override
   Widget build(BuildContext context) {
@@ -53,14 +58,14 @@ class SpotGridCard extends StatelessWidget {
               Positioned(
                 right: 8,
                 top: 8,
-                child: Container(
-                  width: 30,
-                  height: 30,
+                child: DecoratedBox(
                   decoration: const BoxDecoration(color: Color(0xE6FFFFFF), shape: BoxShape.circle),
-                  child: Icon(
-                    saved ? Icons.favorite : Icons.favorite_border,
-                    size: 15,
-                    color: saved ? AppColors.marketRed : AppColors.ink2,
+                  child: SizedBox(
+                    width: 30,
+                    height: 30,
+                    child: Center(
+                      child: HeartButton(spotId: spot.id, size: 15, color: AppColors.ink2),
+                    ),
                   ),
                 ),
               ),
@@ -88,11 +93,10 @@ class SpotGridCard extends StatelessWidget {
 
 /// 검색 결과·코스 목록용 리스트 행 (SCREENS.md §0.2).
 class SpotListRow extends StatelessWidget {
-  const SpotListRow({super.key, required this.spot, this.onTap, this.saved = false});
+  const SpotListRow({super.key, required this.spot, this.onTap});
 
   final Spot spot;
   final VoidCallback? onTap;
-  final bool saved;
 
   @override
   Widget build(BuildContext context) {
@@ -137,12 +141,7 @@ class SpotListRow extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
-            Icon(
-              saved ? Icons.favorite : Icons.favorite_border,
-              size: 15,
-              color: saved ? AppColors.marketRed : AppColors.ink3,
-            ),
+            HeartButton(spotId: spot.id),
           ],
         ),
       ),
@@ -250,7 +249,7 @@ class FullBleedSpotCard extends StatelessWidget {
               SizedBox(width: drive ? 20 : 16),
               _primary(primary, onVisit, drive),
               SizedBox(width: drive ? 20 : 16),
-              _circle(Icons.favorite_border, secondary, onSave, drive),
+              _saveCircle(secondary, drive),
             ],
           ),
         ),
@@ -284,6 +283,39 @@ class FullBleedSpotCard extends StatelessWidget {
           color: drive ? Colors.white : (muted ? AppColors.ink3 : AppColors.marketRed),
         ),
       ),
+    );
+  }
+
+  /// 찜 액션 — 담고 나서 다음 카드로 넘긴다.
+  Widget _saveCircle(double size, bool drive) {
+    return Consumer(
+      builder: (context, ref, _) {
+        final liked = ref.watch(savesProvider).isLiked(spot.id);
+        return GestureDetector(
+          onTap: () {
+            final added = ref.read(savesProvider.notifier).toggleLike(spot.id);
+            if (added) showAppToast(context, S.toastSaved);
+            onSave?.call();
+          },
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: drive ? const Color(0x24FFFFFF) : AppColors.surface,
+              border: Border.all(
+                color: drive ? const Color(0x57FFFFFF) : AppColors.line2,
+                width: drive ? 1.5 : 1,
+              ),
+            ),
+            child: Icon(
+              liked ? Icons.favorite : Icons.favorite_border,
+              size: drive ? 26 : 22,
+              color: drive ? Colors.white : AppColors.marketRed,
+            ),
+          ),
+        );
+      },
     );
   }
 

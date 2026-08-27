@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/common/placeholder_screen.dart';
+import '../features/onboarding/onboarding_screen.dart';
+import '../features/discover/base_screen.dart';
 import '../features/discover/course_screen.dart';
 import '../features/discover/home_screen.dart';
 import '../features/discover/routes_screen.dart';
@@ -21,11 +23,7 @@ GoRouter buildRouter() => GoRouter(
   initialLocation: '/',
   routes: [
     // ── 온보딩 (최초 1회, 탭 밖) ──
-    GoRoute(
-      path: '/onboarding',
-      builder: (_, _) =>
-          const PlaceholderScreen(screenId: 'ON', name: '온보딩 3장', route: '/onboarding'),
-    ),
+    GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
 
     // ── 검색: 모달. 탭바를 덮으므로 셸 밖에 둔다 (SCREENS.md §SR) ──
     GoRoute(
@@ -36,11 +34,7 @@ GoRouter buildRouter() => GoRouter(
     ),
 
     // ── 거점 역진입: 코스 없이 진입 (TECH_SPEC §3.7) ──
-    GoRoute(
-      path: '/base',
-      builder: (_, _) =>
-          const PlaceholderScreen(screenId: 'CO-06', name: '거점 설정 (역진입)', route: '/base'),
-    ),
+    GoRoute(path: '/base', builder: (_, _) => const BaseScreen()),
 
     // ── 3탭 셸 ──
     StatefulShellRoute.indexedStack(
@@ -60,11 +54,7 @@ GoRouter buildRouter() => GoRouter(
                   routes: [
                     GoRoute(
                       path: 'base',
-                      builder: (_, s) => PlaceholderScreen(
-                        screenId: 'CO-06',
-                        name: '거점 설정',
-                        route: '/course/${s.pathParameters['id']}/base',
-                      ),
+                      builder: (_, s) => BaseScreen(courseId: s.pathParameters['id']),
                     ),
                   ],
                 ),

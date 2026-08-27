@@ -121,4 +121,78 @@ void main() {
     expect(find.text(S.searchEmpty('스키장')), findsOneWidget);
     expect(find.text('북평 5일장'), findsNothing);
   });
+
+  // ── M2 나머지 ─────────────────────────────────────────────
+
+  testWidgets('하트를 누르면 찜에 담기고 토스트가 뜬다', (tester) async {
+    await pumpApp(tester);
+    await toBrowse(tester);
+
+    expect(find.byIcon(Icons.favorite), findsNothing);
+    await tester.tap(find.byIcon(Icons.favorite_border).first);
+    await tester.pump();
+
+    expect(find.byIcon(Icons.favorite), findsWidgets);
+    expect(find.text(S.toastSaved), findsOneWidget);
+  });
+
+  testWidgets('찜 상태는 화면이 바뀌어도 유지된다', (tester) async {
+    await pumpApp(tester);
+    await toBrowse(tester);
+    await tester.tap(find.byIcon(Icons.favorite_border).first);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('북평 5일장').first);
+    await tester.pumpAndSettle();
+
+    // CO-03 상단 하트도 같은 상태를 본다
+    expect(find.byIcon(Icons.favorite), findsWidgets);
+  });
+
+  testWidgets('거점 없이 출발하면 강제하지 않고 CO-06으로 유도한다', (tester) async {
+    await pumpApp(tester);
+    await toBrowse(tester);
+    await tester.tap(find.text('전체 51'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('동해 바닷길'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(S.courseStart));
+    await tester.pumpAndSettle();
+
+    expect(find.text(S.baseTitle), findsOneWidget);
+    expect(find.text(S.baseIntro), findsOneWidget);
+  });
+
+  testWidgets('거점은 위치만 받는다 — 예약 버튼은 외부 링크', (tester) async {
+    await pumpApp(tester);
+    await toBrowse(tester);
+    await tester.tap(find.text('전체 51'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('동해 바닷길'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(S.baseNone));
+    await tester.pumpAndSettle();
+
+    expect(find.text(S.baseCandidatesSub), findsOneWidget);
+    expect(find.text(S.baseWithout), findsOneWidget);
+    // 아무것도 안 고르고 확정하면 막는다
+    await tester.tap(find.text(S.baseCta));
+    await tester.pumpAndSettle();
+    expect(find.text(S.baseToastPickFirst), findsOneWidget);
+  });
+
+  testWidgets('스팟 길 안내 → HND 시트. 무료도로 안내가 있다', (tester) async {
+    await pumpApp(tester);
+    await toBrowse(tester);
+    await tester.tap(find.text('북평 5일장').first);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(S.spotNavigate));
+    await tester.pumpAndSettle();
+
+    expect(find.text(S.handoffKakao), findsOneWidget);
+    expect(find.text(S.handoffTmap), findsOneWidget);
+    expect(find.text(S.handoffFreeRoad), findsOneWidget);
+  });
 }
