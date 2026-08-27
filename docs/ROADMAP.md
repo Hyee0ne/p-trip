@@ -41,12 +41,12 @@ M1이 전부 여기 걸려 있다. M0 코딩과 **동시에** 진행할 것.
 
 ## M0. 프로젝트 셋업 (반나절)
 
-- [ ] git init + 모노레포: `app/`(Flutter) · `pipeline/`(Node+TS) · `supabase/`
-- [ ] **CLAUDE.md를 리포 루트로 이동** (지금 `docs/`라 Claude Code 자동 로드가 안 됨)
-- [ ] Flutter 버전 결정: `flutter upgrade`(Dart 3.12+) or go_router 17.5.0 / flutter_riverpod 3.3.2 핀
-- [ ] Riverpod + go_router 3탭 셸 + **라우트 테이블 전체 선언**(화면은 빈 껍데기)
-- [ ] `.env` 체계 + `--dart-define` 주입, `.gitignore` 정비
-- [ ] Supabase CLI 설치, 프로젝트 연결, PostGIS extension 활성화
+- [x] git init + 모노레포: `app/`(Flutter) · `pipeline/`(Node+TS) · `supabase/`
+- [x] **CLAUDE.md를 리포 루트로 이동**
+- [x] Flutter 버전 결정 → **핀 고정** (go_router 17.5.0 / flutter_riverpod 3.3.2). Flutter 업그레이드는 보류
+- [x] Riverpod + go_router 3탭 셸 + 라우트 테이블 전체 선언 + 뷰 모드 글로벌 상태
+- [x] `.env.example` + `dart_defines.example.json` + `core/env.dart`, `.gitignore` 정비
+- [ ] Supabase CLI 설치, 프로젝트 연결, PostGIS extension 활성화  ← **남음** (`brew install supabase/tap/supabase`)
 
 ## M0.3. 디자인 시안 (1~1.5일) ★신규 — 프로토타입 HTML을 직접 만든다
 
@@ -59,8 +59,8 @@ Figma는 만들지 않는다 — CSS 변수 → `theme.dart` 1:1 이식이 목�
 - [x] 프로토타입 HTML — **시연 플로우 7화면 우선**:
       CO-01 / CO-07 / CO-02 / CO-06 / DR-01 / DR-02 / MY-02
 - [x] 공통 컴포넌트 6종: RouteBadge(sm/md/lg) · 탭바 · 토스트 · 스팟카드 · 확신도 문구 · 하트
-- [ ] `core/theme.dart` 이식 + `RouteBadge` 위젯  ← **M0(Flutter 프로젝트) 이후**
-- [ ] `core/strings.dart` — SCREENS.md 고정 카피 전량 상수화  ← **M0 이후**
+- [x] `core/theme.dart` 이식 (RouteBadge 위젯은 M2에서 화면과 함께)
+- [x] `core/strings.dart` — SCREENS.md 고정 카피 전량 상수화
 
 ## M0.5. 관통 스파이크 (반나절) — 버릴 코드 전제
 
