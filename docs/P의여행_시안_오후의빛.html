@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P의 여행 — 아트 디렉션 시안 · 오후의 빛</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<style>
+/* ══════════════════════════════════════════════════════════════
+   P의 여행 — 아트 디렉션 「오후의 빛」
+   명제: 이 앱의 킬러 기능은 전부 시간에 걸려 있다.
+        (오늘 장날 · 40분 뒤 일몰 · 밥때 · 기간 한정)
+        그러니 시간이 곧 배경이 된다.
+   ══════════════════════════════════════════════════════════════ */
+:root{
+  /* — 브랜드 고정색 (변경 금지) — */
+  --route-blue:#1D4ED8; --field-green:#3E7C4F; --market-red:#C2452D;
+  --sun:#E8A13D; --night:#0D1117; --bg:#F4F5F1;
+
+  /* — 시간 팔레트: 하루가 네 번 바뀐다 — */
+  /* 아침 05–09 · 안개가 걷히는 회청 */
+  --dawn-1:#CBD6D6; --dawn-2:#E2E4DA; --dawn-3:#EFEDE2; --dawn-ink:#2E3833; --dawn-glow:#FBF3E0;
+  /* 낮 09–16 · 바랜 하늘과 미색 */
+  --day-1:#F2EFE4; --day-2:#E4ECEC; --day-3:#D6E3E6; --day-ink:#1D231F; --day-glow:#FFFFFF;
+  /* 골든아워 일몰-90분 ~ 일몰 */
+  --gold-1:#F7DCAE; --gold-2:#E8A13D; --gold-3:#C2452D; --gold-ink:#2A1710; --gold-glow:#FFD79A;
+  /* 밤 일몰 후 */
+  --dusk-1:#0D1117; --dusk-2:#161F2B; --dusk-3:#243244; --dusk-ink:#F2F0E9; --dusk-glow:#E8A13D;
+
+  /* — 표면 — */
+  --paper:#FBFAF4; --paper-2:#F3F1E7;
+  --line:rgba(45,50,40,.10); --line-2:rgba(45,50,40,.18);
+  --ink:#1D231F; --ink-2:#5A6157; --ink-3:#8A9086;
+  --n-card:rgba(255,255,255,.07); --n-line:rgba(255,255,255,.13);
+  --n-ink:#F2F0E9; --n-ink-2:#A9B3B8; --n-ink-3:#6E7A82;
+  --violet:#6D4AA8;
+
+  /* — 타이포 — */
+  --f-display:34px; --f-h1:25px; --f-h2:19px; --f-body:15px; --f-sm:13px; --f-xs:11px;
+  /* — 간격/라운드/모션 — */
+  --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px; --s8:32px;
+  --r-card:14px; --r-sheet:20px; --r-hero:22px; --r-pill:999px;
+  --ease:cubic-bezier(.16,1,.3,1); --t-base:240ms;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Pretendard Variable',Pretendard,-apple-system,'Apple SD Gothic Neo',sans-serif;
+  background:#20262A;color:var(--ink);font-size:var(--f-body);line-height:1.55;
+  -webkit-font-smoothing:antialiased;font-feature-settings:'tnum' 1}
+svg{display:block}
+.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.i-sm{width:15px;height:15px}.i-lg{width:24px;height:24px}
+
+/* ─── 보드 크롬 ─── */
+.board{max-width:1400px;margin:0 auto;padding:56px 28px 90px;color:#E8E6DE}
+.bh h1{font-size:38px;font-weight:800;letter-spacing:-.03em;line-height:1.15}
+.bh .thesis{font-size:17px;color:#B6BDBB;margin-top:14px;max-width:620px;line-height:1.65}
+.bh .thesis b{color:#F2D9A8;font-weight:700}
+.bh .meta{margin-top:22px;padding-top:16px;border-top:1px solid rgba(255,255,255,.14);
+  font-size:12.5px;color:#8A9490;line-height:1.7;max-width:640px}
+.sect-t{font-size:12px;font-weight:800;letter-spacing:.16em;color:#8A9490;margin:72px 0 20px}
+.grid{display:flex;flex-wrap:wrap;gap:52px 36px;align-items:flex-start}
+.slot{width:372px}
+.slot figcaption{margin-bottom:14px}
+.slot .tm{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:800;
+  letter-spacing:.08em;padding:4px 10px;border-radius:var(--r-pill);color:#20262A}
+.slot .nm{font-size:15.5px;font-weight:750;margin-top:9px;color:#F0EEE6}
+.slot .ds{font-size:12.5px;color:#9AA4A0;margin-top:4px;line-height:1.55}
+
+/* ─── 디바이스 ─── */
+.phone{width:372px;height:770px;border-radius:36px;overflow:hidden;position:relative;
+  box-shadow:0 24px 60px rgba(0,0,0,.45);display:flex;flex-direction:column;isolation:isolate}
+/* 시간대별 바탕 */
+.t-dawn{background:linear-gradient(180deg,var(--dawn-1) 0%,var(--dawn-2) 42%,var(--dawn-3) 100%);color:var(--dawn-ink)}
+.t-day {background:linear-gradient(180deg,var(--day-3) 0%,var(--day-2) 30%,var(--day-1) 100%);color:var(--day-ink)}
+.t-gold{background:linear-gradient(180deg,#2A1E1C 0%,#3E2A20 26%,#0F1319 78%);color:var(--n-ink)}
+.t-dusk{background:linear-gradient(180deg,var(--dusk-1) 0%,var(--dusk-2) 48%,var(--dusk-3) 100%);color:var(--dusk-ink)}
+
+/* 빛이 스민다 — 컨셉의 핵심 장치 */
+.bleed{position:absolute;inset:0;pointer-events:none;z-index:1}
+.bleed-dawn{background:radial-gradient(120% 44% at 50% -6%, rgba(251,243,224,.85), transparent 62%)}
+.bleed-day {background:radial-gradient(120% 40% at 62% -8%, rgba(255,255,255,.9), transparent 58%)}
+.bleed-gold{background:
+  radial-gradient(150% 46% at 50% -4%, rgba(255,215,154,.5), transparent 62%),
+  radial-gradient(90% 26% at 50% 0%, rgba(232,161,61,.32), transparent 70%)}
+.bleed-dusk{background:radial-gradient(120% 34% at 50% 104%, rgba(232,161,61,.22), transparent 66%)}
+
+/* 필름 그레인 — 아주 옅게 */
+.grain{position:absolute;inset:0;pointer-events:none;z-index:3;opacity:.055;mix-blend-mode:overlay}
+
+.sb{height:46px;flex:none;display:flex;align-items:center;justify-content:space-between;
+  padding:0 22px 0 26px;font-size:13.5px;font-weight:650;position:relative;z-index:2}
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;position:relative;z-index:2}
+.scroll::-webkit-scrollbar{display:none}
+
+/* ─── 컴포넌트 ─── */
+.rb{display:inline-flex;align-items:center;justify-content:center;background:var(--route-blue);
+  color:#fff;font-weight:800;border-radius:var(--r-pill);box-shadow:inset 0 0 0 2px #fff;
+  font-variant-numeric:tabular-nums;flex:none}
+.rb-sm{height:22px;min-width:30px;padding:0 7px;font-size:12px;box-shadow:inset 0 0 0 1.5px #fff}
+.rb-md{height:26px;min-width:36px;padding:0 9px;font-size:14px}
+.rb-lg{height:34px;min-width:48px;padding:0 12px;font-size:18px;box-shadow:inset 0 0 0 2.5px #fff}
+
+/* 시각 표기 — 계기판 톤. 큰 자간 + 라이트 */
+.clock{font-size:11px;font-weight:600;letter-spacing:.22em;opacity:.62;
+  font-variant-numeric:tabular-nums}
+/* 일몰 카운터 — 재촉이 아니라 안내 톤 */
+.sunline{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:650;
+  letter-spacing:.03em;opacity:.8}
+
+.sec{padding:0 22px;margin-top:var(--s8)}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:var(--s3)}
+.sec-t{font-size:var(--f-h2);font-weight:800;letter-spacing:-.03em}
+.sec-l{font-size:var(--f-xs);opacity:.5;font-weight:650;flex:none}
+
+.card{background:rgba(255,255,255,.62);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.7);border-radius:var(--r-card);
+  box-shadow:0 1px 2px rgba(40,44,36,.05),0 8px 24px rgba(40,44,36,.07)}
+.card-n{background:var(--n-card);border:1px solid var(--n-line);border-radius:var(--r-card);
+  backdrop-filter:blur(14px)}
+
+.lc{display:flex;gap:12px;align-items:center;padding:11px 13px;margin-bottom:8px}
+.lc-th{width:52px;height:52px;border-radius:11px;flex:none;position:relative;overflow:hidden}
+.lc-b{flex:1;min-width:0}
+.lc-t{font-size:14.5px;font-weight:750;letter-spacing:-.015em}
+.lc-s{font-size:12.5px;opacity:.62;margin-top:2px}
+
+/* 사진 플레이스홀더 — 시간의 빛을 머금은 색 */
+.ph{position:relative;overflow:hidden}
+.ph::after{content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at 32% 26%, rgba(255,240,214,.55), transparent 62%)}
+.ph-market{background:linear-gradient(150deg,#E0A78F,#C2452D)}
+.ph-view{background:linear-gradient(150deg,#A8C3A6,#3E7C4F)}
+.ph-food{background:linear-gradient(150deg,#F2D096,#E8A13D)}
+.ph-stay{background:linear-gradient(150deg,#B4A2D2,#6D4AA8)}
+.ph-i{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;opacity:.9;z-index:1}
+
+.tag{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 9px;border-radius:7px;
+  font-size:11.5px;font-weight:750;letter-spacing:-.01em}
+.tag-red{background:rgba(194,69,45,.13);color:#A5361F}
+.tag-green{background:rgba(62,124,79,.14);color:#2E6640}
+.tag-sun{background:rgba(232,161,61,.18);color:#96650F}
+.tag-n{background:rgba(255,255,255,.1);color:var(--n-ink-2)}
+
+.heart{width:34px;height:34px;border-radius:var(--r-pill);border:none;background:transparent;
+  opacity:.4;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
+.heart.on{opacity:1;color:var(--market-red)}.heart.on .i{fill:currentColor}
+
+.tabbar{flex:none;height:78px;display:flex;padding-bottom:15px;position:relative;z-index:2;
+  background:linear-gradient(to top,rgba(255,255,255,.8),rgba(255,255,255,.4));
+  backdrop-filter:blur(18px);border-top:1px solid rgba(255,255,255,.6)}
+.tabbar.dk{background:linear-gradient(to top,rgba(10,13,18,.9),rgba(10,13,18,.5));
+  border-top-color:var(--n-line)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  opacity:.38;cursor:pointer}
+.tab span{font-size:10.5px;font-weight:750}
+.tab.on{opacity:1;color:var(--route-blue)}
+.tabbar.dk .tab.on{color:#8FB0F2}
+
+.btn{width:100%;height:54px;border:none;border-radius:15px;font-family:inherit;font-size:16px;
+  font-weight:750;letter-spacing:-.02em;cursor:pointer;display:flex;align-items:center;
+  justify-content:center;gap:8px;transition:transform 150ms var(--ease)}
+.btn:active{transform:scale(.985)}
+.btn-blue{background:var(--route-blue);color:#fff;box-shadow:0 6px 18px rgba(29,78,216,.3)}
+.btn-gold{background:linear-gradient(135deg,#F0B45A,#E8A13D);color:#2A1710;
+  box-shadow:0 6px 22px rgba(232,161,61,.4)}
+.btn-ghost-n{background:rgba(255,255,255,.08);color:var(--n-ink);border:1px solid var(--n-line)}
+.cta{position:absolute;left:0;right:0;bottom:0;z-index:20;padding:14px 22px 28px}
+
+.topbar{flex:none;height:52px;display:flex;align-items:center;gap:10px;padding:0 14px 0 8px;
+  position:relative;z-index:2}
+.ib{width:40px;height:40px;border-radius:var(--r-pill);border:none;background:transparent;
+  color:inherit;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;opacity:.75}
+.tt{font-size:16px;font-weight:750;letter-spacing:-.02em;flex:1;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ─── 하루의 빛 띠 (Light Ribbon) — 이 컨셉의 시그니처 ─── */
+.ribbon{height:64px;border-radius:12px;position:relative;overflow:hidden;
+  background:linear-gradient(90deg,
+    #CBD6D6 0%,      /* 08:12 아침 */
+    #E4ECEC 20%,
+    #F2EFE4 40%,     /* 12:40 정오 */
+    #F7DCAE 62%,
+    #E8A13D 76%,     /* 18:44 골든아워 */
+    #C2452D 85%,
+    #2A2033 93%,
+    #0D1117 100%)}   /* 21:08 밤 */
+.ribbon .mk{position:absolute;top:0;bottom:0;width:2px;background:rgba(255,255,255,.5)}
+.ribbon .dot{position:absolute;width:11px;height:11px;border-radius:50%;
+  transform:translate(-50%,-50%);top:50%;box-shadow:0 0 0 2.5px rgba(255,255,255,.9)}
+.ribbon .lb{position:absolute;bottom:5px;font-size:8.5px;font-weight:750;
+  color:rgba(30,32,26,.62);transform:translateX(-50%);white-space:nowrap;letter-spacing:.02em}
+</style>
+</head>
+<body>
+
+<svg style="display:none" aria-hidden="true">
+<linearGradient id="sweepG" x1="0" y1="0" x2="1" y2="0">
+  <stop offset="0%" stop-color="#E8A13D" stop-opacity=".3"/>
+  <stop offset="100%" stop-color="#E8A13D" stop-opacity="0"/></linearGradient>
+<filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves="3" stitchTiles="stitch"/></filter>
+<symbol id="ic-road" viewBox="0 0 24 24"><path d="M4 21 7 3M20 21 17 3M12 4v3M12 11v3M12 18v3"/></symbol>
+<symbol id="ic-radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12 18.4 5.6"/></symbol>
+<symbol id="ic-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20a7.6 7.6 0 0 1 14.4 0"/></symbol>
+<symbol id="ic-heart" viewBox="0 0 24 24"><path d="M12 20s-7.4-4.6-7.4-9.5A4.1 4.1 0 0 1 12 7.6a4.1 4.1 0 0 1 7.4 2.9C19.4 15.4 12 20 12 20Z"/></symbol>
+<symbol id="ic-chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+<symbol id="ic-back" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+<symbol id="ic-close" viewBox="0 0 24 24"><path d="M6 6 18 18M18 6 6 18"/></symbol>
+<symbol id="ic-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.6v2.2M12 19.2v2.2M4.2 12H2M22 12h-2.2M6.3 6.3 4.8 4.8M19.2 19.2l-1.5-1.5M17.7 6.3l1.5-1.5M4.8 19.2l1.5-1.5"/></symbol>
+<symbol id="ic-sunset" viewBox="0 0 24 24"><path d="M17 17a5 5 0 0 0-10 0M12 3v5M4.8 8.8 6.4 10.4M19.2 8.8 17.6 10.4M2 17h2M20 17h2M2.5 21h19"/></symbol>
+<symbol id="ic-tent" viewBox="0 0 24 24"><path d="m12 4-8 15h16L12 4ZM12 9v10"/></symbol>
+<symbol id="ic-vol" viewBox="0 0 24 24"><path d="M5 9.5h3L12 6v12l-4-3.5H5ZM16 9a4 4 0 0 1 0 6"/></symbol>
+<symbol id="ic-mic" viewBox="0 0 24 24"><rect x="9.2" y="3" width="5.6" height="10" rx="2.8"/><path d="M5.6 11a6.4 6.4 0 0 0 12.8 0M12 17.4V21"/></symbol>
+<symbol id="ic-pin" viewBox="0 0 24 24"><path d="M12 21s6.5-6 6.5-10.5a6.5 6.5 0 1 0-13 0C5.5 15 12 21 12 21Z"/><circle cx="12" cy="10.5" r="2.4"/></symbol>
+<symbol id="ic-cam" viewBox="0 0 24 24"><path d="M3.6 8.6h3.1l1.5-2.4h7.6l1.5 2.4h3.1v10a1.4 1.4 0 0 1-1.4 1.4H5a1.4 1.4 0 0 1-1.4-1.4Z"/><circle cx="12" cy="13.4" r="3.2"/></symbol>
+<symbol id="ic-share" viewBox="0 0 24 24"><path d="M12 3v12M8 6.6 12 3l4 3.6M5 13v6.2A1.8 1.8 0 0 0 6.8 21h10.4A1.8 1.8 0 0 0 19 19.2V13"/></symbol>
+<symbol id="ic-people" viewBox="0 0 24 24"><circle cx="9" cy="8.2" r="3.2"/><path d="M2.8 19.4a6.2 6.2 0 0 1 12.4 0M16.4 5.4a3.2 3.2 0 0 1 0 5.9M17.6 13.6a6.2 6.2 0 0 1 3.6 5.8"/></symbol>
+<symbol id="ic-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+</svg>
+
+<div class="board">
+<header class="bh">
+  <h1>오후의 빛</h1>
+  <p class="thesis">이 앱의 킬러 기능은 전부 시간에 걸려 있다 — 오늘 장날, 40분 뒤 일몰, 밥때, 이번 주까지.
+    그래서 <b>시간을 배경으로 삼는다.</b> 화면은 지금 몇 시인지에 따라 다른 빛을 갖고,
+    하루가 끝나면 그 빛이 통째로 여행기가 된다.</p>
+  <div class="meta">
+    컨셉이 알고리즘과 한 몸 — 타이밍 가중치(TECH_SPEC §3.1)가 그대로 비주얼이 된다 ·
+    발견=라이트 / 레이더=다크의 분열이 '하루의 흐름'으로 해소됨 ·
+    공공데이터 사진이 부실해도 빛은 그라데이션으로 만들 수 있어 데이터 리스크가 낮음
+  </div>
+</header>
+
+<div class="sect-t">하루 · 네 개의 빛</div>
+<div style="display:flex;gap:14px;flex-wrap:wrap">
+  <div style="width:200px"><div style="height:96px;border-radius:14px;
+    background:linear-gradient(180deg,#CBD6D6,#E2E4DA 55%,#EFEDE2)"></div>
+    <div style="font-size:12.5px;font-weight:750;margin-top:9px;color:#F0EEE6">아침 · 05–09</div>
+    <div style="font-size:11.5px;color:#8A9490;margin-top:2px">안개가 걷히는 회청. 장날이 서는 시간</div></div>
+  <div style="width:200px"><div style="height:96px;border-radius:14px;
+    background:linear-gradient(180deg,#D6E3E6,#E4ECEC 40%,#F2EFE4)"></div>
+    <div style="font-size:12.5px;font-weight:750;margin-top:9px;color:#F0EEE6">낮 · 09–16</div>
+    <div style="font-size:11.5px;color:#8A9490;margin-top:2px">바랜 하늘과 미색. 계획을 세우는 시간</div></div>
+  <div style="width:200px"><div style="height:96px;border-radius:14px;
+    background:linear-gradient(180deg,#F7DCAE,#E8A13D 52%,#C2452D)"></div>
+    <div style="font-size:12.5px;font-weight:750;margin-top:9px;color:#F0EEE6">골든아워 · 일몰 −90분</div>
+    <div style="font-size:11.5px;color:#8A9490;margin-top:2px">이 앱이 가장 하고 싶은 말이 나오는 시간</div></div>
+  <div style="width:200px"><div style="height:96px;border-radius:14px;
+    background:linear-gradient(180deg,#0D1117,#161F2B 50%,#243244)"></div>
+    <div style="font-size:12.5px;font-weight:750;margin-top:9px;color:#F0EEE6">밤 · 일몰 후</div>
+    <div style="font-size:11.5px;color:#8A9490;margin-top:2px">거점의 불빛. 여행기가 만들어지는 시간</div></div>
+</div>
+
+<div class="sect-t">화면 · 같은 앱, 다른 시간</div>
+<div class="grid">
+
+<!-- ═══════ CO-01 홈 · 아침 ═══════ -->
+<figure class="slot">
+  <figcaption><span class="tm" style="background:#CBD6D6">08:12 · 아침</span>
+    <div class="nm">CO-01 홈</div>
+    <div class="ds">아침엔 장날이 주인공. 히어로 밑에 오늘의 빛 일정이 한 줄로 깔린다.</div></figcaption>
+  <div class="phone t-dawn">
+    <div class="bleed bleed-dawn"></div>
+    <svg class="grain"><rect width="100%" height="100%" filter="url(#grain)"/></svg>
+    <div class="sb"><span>8:12</span><span style="opacity:.6">▮▮▮</span></div>
+    <div class="scroll">
+      <div style="display:flex;align-items:center;gap:9px;padding:4px 22px 0">
+        <span class="rb rb-md" style="width:32px;min-width:32px;padding:0">P</span>
+        <span style="font-size:17px;font-weight:800;letter-spacing:-.03em">P의 여행</span>
+        <span class="clock" style="margin-left:auto">삼척</span></div>
+
+      <div style="padding:26px 22px 0">
+        <h1 style="font-size:var(--f-h1);line-height:1.3;font-weight:800;letter-spacing:-.038em">
+          지나치기엔 아까운 것들이,<br><span style="color:#B0632A">길마다 있어요.</span></h1>
+        <p style="font-size:13.5px;opacity:.66;margin-top:11px;line-height:1.65">
+          오늘만 서는 장, 40분 뒤의 일몰, 이름 없는 물회 골목 — 놓치기 전에 레이더가 알려드려요.</p>
+        <!-- 오늘의 빛 일정 -->
+        <div style="display:flex;align-items:center;gap:14px;margin-top:18px;padding:11px 14px;
+          border-radius:var(--r-pill);background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.7)">
+          <span class="sunline" style="color:#8C6A2E"><svg class="i i-sm"><use href="#ic-sun"/></svg>일출 05:32</span>
+          <span style="width:1px;height:12px;background:var(--line-2)"></span>
+          <span class="sunline" style="color:#A5451F"><svg class="i i-sm"><use href="#ic-sunset"/></svg>일몰 19:24 — 11시간 뒤</span>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><span class="sec-t">오늘만 열리는 발견</span><span class="sec-l">장날 레이더</span></div>
+        <div class="card" style="padding:15px">
+          <div style="display:flex;gap:13px;align-items:flex-start">
+            <div class="lc-th ph ph-market" style="width:58px;height:58px">
+              <span class="ph-i"><svg class="i i-lg"><use href="#ic-pin"/></svg></span></div>
+            <div style="flex:1;min-width:0">
+              <span class="tag tag-red">오늘 장날</span>
+              <div style="font-size:15.5px;font-weight:800;margin-top:7px;letter-spacing:-.025em">북평 5일장</div>
+              <div style="font-size:12.5px;opacity:.62;margin-top:3px">지금 막 서기 시작했어요 · 다음 장은 5일 뒤</div></div>
+            <button class="heart"><svg class="i"><use href="#ic-heart"/></svg></button></div></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><span class="sec-t">국도부터 고르기</span></div></div>
+      <div style="display:flex;gap:11px;padding:0 22px;overflow-x:auto;scrollbar-width:none">
+        <div style="text-align:center;flex:none"><span class="rb rb-lg">7</span>
+          <div style="font-size:11px;opacity:.6;margin-top:6px;font-weight:650">동해 바닷길</div></div>
+        <div style="text-align:center;flex:none"><span class="rb rb-lg">44</span>
+          <div style="font-size:11px;opacity:.6;margin-top:6px;font-weight:650">한계령</div></div>
+        <div style="text-align:center;flex:none"><span class="rb rb-lg">46</span>
+          <div style="font-size:11px;opacity:.6;margin-top:6px;font-weight:650">경춘길</div></div>
+        <div style="text-align:center;flex:none">
+          <div style="height:34px;display:flex;align-items:center;padding:0 13px;border-radius:var(--r-pill);
+            border:1.5px dashed var(--line-2);font-size:12.5px;font-weight:750;opacity:.6;white-space:nowrap">전체 51</div>
+          <div style="font-size:11px;opacity:.6;margin-top:6px;font-weight:650">노선 보기</div></div>
+      </div>
+
+      <div class="sec" style="margin-bottom:26px">
+        <div class="sec-h"><span class="sec-t">조용히 뜨는 길</span><span class="sec-l">지난주보다 검색이 는 곳</span></div>
+        <div class="card" style="overflow:hidden">
+          <div class="ph ph-view" style="height:132px;position:relative">
+            <div style="position:absolute;top:11px;left:11px;z-index:2"><span class="rb rb-sm">7</span></div>
+            <div style="position:absolute;inset:0;z-index:1;
+              background:linear-gradient(to top,rgba(20,24,18,.5),transparent 52%)"></div>
+            <div style="position:absolute;bottom:11px;left:13px;right:13px;z-index:2;color:#fff">
+              <div style="font-size:16px;font-weight:800;letter-spacing:-.025em">7번 국도 바다길</div>
+              <div style="font-size:11.5px;opacity:.85;margin-top:1px">삼척에서 강릉까지 · 86km</div></div></div>
+          <div style="padding:12px 14px;display:flex;gap:6px;align-items:center">
+            <span class="tag tag-red">오늘 장날</span><span class="tag tag-sun">검색 +38%</span>
+            <button class="heart" style="margin-left:auto"><svg class="i"><use href="#ic-heart"/></svg></button></div>
+        </div>
+      </div>
+      <div style="height:10px"></div>
+    </div>
+    <nav class="tabbar">
+      <div class="tab on"><svg class="i"><use href="#ic-road"/></svg><span>발견</span></div>
+      <div class="tab"><svg class="i"><use href="#ic-radar"/></svg><span>레이더</span></div>
+      <div class="tab"><svg class="i"><use href="#ic-user"/></svg><span>마이</span></div></nav>
+  </div>
+</figure>
+
+<!-- ═══════ CO-02 코스 상세 · 낮 ═══════ -->
+<figure class="slot">
+  <figcaption><span class="tm" style="background:#DCE7E8">12:40 · 낮</span>
+    <div class="nm">CO-02 코스 상세</div>
+    <div class="ds">계획을 세우는 시간. 발견마다 '몇 시의 빛인지'가 붙는다.</div></figcaption>
+  <div class="phone t-day">
+    <div class="bleed bleed-day"></div>
+    <svg class="grain"><rect width="100%" height="100%" filter="url(#grain)"/></svg>
+    <div class="sb"><span>12:40</span><span style="opacity:.6">▮▮▮</span></div>
+    <div class="topbar">
+      <button class="ib"><svg class="i i-lg"><use href="#ic-back"/></svg></button>
+      <span class="rb rb-md">7</span><span class="tt">7번 국도 바다길</span>
+      <button class="heart on"><svg class="i"><use href="#ic-heart"/></svg></button></div>
+    <div class="scroll" style="padding-bottom:108px">
+      <div style="height:206px;margin:0 22px;border-radius:var(--r-hero);overflow:hidden;position:relative;
+        background:linear-gradient(158deg,#DCE7E2,#C9DAD8 52%,#BAD0D6)">
+        <svg viewBox="0 0 328 206" style="position:absolute;inset:0;width:100%;height:100%">
+          <path d="M0 156 Q58 148 94 130 T184 94 T264 42 L328 16" stroke="#fff" stroke-width="15" fill="none" opacity=".5"/>
+          <path d="M0 156 Q58 148 94 130 T184 94 T264 42 L328 16" stroke="#1D4ED8" stroke-width="2.6"
+            stroke-dasharray="8 7" fill="none" stroke-linecap="round" opacity=".85"/>
+          <circle cx="94" cy="130" r="7" fill="#C2452D" stroke="#fff" stroke-width="2.5"/>
+          <circle cx="184" cy="94" r="7" fill="#E8A13D" stroke="#fff" stroke-width="2.5"/>
+          <circle cx="240" cy="62" r="7" fill="#3E7C4F" stroke="#fff" stroke-width="2.5"/>
+          <circle cx="296" cy="28" r="7" fill="#6D4AA8" stroke="#fff" stroke-width="2.5"/>
+        </svg></div>
+      <div class="card" style="display:flex;margin:16px 22px 0;overflow:hidden">
+        <div style="flex:1;padding:14px 6px;text-align:center">
+          <div style="font-size:19px;font-weight:800;letter-spacing:-.03em">86<span style="font-size:12px">km</span></div>
+          <div style="font-size:10.5px;opacity:.55;margin-top:2px;font-weight:650">총 거리</div></div>
+        <div style="width:1px;background:var(--line)"></div>
+        <div style="flex:1;padding:14px 6px;text-align:center">
+          <div style="font-size:19px;font-weight:800;letter-spacing:-.03em">2:10</div>
+          <div style="font-size:10.5px;opacity:.55;margin-top:2px;font-weight:650">순수 주행시간</div></div>
+        <div style="width:1px;background:var(--line)"></div>
+        <div style="flex:1;padding:14px 6px;text-align:center">
+          <div style="font-size:19px;font-weight:800;letter-spacing:-.03em">9<span style="font-size:12px">곳</span></div>
+          <div style="font-size:10.5px;opacity:.55;margin-top:2px;font-weight:650">발견</div></div></div>
+      <div style="margin:12px 22px 0;border:1.5px dashed rgba(109,74,168,.42);
+        background:rgba(109,74,168,.07);border-radius:var(--r-card);padding:15px;display:flex;align-items:center;gap:12px">
+        <span style="color:var(--violet);flex:none"><svg class="i i-lg"><use href="#ic-tent"/></svg></span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:750;color:#4A2E7A;letter-spacing:-.02em">오늘 밤 거점이 아직 없어요</div>
+          <div style="font-size:12px;color:#6B5292;margin-top:2px">잘 곳 하나만 정해두면, 가는 길이 자유로워져요</div></div>
+        <span style="font-size:13px;font-weight:750;color:var(--violet);flex:none">정하기 ›</span></div>
+      <div class="sec">
+        <div class="sec-h"><span class="sec-t">경로 위의 발견</span><span class="sec-l">지나는 순서</span></div>
+        <div class="card lc">
+          <div class="lc-th ph ph-market" style="width:44px;height:44px"><span class="ph-i"><svg class="i"><use href="#ic-pin"/></svg></span></div>
+          <div class="lc-b"><div style="display:flex;align-items:center;gap:6px">
+            <span class="lc-t">북평 5일장</span><span class="tag tag-red">오늘 장날</span></div>
+            <div class="lc-s">국도에서 약 4분 · <b style="opacity:.85">아침의 빛</b></div></div>
+          <button class="heart on"><svg class="i"><use href="#ic-heart"/></svg></button></div>
+        <div class="card lc">
+          <div class="lc-th ph ph-food" style="width:44px;height:44px"><span class="ph-i"><svg class="i"><use href="#ic-pin"/></svg></span></div>
+          <div class="lc-b"><div style="display:flex;align-items:center;gap:6px">
+            <span class="lc-t">어달마을 물회 골목</span><span class="tag tag-sun">지금이 밥때</span></div>
+            <div class="lc-s">국도에서 약 4분 · <b style="opacity:.85">한낮의 빛</b></div></div>
+          <button class="heart"><svg class="i"><use href="#ic-heart"/></svg></button></div>
+        <div class="card lc">
+          <div class="lc-th ph ph-view" style="width:44px;height:44px"><span class="ph-i"><svg class="i"><use href="#ic-pin"/></svg></span></div>
+          <div class="lc-b"><div style="display:flex;align-items:center;gap:6px">
+            <span class="lc-t">추암 촛대바위</span><span class="tag tag-green">19:24 일몰</span></div>
+            <div class="lc-s">국도에서 약 6분 · <b style="opacity:.85">골든아워의 빛</b></div></div>
+          <button class="heart"><svg class="i"><use href="#ic-heart"/></svg></button></div>
+      </div>
+      <div style="height:16px"></div>
+    </div>
+    <div class="cta" style="background:linear-gradient(to top,#F2EFE4 62%,rgba(242,239,228,0))">
+      <button class="btn btn-blue">이 코스로 출발<svg class="i i-sm"><use href="#ic-chev"/></svg></button></div>
+  </div>
+</figure>
+
+<!-- ═══════ DR-01 레이더 · 골든아워 ═══════ -->
+<figure class="slot">
+  <figcaption><span class="tm" style="background:#E8A13D">18:44 · 골든아워</span>
+    <div class="nm">DR-01 레이더</div>
+    <div class="ds">계기판은 어둡게 유지하되, 위에서 노을이 스민다. 다크 고정 규칙을 안 깨면서 시간이 남는다.</div></figcaption>
+  <div class="phone t-gold">
+    <div class="bleed bleed-gold"></div>
+    <svg class="grain"><rect width="100%" height="100%" filter="url(#grain)"/></svg>
+    <div class="sb"><span>18:44</span><span style="opacity:.6">▮▮▮</span></div>
+    <div class="topbar">
+      <span class="rb rb-md" style="margin-left:12px">7</span>
+      <span class="tt">주변을 살피는 중</span>
+      <button class="ib"><svg class="i"><use href="#ic-vol"/></svg></button>
+      <button class="ib"><svg class="i"><use href="#ic-people"/></svg></button>
+      <button class="ib"><svg class="i"><use href="#ic-close"/></svg></button></div>
+    <div class="scroll">
+      <!-- 일몰 카운터 -->
+      <div style="margin:0 22px;display:flex;align-items:center;gap:9px;padding:11px 15px;
+        border-radius:var(--r-pill);background:rgba(232,161,61,.14);border:1px solid rgba(232,161,61,.3)">
+        <span style="color:#F0B45A;flex:none"><svg class="i i-sm"><use href="#ic-sunset"/></svg></span>
+        <span style="font-size:12.5px;color:#F5D9A8;font-weight:650">해가 지기까지 40분 — 지금 빛이 제일 좋아요</span></div>
+      <!-- 거점 칩 -->
+      <div style="margin:9px 22px 0;padding:11px 15px;border-radius:var(--r-pill);
+        background:rgba(255,255,255,.07);border:1px solid var(--n-line);display:flex;align-items:center;gap:9px">
+        <span style="color:#B79BE0;flex:none"><svg class="i i-sm"><use href="#ic-tent"/></svg></span>
+        <span style="font-size:12.5px;color:var(--n-ink-2)">
+          <b style="color:var(--n-ink);font-weight:750">오늘 밤 묵호항</b> — 낮은 마음껏 새어나가세요</span></div>
+      <!-- 레이더 -->
+      <div style="height:290px;margin:16px 22px 0;position:relative;border-radius:var(--r-hero);overflow:hidden;
+        background:radial-gradient(circle at 50% 8%, rgba(232,161,61,.14), transparent 54%),
+                   radial-gradient(circle at 50% 52%, #17202B, #0B0F14 74%);
+        border:1px solid rgba(255,255,255,.11)">
+        <svg viewBox="0 0 290 290" style="position:absolute;inset:0;width:100%;height:100%">
+          <circle cx="145" cy="145" r="126" fill="none" stroke="rgba(232,161,61,.16)" stroke-width="1"/>
+          <circle cx="145" cy="145" r="86"  fill="none" stroke="rgba(232,161,61,.13)" stroke-width="1"/>
+          <circle cx="145" cy="145" r="46"  fill="none" stroke="rgba(232,161,61,.11)" stroke-width="1"/>
+          <path d="M145 145 L145 19 A126 126 0 0 1 234 56 Z" fill="url(#sweepG)">
+            <animateTransform attributeName="transform" type="rotate" from="0 145 145" to="360 145 145"
+              dur="4.4s" repeatCount="indefinite"/></path>
+          <circle cx="196" cy="88" r="6" fill="#3E7C4F"/>
+          <circle cx="196" cy="88" r="6" fill="none" stroke="#6FBE87" stroke-width="1.6" opacity=".6">
+            <animate attributeName="r" values="6;19;6" dur="2.4s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values=".6;0;.6" dur="2.4s" repeatCount="indefinite"/></circle>
+          <circle cx="88" cy="192" r="5" fill="#E8A13D"/>
+          <circle cx="214" cy="200" r="5" fill="#C2452D"/>
+          <circle cx="145" cy="145" r="7" fill="#8FB0F2"/>
+          <circle cx="145" cy="145" r="13" fill="none" stroke="#8FB0F2" stroke-width="1.4" opacity=".4"/>
+        </svg>
+        <div style="position:absolute;top:82px;left:calc(50% + 26px);font-size:10.5px;font-weight:750;color:#8FD3A4">추암 촛대바위</div>
+        <div style="position:absolute;top:12px;left:12px;background:rgba(8,11,15,.66);border-radius:var(--r-pill);
+          padding:5px 11px;font-size:10.5px;font-weight:750;color:var(--n-ink-2);display:flex;align-items:center;gap:6px">
+          <span style="width:6px;height:6px;border-radius:50%;background:#E5484D"></span>경로 기록 중 · 7번 국도 61km</div>
+        <div style="position:absolute;top:12px;right:12px;background:rgba(8,11,15,.66);border-radius:var(--r-pill);
+          padding:5px 11px;font-size:10.5px;font-weight:750;color:#B79BE0;display:flex;align-items:center;gap:5px">
+          <svg class="i" style="width:13px;height:13px"><use href="#ic-tent"/></svg>거점 ↓ 18km</div>
+      </div>
+      <p style="margin:18px 22px 0;font-size:13px;color:var(--n-ink-2);line-height:1.68">
+        경로를 따라가지 않아요. <b style="color:var(--n-ink)">지금 내 주변</b>만 봅니다 —
+        길을 바꿔도, 목적지가 바뀌어도 그대로 작동해요.</p>
+      <div class="card-n" style="margin:16px 22px 0;padding:13px 15px;display:flex;gap:10px">
+        <span style="color:#93A6B6;flex:none;margin-top:1px"><svg class="i i-sm"><use href="#ic-mic"/></svg></span>
+        <p style="font-size:12.5px;color:var(--n-ink-2);line-height:1.6">
+          혼자 운전 중이라면 말로 하세요 — "응, 들를래" / "찜해줘". 대답이 없으면 조용히 찜에 담아둘게요.</p></div>
+      <div style="padding:20px 22px">
+        <button class="btn btn-ghost-n" style="height:48px;font-size:14.5px">오늘 여행 마치기 → 여행기 만들기</button></div>
+    </div>
+    <nav class="tabbar dk">
+      <div class="tab"><svg class="i"><use href="#ic-road"/></svg><span>발견</span></div>
+      <div class="tab on"><svg class="i"><use href="#ic-radar"/></svg><span>레이더</span></div>
+      <div class="tab"><svg class="i"><use href="#ic-user"/></svg><span>마이</span></div></nav>
+  </div>
+</figure>
+
+<!-- ═══════ DR-02 근접 카드 · 골든아워 ═══════ -->
+<figure class="slot">
+  <figcaption><span class="tm" style="background:#F0B45A">18:44 · 일몰 40분 전</span>
+    <div class="nm">DR-02 근접 발견 카드</div>
+    <div class="ds">이 앱이 가장 하고 싶은 말. 카드 자체가 노을을 머금는다 — 카운트다운이 아니라 빛으로 급함을 전한다.</div></figcaption>
+  <div class="phone t-gold">
+    <div class="bleed bleed-gold"></div>
+    <svg class="grain"><rect width="100%" height="100%" filter="url(#grain)"/></svg>
+    <div class="sb"><span>18:44</span><span style="opacity:.6">▮▮▮</span></div>
+    <div class="topbar">
+      <span class="rb rb-md" style="margin-left:12px">7</span>
+      <span class="tt">주변을 살피는 중</span>
+      <button class="ib"><svg class="i"><use href="#ic-vol"/></svg></button>
+      <button class="ib"><svg class="i"><use href="#ic-close"/></svg></button></div>
+    <div style="flex:1;position:relative;overflow:hidden;z-index:2">
+      <div style="height:262px;margin:6px 22px 0;position:relative;border-radius:var(--r-hero);overflow:hidden;
+        background:radial-gradient(circle at 50% 6%, rgba(232,161,61,.16), transparent 52%),
+                   radial-gradient(circle at 50% 50%, #17202B, #0B0F14 74%);
+        border:1px solid rgba(255,255,255,.11)">
+        <svg viewBox="0 0 290 262" style="position:absolute;inset:0;width:100%;height:100%">
+          <circle cx="145" cy="131" r="118" fill="none" stroke="rgba(232,161,61,.16)" stroke-width="1"/>
+          <circle cx="145" cy="131" r="80"  fill="none" stroke="rgba(232,161,61,.13)" stroke-width="1"/>
+          <circle cx="145" cy="131" r="42"  fill="none" stroke="rgba(232,161,61,.11)" stroke-width="1"/>
+          <path d="M145 131 L145 13 A118 118 0 0 1 228 48 Z" fill="url(#sweepG)">
+            <animateTransform attributeName="transform" type="rotate" from="0 145 131" to="360 145 131"
+              dur="4.4s" repeatCount="indefinite"/></path>
+          <circle cx="192" cy="80" r="7.5" fill="#3E7C4F"/>
+          <circle cx="192" cy="80" r="7.5" fill="none" stroke="#6FBE87" stroke-width="2" opacity=".65">
+            <animate attributeName="r" values="7.5;22;7.5" dur="2.1s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values=".65;0;.65" dur="2.1s" repeatCount="indefinite"/></circle>
+          <circle cx="145" cy="131" r="7" fill="#8FB0F2"/>
+        </svg></div>
+      <!-- 카드 -->
+      <div style="position:absolute;left:0;right:0;bottom:0;border-radius:var(--r-sheet) var(--r-sheet) 0 0;
+        background:linear-gradient(180deg,#2E2119 0%,#181C24 34%,#12161D 100%);
+        border-top:1px solid rgba(232,161,61,.34);padding:0 22px 24px;
+        box-shadow:0 -14px 44px rgba(0,0,0,.6)">
+        <!-- 노을이 카드 위로 스민다 -->
+        <div style="position:absolute;inset:0;border-radius:var(--r-sheet) var(--r-sheet) 0 0;pointer-events:none;
+          background:radial-gradient(120% 62% at 50% 0%, rgba(240,180,90,.24), transparent 66%)"></div>
+        <div style="position:relative">
+          <div style="width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.22);margin:15px auto 16px"></div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:7px;height:7px;border-radius:50%;background:#F0B45A;flex:none;
+              box-shadow:0 0 10px #E8A13D"></span>
+            <span style="font-size:11.5px;font-weight:800;color:#F2C179;letter-spacing:.01em">
+              일몰 40분 전 · 국도에서 6분</span></div>
+          <h2 style="font-size:22px;font-weight:800;color:#FBF6EC;margin-top:11px;letter-spacing:-.035em;line-height:1.34">
+            곧 <span style="color:#F5B96A">추암 촛대바위</span>에<br>해가 져요</h2>
+          <p style="font-size:13.5px;color:#B9BFC4;margin-top:9px;line-height:1.62">
+            바위 사이로 해가 떨어지는 건 일 년에 몇 번뿐이에요. 오늘이 그중 하루고요.</p>
+          <div style="display:flex;align-items:center;gap:7px;margin-top:13px;padding:9px 13px;
+            background:rgba(255,255,255,.06);border-radius:10px">
+            <span style="color:#7FC494;flex:none"><svg class="i" style="width:14px;height:14px"><use href="#ic-check"/></svg></span>
+            <span style="font-size:11.5px;color:#9FA8AE;font-weight:600">영업정보·사진이 확인된 발견만 알려드려요</span></div>
+          <div style="display:flex;gap:9px;margin-top:17px">
+            <button class="btn btn-gold" style="flex:1;height:53px;font-size:15.5px">들르기</button>
+            <button style="width:53px;height:53px;border-radius:15px;border:1px solid rgba(255,255,255,.15);
+              background:rgba(255,255,255,.07);color:#F0EEE6;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none">
+              <svg class="i i-lg"><use href="#ic-heart"/></svg></button>
+            <button style="width:53px;height:53px;border-radius:15px;border:1px solid rgba(255,255,255,.15);
+              background:rgba(255,255,255,.07);color:#8D959B;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none">
+              <svg class="i i-lg"><use href="#ic-close"/></svg></button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</figure>
+
+<!-- ═══════ MY-02 여행기 · 밤 ═══════ -->
+<figure class="slot">
+  <figcaption><span class="tm" style="background:#243244;color:#F0EEE6">21:08 · 밤</span>
+    <div class="nm">MY-02 자동 여행기</div>
+    <div class="ds">★ 하루의 빛 띠 — 그날 달린 시간의 빛이 통째로 여행기 머리가 된다. 이 컨셉에서만 나오는 시그니처.</div></figcaption>
+  <div class="phone t-dusk">
+    <div class="bleed bleed-dusk"></div>
+    <svg class="grain"><rect width="100%" height="100%" filter="url(#grain)"/></svg>
+    <div class="sb"><span>21:08</span><span style="opacity:.6">▮▮▮</span></div>
+    <div class="topbar"><button class="ib"><svg class="i i-lg"><use href="#ic-back"/></svg></button></div>
+    <div class="scroll" style="padding-bottom:26px">
+      <div style="padding:0 22px 20px">
+        <div style="font-size:11.5px;font-weight:750;color:#8FA0AC;letter-spacing:.09em">EP.3 — 2026.08.27</div>
+        <h1 style="font-size:var(--f-h1);font-weight:800;margin-top:7px;letter-spacing:-.035em;line-height:1.3">
+          7번 국도에서<br>생긴 일</h1>
+        <p style="font-size:13px;color:#94A2AC;margin-top:8px">오늘의 여행이 한 편의 이야기가 됐어요</p>
+      </div>
+
+      <!-- ★ 하루의 빛 띠 -->
+      <div style="margin:0 22px">
+        <div style="font-size:10.5px;font-weight:800;letter-spacing:.14em;color:#7E8D98;margin-bottom:9px">오늘의 빛</div>
+        <div class="ribbon">
+          <div class="mk" style="left:8%"></div><div class="mk" style="left:40%"></div>
+          <div class="mk" style="left:76%"></div><div class="mk" style="left:97%"></div>
+          <div class="dot" style="left:8%;background:#C2452D"></div>
+          <div class="dot" style="left:40%;background:#8B8F86"></div>
+          <div class="dot" style="left:76%;background:#3E7C4F"></div>
+          <div class="lb" style="left:8%">08:12</div><div class="lb" style="left:40%">13:20</div>
+          <div class="lb" style="left:76%">19:11</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:7px;font-size:10.5px;color:#7E8D98;font-weight:650">
+          <span>출발 06:40</span><span>일몰 19:24</span><span>도착 20:50</span></div>
+      </div>
+
+      <!-- 여행기 카드 -->
+      <div style="margin:20px 22px 0;background:var(--paper);border-radius:var(--r-hero);padding:19px;
+        box-shadow:0 16px 48px rgba(0,0,0,.42)">
+        <div style="display:flex;align-items:center;gap:9px">
+          <span class="rb rb-md">7</span>
+          <span style="font-size:14px;font-weight:750;letter-spacing:-.02em;color:var(--ink)">삼척 → 강릉</span>
+          <span style="font-size:13px;color:var(--ink-3);margin-left:auto;font-weight:750">86km</span></div>
+        <div style="display:flex;margin-top:15px;background:var(--paper-2);border-radius:12px;overflow:hidden">
+          <div style="flex:1;padding:12px 4px;text-align:center">
+            <div style="font-size:18px;font-weight:800;color:var(--field-green)">2</div>
+            <div style="font-size:10px;color:var(--ink-3);margin-top:1px;font-weight:650">들른 발견</div></div>
+          <div style="width:1px;background:var(--line)"></div>
+          <div style="flex:1;padding:12px 4px;text-align:center">
+            <div style="font-size:18px;font-weight:800;color:var(--ink-2)">3</div>
+            <div style="font-size:10px;color:var(--ink-3);margin-top:1px;font-weight:650">스쳐간 발견</div></div>
+          <div style="width:1px;background:var(--line)"></div>
+          <div style="flex:1;padding:12px 4px;text-align:center">
+            <div style="font-size:18px;font-weight:800;color:var(--sun)">1</div>
+            <div style="font-size:10px;color:var(--ink-3);margin-top:1px;font-weight:650">허탕</div></div></div>
+        <!-- 타임라인 — 점 색이 그 시각의 빛 -->
+        <div style="margin-top:17px">
+          <div style="display:flex;gap:11px;position:relative;padding-bottom:16px">
+            <div style="position:absolute;left:5.5px;top:15px;bottom:0;width:1.5px;
+              background:linear-gradient(#C2452D,#8B8F86)"></div>
+            <span style="width:12px;height:12px;border-radius:50%;background:#C2452D;flex:none;margin-top:4px;
+              z-index:1;box-shadow:0 0 0 3px var(--paper)"></span>
+            <div style="flex:1"><div style="display:flex;gap:8px;align-items:baseline">
+              <span style="font-size:11.5px;color:var(--ink-3);font-weight:750">08:12</span>
+              <span style="font-size:13.5px;font-weight:750;letter-spacing:-.02em;color:var(--ink)">북평 5일장</span></div>
+              <div style="font-size:12px;color:var(--ink-2);margin-top:2px">"오늘이 마침 장날" 알림에 핸들을 꺾음</div></div></div>
+          <div style="display:flex;gap:11px;position:relative;padding-bottom:16px">
+            <div style="position:absolute;left:5.5px;top:15px;bottom:0;width:1.5px;
+              background:linear-gradient(#8B8F86,#3E7C4F)"></div>
+            <span style="width:12px;height:12px;border-radius:50%;background:#8B8F86;flex:none;margin-top:4px;
+              z-index:1;box-shadow:0 0 0 3px var(--paper)"></span>
+            <div style="flex:1"><div style="display:flex;gap:8px;align-items:baseline">
+              <span style="font-size:11.5px;color:var(--ink-3);font-weight:750">13:20</span>
+              <span style="font-size:13.5px;font-weight:750;letter-spacing:-.02em;color:var(--ink)">어달마을 물회 골목</span>
+              <span class="tag" style="height:18px;font-size:10px;background:var(--paper-2);color:var(--ink-2)">허탕</span></div>
+              <div style="font-size:12px;color:var(--ink-2);margin-top:2px">문이 닫혀 있었음. 그래도 골목은 예뻤음</div></div></div>
+          <div style="display:flex;gap:11px;position:relative">
+            <span style="width:12px;height:12px;border-radius:50%;background:#3E7C4F;flex:none;margin-top:4px;
+              z-index:1;box-shadow:0 0 0 3px var(--paper)"></span>
+            <div style="flex:1"><div style="display:flex;gap:8px;align-items:baseline">
+              <span style="font-size:11.5px;color:var(--ink-3);font-weight:750">19:11</span>
+              <span style="font-size:13.5px;font-weight:750;letter-spacing:-.02em;color:var(--ink)">추암 촛대바위</span></div>
+              <div style="font-size:12px;color:var(--ink-2);margin-top:2px">일몰 13분 전에 도착. 빛이 제일 좋을 때</div></div></div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:17px">
+          <div class="ph ph-market" style="flex:1;height:76px;border-radius:10px;position:relative">
+            <div style="position:absolute;bottom:5px;left:6px;font-size:9.5px;color:#fff;font-weight:750;
+              text-shadow:0 1px 4px rgba(0,0,0,.7);z-index:2">북평 5일장 · 10:58</div></div>
+          <div class="ph ph-view" style="flex:1;height:76px;border-radius:10px;position:relative">
+            <div style="position:absolute;bottom:5px;left:6px;font-size:9.5px;color:#fff;font-weight:750;
+              text-shadow:0 1px 4px rgba(0,0,0,.7);z-index:2">촛대바위 · 19:22</div></div>
+          <div style="width:56px;height:76px;border-radius:10px;background:var(--paper-2);
+            display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--ink-2);flex:none">+9</div></div>
+        <div style="display:flex;gap:5px;align-items:center;margin-top:10px">
+          <span style="color:var(--ink-3);flex:none"><svg class="i" style="width:13px;height:13px"><use href="#ic-cam"/></svg></span>
+          <span style="font-size:11px;color:var(--ink-3);line-height:1.45">사진 11장이 GPS·촬영 시각으로 경로 위에 자동 정리됐어요</span></div>
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line);
+          font-size:12px;color:var(--ink-2);font-weight:650">국도 수집 +86km · 스쳐간 곳은 찜에 남겨뒀어요</div>
+      </div>
+
+      <div style="padding:20px 22px 0">
+        <button class="btn" style="background:rgba(255,255,255,.1);color:var(--n-ink);
+          border:1px solid rgba(255,255,255,.19)">여행기 공유하기<svg class="i i-sm"><use href="#ic-share"/></svg></button>
+        <p style="text-align:center;font-size:13px;color:#94A2AC;margin-top:19px;
+          text-decoration:underline;text-underline-offset:4px">이 동네가 좋았다면, 하루 더? ↗</p></div>
+    </div>
+  </div>
+</figure>
+
+</div><!-- /grid -->
+
+<div class="sect-t">이 컨셉이 만드는 것</div>
+<div style="display:flex;flex-wrap:wrap;gap:20px">
+  <div style="width:322px;padding:22px;border-radius:18px;background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.11)">
+    <div style="font-size:14.5px;font-weight:800;color:#F2D9A8">컨셉 = 알고리즘</div>
+    <p style="font-size:13px;color:#A9B3B0;margin-top:9px;line-height:1.7">
+      TECH_SPEC §3.1의 타이밍 가중치(밥때 ×2, 일몰 −60~−20분 ×2, 장날 ×3)가
+      그대로 화면의 빛이 된다. 디자인이 기능을 설명하지 않고 <b style="color:#E8E6DE">기능 그 자체가 된다.</b></p></div>
+  <div style="width:322px;padding:22px;border-radius:18px;background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.11)">
+    <div style="font-size:14.5px;font-weight:800;color:#F2D9A8">분열이 흐름으로</div>
+    <p style="font-size:13px;color:#A9B3B0;margin-top:9px;line-height:1.7">
+      발견=라이트 / 레이더=다크가 이전 시안에선 두 개의 앱처럼 보였다.
+      여기선 <b style="color:#E8E6DE">아침에서 밤으로 가는 하루</b>다. 레이더는 계기판이라 어둡게 유지하되,
+      노을이 위에서 스미게 해 다크 고정 규칙을 안 깬다.</p></div>
+  <div style="width:322px;padding:22px;border-radius:18px;background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.11)">
+    <div style="font-size:14.5px;font-weight:800;color:#F2D9A8">데이터 리스크가 낮다</div>
+    <p style="font-size:13px;color:#A9B3B0;margin-top:9px;line-height:1.7">
+      공공데이터 사진은 부실할 게 거의 확실하다. 하지만 빛은 <b style="color:#E8E6DE">그라데이션으로 만든다.</b>
+      사진이 없는 스팟도 그 시각의 색을 입으면 비어 보이지 않는다.</p></div>
+  <div style="width:322px;padding:22px;border-radius:18px;background:rgba(232,161,61,.1);
+    border:1px solid rgba(232,161,61,.3)">
+    <div style="font-size:14.5px;font-weight:800;color:#F2D9A8">치러야 할 값</div>
+    <p style="font-size:13px;color:#C9B99A;margin-top:9px;line-height:1.7">
+      토큰이 4벌(아침·낮·골든·밤)이라 theme.dart가 커진다.
+      대비는 시간대마다 따로 검수해야 한다. 그리고 <b style="color:#F2D9A8">정오 화면이 가장 밋밋하다</b> —
+      빛이 가장 평평한 시간이라 여긴 타이포와 여백으로 버텨야 한다.</p></div>
+</div>
+
+<footer style="margin-top:64px;padding-top:22px;border-top:1px solid rgba(255,255,255,.14);
+  font-size:12px;color:#7E8A86;line-height:1.8">
+  P의 여행 · 아트 디렉션 시안 「오후의 빛」 · 2026.08.27<br>
+  이전 시안(중립안)은 <code style="color:#9AA4A0">P의여행_프로토타입_v2.html</code>에 그대로 남아 있다.
+</footer>
+</div>
+</body>
+</html>

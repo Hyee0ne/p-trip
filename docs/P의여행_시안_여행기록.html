@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>P의 여행 — 시안 · 여행의 기록</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --route-blue:#1D4ED8; --field-green:#3E7C4F; --market-red:#C2452D; --sun:#E8A13D;
+  /* 따뜻한 종이와 잉크 */
+  --paper:#F5F3EE; --paper-2:#EDEAE2; --paper-3:#E4E0D5;
+  --ink:#22201C; --ink-2:#6B665D; --ink-3:#9C978C;
+  --line:rgba(34,32,28,.09);
+  /* 따뜻한 어둠 — 푸른 검정이 아니라 숯 */
+  --dark:#1A1713; --dark-2:#252119; --dark-line:rgba(245,243,238,.13);
+  --dark-ink:#F2EFE7; --dark-ink-2:#A9A296; --dark-ink-3:#787168;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Pretendard Variable',Pretendard,-apple-system,'Apple SD Gothic Neo',sans-serif;
+  background:#2A2621;color:#E8E4DA;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+svg{display:block}
+.serif{font-family:'Nanum Myeongjo',serif}
+.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.i-sm{width:15px;height:15px}.i-lg{width:24px;height:24px}
+
+/* ─── 보드 ─── */
+.board{max-width:1340px;margin:0 auto;padding:56px 28px 96px}
+.bh h1{font-size:40px;font-weight:800;letter-spacing:-.035em;line-height:1.14}
+.bh .sub{font-size:17px;color:#A9A296;margin-top:15px;max-width:640px;line-height:1.7}
+.bh .sub b{color:#E8DFC8}
+.note{margin-top:26px;padding:17px 19px;border-radius:15px;background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.11);max-width:660px}
+.note .k{font-size:11px;font-weight:800;letter-spacing:.15em;color:#8C857A}
+.note p{font-size:13.5px;color:#A9A296;margin-top:10px;line-height:1.8}
+.note p b{color:#E8E4DA}
+.st{font-size:11.5px;font-weight:800;letter-spacing:.18em;color:#8C857A;margin:78px 0 22px}
+.grid{display:flex;flex-wrap:wrap;gap:50px 36px;align-items:flex-start}
+.slot{width:366px}
+.slot .cap{font-size:12.5px;color:#9C958A;margin-bottom:12px;line-height:1.5}
+.slot .cap b{color:#E8E4DA;font-size:13.5px}
+
+/* ─── 디바이스 ─── */
+.ph{width:366px;height:748px;border-radius:34px;overflow:hidden;position:relative;
+  box-shadow:0 22px 56px rgba(0,0,0,.46);display:flex;flex-direction:column;
+  background:var(--paper);color:var(--ink)}
+.ph.dk{background:var(--dark);color:var(--dark-ink)}
+.sb{height:44px;flex:none;display:flex;align-items:center;justify-content:space-between;
+  padding:0 22px 0 26px;font-size:13.5px;font-weight:650}
+.sc{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+.sc::-webkit-scrollbar{display:none}
+
+/* 사진 — 초점 나간 사진처럼 읽히도록 다층 그라데이션 + 그레인 */
+.img{position:relative;overflow:hidden;background:#D8D2C6}
+.img::after{content:'';position:absolute;inset:0;opacity:.16;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E")}
+.im-sea{background:
+  linear-gradient(180deg,#BBD4DE 0%,#8FB6C6 38%,#4E7C8C 39%,#2E5566 72%,#1F3E4C 100%)}
+.im-market{background:
+  radial-gradient(70% 55% at 32% 34%, #F0C98E, transparent 68%),
+  linear-gradient(150deg,#C97A46 0%,#A6482C 52%,#6E2A1C 100%)}
+.im-dusk{background:
+  radial-gradient(66% 46% at 52% 76%, #F3B36A, transparent 66%),
+  linear-gradient(180deg,#3E4E6E 0%,#7A5F72 44%,#C56A47 78%,#8E3D2C 100%)}
+.im-alley{background:
+  radial-gradient(60% 50% at 26% 30%, #EFD5A4, transparent 66%),
+  linear-gradient(160deg,#B08A5A 0%,#7B5C3A 58%,#453220 100%)}
+.im-pine{background:
+  radial-gradient(64% 48% at 70% 24%, #DCE6CE, transparent 64%),
+  linear-gradient(160deg,#7E9A6C 0%,#41603E 60%,#263A26 100%)}
+.im-night{background:
+  radial-gradient(48% 34% at 30% 68%, #E8B36A, transparent 62%),
+  linear-gradient(170deg,#1B2436 0%,#2A3348 56%,#141A28 100%)}
+
+/* RouteBadge */
+.rb{display:inline-flex;align-items:center;justify-content:center;background:var(--route-blue);
+  color:#fff;font-weight:800;border-radius:999px;box-shadow:inset 0 0 0 2px #fff;flex:none;
+  font-variant-numeric:tabular-nums}
+.rb-sm{height:22px;min-width:30px;padding:0 7px;font-size:12px;box-shadow:inset 0 0 0 1.5px #fff}
+.rb-md{height:27px;min-width:37px;padding:0 9px;font-size:14.5px}
+.rb-lg{height:34px;min-width:47px;padding:0 12px;font-size:18px;box-shadow:inset 0 0 0 2.5px #fff}
+
+/* 조용한 섹션 라벨 — stoic. 스타일 */
+.lab{font-size:11px;font-weight:750;letter-spacing:.12em;color:var(--ink-3)}
+.ph.dk .lab{color:var(--dark-ink-3)}
+
+/* 칩 — 테두리만. 통계도 이걸로 (데이터 표가 아니라 메모처럼) */
+.chip{display:inline-flex;align-items:center;gap:5px;height:29px;padding:0 12px;border-radius:999px;
+  border:1px solid var(--line);font-size:12.5px;font-weight:650;color:var(--ink-2);background:transparent}
+.chip.red{border-color:rgba(194,69,45,.35);color:#A5361F}
+.chip.green{border-color:rgba(62,124,79,.35);color:#2E6640}
+.chip.sun{border-color:rgba(232,161,61,.42);color:#96650F}
+.ph.dk .chip{border-color:var(--dark-line);color:var(--dark-ink-2)}
+
+.tabbar{flex:none;height:74px;display:flex;padding-bottom:14px;
+  background:rgba(245,243,238,.86);backdrop-filter:blur(16px);border-top:1px solid var(--line)}
+.tabbar.dk{background:rgba(26,23,19,.9);border-top-color:var(--dark-line)}
+.tb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  color:var(--ink-3)}
+.tb span{font-size:10.5px;font-weight:700}
+.tb.on{color:var(--ink)}
+.tabbar.dk .tb{color:var(--dark-ink-3)} .tabbar.dk .tb.on{color:var(--dark-ink)}
+
+.btn{width:100%;height:54px;border:none;border-radius:16px;font-family:inherit;font-size:15.5px;
+  font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:transform 160ms var(--ease)}
+.btn:active{transform:scale(.985)}
+</style>
+</head>
+<body>
+
+<svg style="display:none" aria-hidden="true">
+<symbol id="road" viewBox="0 0 24 24"><path d="M4 21 7 3M20 21 17 3M12 4v3M12 11v3M12 18v3"/></symbol>
+<symbol id="radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12 18.4 5.6"/></symbol>
+<symbol id="user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20a7.6 7.6 0 0 1 14.4 0"/></symbol>
+<symbol id="heart" viewBox="0 0 24 24"><path d="M12 20s-7.4-4.6-7.4-9.5A4.1 4.1 0 0 1 12 7.6a4.1 4.1 0 0 1 7.4 2.9C19.4 15.4 12 20 12 20Z"/></symbol>
+<symbol id="close" viewBox="0 0 24 24"><path d="M6 6 18 18M18 6 6 18"/></symbol>
+<symbol id="share" viewBox="0 0 24 24"><path d="M12 3v12M8 6.6 12 3l4 3.6M5 13v6.2A1.8 1.8 0 0 0 6.8 21h10.4A1.8 1.8 0 0 0 19 19.2V13"/></symbol>
+<symbol id="back" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+<symbol id="chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+<symbol id="tent" viewBox="0 0 24 24"><path d="m12 4-8 15h16L12 4ZM12 9v10"/></symbol>
+<symbol id="vol" viewBox="0 0 24 24"><path d="M5 9.5h3L12 6v12l-4-3.5H5ZM16 9a4 4 0 0 1 0 6"/></symbol>
+<linearGradient id="sw" x1="0" y1="0" x2="1" y2="0">
+  <stop offset="0%" stop-color="#E8DFC8" stop-opacity=".18"/><stop offset="100%" stop-color="#E8DFC8" stop-opacity="0"/></linearGradient>
+</svg>
+
+<div class="board">
+<header class="bh">
+  <h1>여행의 기록</h1>
+  <p class="sub">컨셉을 세우지 않았습니다. 장치도 없앴습니다.
+    <b>사진과 문장과 여백</b>만 남기고, 기능은 SCREENS.md에 있는 것 그대로 두었습니다.</p>
+  <div class="note">
+    <div class="k">이전 시안들에서 뺀 것</div>
+    <p>표지판 색면 · 계기 수치 · 수집 칸 · 시간대 팔레트 — <b>전부 제가 만든 틀이었지 여행의 감정이 아니었습니다.</b><br>
+      그리고 결정적으로 빠져 있던 걸 넣었습니다 — <b>사진</b>. 발견 카드에도 홈에도 사진이 없어서 차가웠습니다.</p>
+    <div class="k" style="margin-top:16px">Mobbin에서 배운 것</div>
+    <p><b>stoic.</b> — 본문 텍스트가 곧 디자인. 통계는 테두리 칩으로 조용히<br>
+      <b>yope · Retro</b> — 제목은 그냥 날짜. 사진 콜라주 하나로 충분<br>
+      <b>Apple Journal · Dot</b> — UI는 평범하게. 감정은 문장에<br>
+      <b>Unfold</b> — 공유 카드는 사진 위에 큰 서체</p>
+    <div class="k" style="margin-top:16px">서체 결정 (2026-08-27)</div>
+    <p>이동 중 화면 = <b>고딕(Pretendard)</b> · 여행기·공유 카드 = <b>명조(나눔명조)</b><br>
+      운전 중 가독성은 안전 문제라 발견 화면에는 명조를 쓰지 않는다.</p>
+  </div>
+</header>
+
+<div class="st">화면</div>
+<div class="grid">
+
+<!-- ══════ CO-01 홈 ══════ -->
+<figure class="slot"><figcaption class="cap"><b>CO-01 홈</b><br>
+  사진이 먼저 말한다. 큐레이션 3축은 그대로, 대신 조용한 라벨로.</figcaption>
+<div class="ph">
+  <div class="sb"><span>8:12</span><span style="opacity:.45">▮▮▮</span></div>
+  <div class="sc">
+    <div style="display:flex;align-items:center;gap:9px;padding:2px 22px 0">
+      <span class="rb rb-md" style="width:32px;min-width:32px;padding:0">P</span>
+      <span style="font-size:16px;font-weight:750;letter-spacing:-.03em">P의 여행</span></div>
+
+    <!-- 히어로 — 명조로 -->
+    <div style="padding:30px 22px 0">
+      <h1 style="font-size:27px;font-weight:800;line-height:1.44;letter-spacing:-.035em">
+        지나치기엔 아까운 것들이,<br>길마다 있어요.</h1>
+      <p style="font-size:13.5px;color:var(--ink-2);margin-top:14px;line-height:1.75">
+        오늘만 서는 장, 40분 뒤의 일몰, 이름 없는 물회 골목.<br>놓치기 전에 레이더가 알려드려요.</p></div>
+
+    <!-- 오늘만 열리는 발견 — 큰 사진 하나 -->
+    <div style="padding:34px 22px 0"><span class="lab">오늘만 열리는 발견</span></div>
+    <div style="padding:12px 22px 0">
+      <div class="img im-market" style="height:212px;border-radius:18px;position:relative">
+        <div style="position:absolute;inset:0;border-radius:18px;
+          background:linear-gradient(to top,rgba(24,14,10,.72) 0%,rgba(24,14,10,.1) 46%,transparent 68%)"></div>
+        <div style="position:absolute;left:18px;right:18px;bottom:17px;color:#fff;z-index:2">
+          <span class="chip" style="height:25px;font-size:11.5px;border-color:rgba(255,255,255,.5);color:#fff;
+            background:rgba(255,255,255,.14);backdrop-filter:blur(6px)">오늘만</span>
+          <div style="font-size:24px;font-weight:800;margin-top:11px;letter-spacing:-.032em">북평 5일장</div>
+          <div style="font-size:12.5px;opacity:.86;margin-top:4px">3·8일에만 서요 · 다음 장은 5일 뒤</div></div></div></div>
+
+    <!-- 국도 -->
+    <div style="padding:34px 22px 0"><span class="lab">국도부터 고르기</span></div>
+    <div style="display:flex;gap:11px;padding:13px 22px 0;overflow-x:auto;scrollbar-width:none">
+      <div style="text-align:center;flex:none"><span class="rb rb-lg">7</span>
+        <div style="font-size:11px;color:var(--ink-3);margin-top:6px;font-weight:650">동해 바닷길</div></div>
+      <div style="text-align:center;flex:none"><span class="rb rb-lg">44</span>
+        <div style="font-size:11px;color:var(--ink-3);margin-top:6px;font-weight:650">한계령</div></div>
+      <div style="text-align:center;flex:none"><span class="rb rb-lg">46</span>
+        <div style="font-size:11px;color:var(--ink-3);margin-top:6px;font-weight:650">경춘길</div></div>
+      <div style="text-align:center;flex:none"><span class="rb rb-lg">77</span>
+        <div style="font-size:11px;color:var(--ink-3);margin-top:6px;font-weight:650">해안일주</div></div>
+      <div style="text-align:center;flex:none">
+        <div style="height:34px;display:flex;align-items:center;padding:0 14px;border-radius:999px;
+          border:1px solid var(--line);font-size:12.5px;font-weight:700;color:var(--ink-2);white-space:nowrap">전체 51</div></div></div>
+
+    <!-- 조용히 뜨는 길 -->
+    <div style="padding:34px 22px 0;display:flex;align-items:baseline">
+      <span class="lab">조용히 뜨는 길</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--ink-3)">지난주보다 검색이 는 곳</span></div>
+    <div style="display:flex;gap:13px;padding:13px 22px 0;overflow-x:auto;scrollbar-width:none">
+      <div style="width:206px;flex:none">
+        <div class="img im-sea" style="height:142px;border-radius:15px;position:relative">
+          <div style="position:absolute;top:11px;left:11px;z-index:2"><span class="rb rb-sm">7</span></div></div>
+        <div style="font-size:17px;font-weight:750;margin-top:11px;letter-spacing:-.028em">동해 바닷길</div>
+        <div style="font-size:12.5px;color:var(--ink-2);margin-top:3px;line-height:1.6">
+          삼척에서 강릉까지, 바다만 보고 달리는 길</div>
+        <div style="font-size:11.5px;color:var(--ink-3);margin-top:7px">86km · 발견 9곳</div></div>
+      <div style="width:206px;flex:none">
+        <div class="img im-pine" style="height:142px;border-radius:15px;position:relative">
+          <div style="position:absolute;top:11px;left:11px;z-index:2"><span class="rb rb-sm">44</span></div></div>
+        <div style="font-size:17px;font-weight:750;margin-top:11px;letter-spacing:-.028em">한계령길</div>
+        <div style="font-size:12.5px;color:var(--ink-2);margin-top:3px;line-height:1.6">
+          고개 하나 넘으면 바다가 나오는</div>
+        <div style="font-size:11.5px;color:var(--ink-3);margin-top:7px">138km · 발견 12곳</div></div></div>
+
+    <!-- 차들이 몰래 가는 곳 -->
+    <div style="padding:34px 22px 0;display:flex;align-items:baseline">
+      <span class="lab">요즘 차들이 몰래 가는 곳</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--ink-3)">이동 흔적 기준</span></div>
+    <div style="padding:13px 22px 0">
+      <div style="display:flex;gap:13px;align-items:center;padding:9px 0">
+        <div class="img im-dusk" style="width:58px;height:58px;border-radius:12px;flex:none"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:700;letter-spacing:-.02em">추암 촛대바위</div>
+          <div style="font-size:12.5px;color:var(--ink-2);margin-top:2px">국도에서 6분 · 오늘 일몰 19:24</div></div>
+        <span style="color:var(--ink-3)"><svg class="i i-sm"><use href="#chev"/></svg></span></div>
+      <div style="height:1px;background:var(--line)"></div>
+      <div style="display:flex;gap:13px;align-items:center;padding:9px 0">
+        <div class="img im-alley" style="width:58px;height:58px;border-radius:12px;flex:none"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:700;letter-spacing:-.02em">어달마을 물회 골목</div>
+          <div style="font-size:12.5px;color:var(--ink-2);margin-top:2px">국도에서 4분 · 간판 없는 집이 많아요</div></div>
+        <span style="color:var(--ink-3)"><svg class="i i-sm"><use href="#chev"/></svg></span></div></div>
+    <div style="height:30px"></div>
+  </div>
+  <nav class="tabbar">
+    <div class="tb on"><svg class="i"><use href="#road"/></svg><span>발견</span></div>
+    <div class="tb"><svg class="i"><use href="#radar"/></svg><span>레이더</span></div>
+    <div class="tb"><svg class="i"><use href="#user"/></svg><span>마이</span></div></nav>
+</div></figure>
+
+<!-- ══════ DR-02 근접 카드 ══════ -->
+<figure class="slot"><figcaption class="cap"><b>DR-02 근접 발견 카드</b><br>
+  사진 한 장과 문장 하나. 점수도 진출로 배지도 없앴다 — 필요한 건 카드가 아니라 이유.<br>
+  <b style="color:#E8DFC8">운전 중 화면이라 고딕 + 큰 글씨 + 56pt 터치 영역.</b></figcaption>
+<div class="ph dk">
+  <div class="sb"><span>18:44</span><span style="opacity:.45">▮▮▮</span></div>
+  <div style="display:flex;align-items:center;gap:10px;padding:0 18px;height:46px">
+    <span class="rb rb-sm">7</span>
+    <span style="font-size:14.5px;font-weight:650;color:var(--dark-ink-2);flex:1">주변을 살피는 중</span>
+    <button style="background:none;border:none;color:var(--dark-ink-2);cursor:pointer">
+      <svg class="i"><use href="#vol"/></svg></button>
+    <button style="background:none;border:none;color:var(--dark-ink-2);cursor:pointer">
+      <svg class="i"><use href="#close"/></svg></button></div>
+  <div style="flex:1;position:relative;overflow:hidden">
+    <!-- 레이더 — 아주 조용히 -->
+    <div style="height:214px;margin:2px 18px 0;position:relative;border-radius:18px;overflow:hidden;
+      background:radial-gradient(circle at 50% 50%,#241F18,#161310 76%)">
+      <svg viewBox="0 0 330 214" style="position:absolute;inset:0;width:100%;height:100%">
+        <circle cx="165" cy="107" r="96" fill="none" stroke="rgba(242,239,231,.07)"/>
+        <circle cx="165" cy="107" r="64" fill="none" stroke="rgba(242,239,231,.06)"/>
+        <circle cx="165" cy="107" r="32" fill="none" stroke="rgba(242,239,231,.05)"/>
+        <path d="M165 107 L165 11 A96 96 0 0 1 233 39 Z" fill="url(#sw)">
+          <animateTransform attributeName="transform" type="rotate" from="0 165 107" to="360 165 107"
+            dur="5s" repeatCount="indefinite"/></path>
+        <circle cx="208" cy="66" r="6" fill="#7FBE93"/>
+        <circle cx="208" cy="66" r="6" fill="none" stroke="#7FBE93" stroke-width="1.4" opacity=".5">
+          <animate attributeName="r" values="6;19;6" dur="2.8s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values=".5;0;.5" dur="2.8s" repeatCount="indefinite"/></circle>
+        <circle cx="102" cy="152" r="4.5" fill="#C9A05E"/>
+        <circle cx="165" cy="107" r="6" fill="#8AA6E0"/></svg>
+      <div style="position:absolute;top:12px;left:14px;font-size:11px;color:var(--dark-ink-3);font-weight:650">
+        7번 국도 61km 기록 중</div>
+      <div style="position:absolute;top:12px;right:14px;font-size:11px;color:var(--dark-ink-3);font-weight:650;
+        display:flex;align-items:center;gap:5px">
+        <svg class="i" style="width:12px;height:12px"><use href="#tent"/></svg>거점 18km</div></div>
+
+    <!-- 카드 — 사진이 먼저 -->
+    <div style="position:absolute;left:0;right:0;bottom:0;background:var(--dark-2);
+      border-radius:22px 22px 0 0;overflow:hidden;box-shadow:0 -16px 44px rgba(0,0,0,.6)">
+      <div style="width:36px;height:4px;border-radius:2px;background:rgba(242,239,231,.2);margin:13px auto 0"></div>
+      <div class="img im-dusk" style="height:158px;margin:14px 18px 0;border-radius:15px;position:relative">
+        <div style="position:absolute;inset:0;border-radius:15px;
+          background:linear-gradient(to top,rgba(20,14,10,.5),transparent 52%)"></div></div>
+      <div style="padding:16px 20px 22px">
+        <span class="chip green" style="height:30px;font-size:13px">일몰 40분 전</span>
+        <h2 style="font-size:26px;font-weight:800;margin-top:13px;line-height:1.38;
+          letter-spacing:-.034em;color:var(--dark-ink)">
+          곧 추암 촛대바위에<br>해가 져요</h2>
+        <p style="font-size:15.5px;color:var(--dark-ink-2);margin-top:12px;line-height:1.7">
+          바위 사이로 해가 떨어지는 걸 보려고 사람들이 새벽에도 옵니다.
+          여기서 6분이면 닿아요.</p>
+        <div style="display:flex;gap:9px;margin-top:20px">
+          <button class="btn" style="flex:1;height:56px;font-size:17px;font-weight:750;
+            background:var(--dark-ink);color:var(--dark)">들르기</button>
+          <button class="btn" style="width:56px;height:56px;flex:none;background:rgba(242,239,231,.09);
+            color:var(--dark-ink);border:1px solid var(--dark-line)">
+            <svg class="i i-lg"><use href="#heart"/></svg></button>
+          <button class="btn" style="width:56px;height:56px;flex:none;background:rgba(242,239,231,.09);
+            color:var(--dark-ink-3);border:1px solid var(--dark-line)">
+            <svg class="i i-lg"><use href="#close"/></svg></button></div>
+      </div>
+    </div>
+  </div>
+</div></figure>
+
+<!-- ══════ MY-02 여행기 ══════ -->
+<figure class="slot"><figcaption class="cap"><b>MY-02 자동 여행기</b><br>
+  ★ 표가 아니라 <b>글</b>이 된다. 통계는 칩으로 조용히, 허탕도 문장 안에서 담담하게.<br>
+  <b style="color:#E8DFC8">앉아서 읽는 화면이라 명조를 쓴다.</b></figcaption>
+<div class="ph">
+  <div class="sb"><span>21:08</span><span style="opacity:.45">▮▮▮</span></div>
+  <div style="display:flex;align-items:center;padding:0 12px;height:48px">
+    <button style="background:none;border:none;color:var(--ink);cursor:pointer;padding:8px">
+      <svg class="i i-lg"><use href="#back"/></svg></button>
+    <span style="margin-left:auto;padding-right:8px;color:var(--ink-3)">
+      <svg class="i"><use href="#share"/></svg></span></div>
+  <div class="sc" style="padding-bottom:28px">
+    <!-- 제목은 날짜부터 -->
+    <div style="padding:4px 24px 0">
+      <div style="font-size:13px;color:var(--ink-3);font-weight:650">8월 27일 목요일 · EP.3</div>
+      <h1 class="serif" style="font-size:29px;font-weight:700;margin-top:9px;line-height:1.42;letter-spacing:-.015em">
+        7번 국도에서<br>생긴 일</h1>
+      <div style="display:flex;align-items:center;gap:9px;margin-top:15px">
+        <span class="rb rb-sm">7</span>
+        <span style="font-size:13px;color:var(--ink-2);font-weight:650">삼척 → 강릉 · 86km</span></div></div>
+
+    <!-- 사진 콜라주 — yope 스타일 -->
+    <div style="display:flex;gap:5px;padding:22px 24px 0;height:194px">
+      <div class="img im-market" style="flex:1.35;border-radius:13px"></div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:5px">
+        <div class="img im-alley" style="flex:1;border-radius:13px"></div>
+        <div class="img im-dusk" style="flex:1;border-radius:13px;position:relative">
+          <div style="position:absolute;right:7px;bottom:7px;background:rgba(20,16,12,.62);color:#fff;
+            font-size:11px;font-weight:750;padding:3px 8px;border-radius:999px;z-index:2">+9</div></div></div></div>
+
+    <!-- ★ 글 — 자동 생성이지만 사람이 쓴 것처럼 -->
+    <div style="padding:24px 24px 0">
+      <p class="serif" style="font-size:16.5px;line-height:2.05;color:var(--ink);letter-spacing:-.005em">
+        아침 여덟 시, 삼척을 지나다 <b style="font-weight:700">오늘이 마침 북평 장날</b>이라는 알림을 받고 핸들을 꺾었어요.
+        메밀전 한 장을 서서 먹었습니다.<br><br>
+        점심에 들른 <b style="font-weight:700">어달마을 물회 골목</b>은 문이 닫혀 있었어요.
+        그래도 골목은 예뻤고, 다음엔 전화하고 가기로 했습니다.<br><br>
+        해 지기 십삼 분 전에 <b style="font-weight:700">추암 촛대바위</b>에 도착했어요.
+        빛이 제일 좋을 때였습니다.
+      </p></div>
+
+    <!-- 통계는 칩으로 — stoic. 방식 -->
+    <div style="display:flex;flex-wrap:wrap;gap:7px;padding:24px 24px 0">
+      <span class="chip green">들른 곳 2</span>
+      <span class="chip">스쳐간 곳 3</span>
+      <span class="chip sun">허탕 1</span>
+      <span class="chip">사진 11장</span></div>
+
+    <!-- 지나온 시간 — 표가 아니라 목록 -->
+    <div style="padding:28px 24px 0"><span class="lab">지나온 시간</span></div>
+    <div style="padding:12px 24px 0">
+      <div style="display:flex;gap:14px;padding:8px 0">
+        <span style="font-size:13px;color:var(--ink-3);font-weight:650;flex:none;width:38px">08:12</span>
+        <span style="flex:1;font-size:14.5px;font-weight:650">북평 5일장</span>
+        <span style="font-size:12px;color:var(--ink-3);flex:none">1시간 8분</span></div>
+      <div style="height:1px;background:var(--line)"></div>
+      <div style="display:flex;gap:14px;padding:8px 0;color:var(--ink-3)">
+        <span style="font-size:13px;font-weight:650;flex:none;width:38px">13:20</span>
+        <span style="flex:1;font-size:14.5px;font-weight:650">어달마을 물회 골목</span>
+        <span style="font-size:12px;flex:none">허탕</span></div>
+      <div style="height:1px;background:var(--line)"></div>
+      <div style="display:flex;gap:14px;padding:8px 0">
+        <span style="font-size:13px;color:var(--ink-3);font-weight:650;flex:none;width:38px">19:11</span>
+        <span style="flex:1;font-size:14.5px;font-weight:650">추암 촛대바위</span>
+        <span style="font-size:12px;color:var(--ink-3);flex:none">41분</span></div></div>
+
+    <div style="padding:26px 24px 0">
+      <p style="font-size:12.5px;color:var(--ink-3);line-height:1.75">
+        국도 수집 +86km · 스쳐간 곳은 찜에 남겨뒀어요</p></div>
+
+    <div style="padding:22px 24px 0">
+      <button class="btn" style="background:var(--ink);color:var(--paper)">
+        여행기 공유하기<svg class="i i-sm"><use href="#share"/></svg></button>
+      <p style="text-align:center;font-size:13.5px;color:var(--ink-2);margin-top:22px;
+        text-decoration:underline;text-underline-offset:4px">이 동네가 좋았다면, 하루 더?</p></div>
+  </div>
+</div></figure>
+
+<!-- ══════ 공유 카드 ══════ -->
+<figure class="slot"><figcaption class="cap"><b>공유 카드</b> (MY-02 액션)<br>
+  Unfold 방식 — 사진 위에 큰 서체. 인스타에 올라가는 건 결국 이 한 장.</figcaption>
+<div class="ph" style="background:#181410;justify-content:center;padding:26px 22px">
+  <div style="width:100%;aspect-ratio:9/16;border-radius:20px;overflow:hidden;position:relative;
+    box-shadow:0 18px 44px rgba(0,0,0,.5)">
+    <div class="img im-dusk" style="position:absolute;inset:0"></div>
+    <div style="position:absolute;inset:0;background:
+      linear-gradient(to bottom,rgba(18,12,8,.5) 0%,transparent 26%,transparent 46%,rgba(18,12,8,.86) 88%)"></div>
+    <!-- 상단 -->
+    <div style="position:absolute;top:20px;left:20px;right:20px;z-index:2;display:flex;align-items:center;gap:8px">
+      <span class="rb rb-sm">7</span>
+      <span style="font-size:12px;color:#fff;font-weight:700;opacity:.9">삼척 → 강릉 · 86km</span></div>
+    <!-- 작은 사진 스트립 -->
+    <div style="position:absolute;left:20px;right:20px;bottom:172px;z-index:2;display:flex;gap:6px">
+      <div class="img im-market" style="width:52px;height:52px;border-radius:9px;
+        box-shadow:0 2px 10px rgba(0,0,0,.4)"></div>
+      <div class="img im-alley" style="width:52px;height:52px;border-radius:9px;
+        box-shadow:0 2px 10px rgba(0,0,0,.4)"></div>
+      <div class="img im-sea" style="width:52px;height:52px;border-radius:9px;
+        box-shadow:0 2px 10px rgba(0,0,0,.4)"></div></div>
+    <!-- 하단 카피 -->
+    <div style="position:absolute;left:20px;right:20px;bottom:24px;z-index:2;color:#fff">
+      <div style="font-size:12px;opacity:.78;font-weight:650">2026. 08. 27</div>
+      <h2 class="serif" style="font-size:30px;font-weight:700;margin-top:10px;line-height:1.4;letter-spacing:-.015em">
+        고속도로였다면<br>없었을 하루</h2>
+      <div style="display:flex;align-items:center;gap:7px;margin-top:14px;flex-wrap:wrap">
+        <span class="chip" style="height:26px;font-size:11.5px;border-color:rgba(255,255,255,.4);color:#fff">들른 곳 2</span>
+        <span class="chip" style="height:26px;font-size:11.5px;border-color:rgba(255,255,255,.4);color:#fff">스쳐간 곳 3</span>
+        <span class="chip" style="height:26px;font-size:11.5px;border-color:rgba(255,255,255,.4);color:#fff">허탕 1</span></div>
+      <div style="display:flex;align-items:center;gap:7px;margin-top:18px;padding-top:14px;
+        border-top:1px solid rgba(255,255,255,.22)">
+        <span class="rb rb-sm" style="height:19px;min-width:26px;font-size:10.5px;padding:0 6px">P</span>
+        <span style="font-size:11.5px;opacity:.82;font-weight:650">이 길 나도 달려보기</span>
+        <span style="margin-left:auto;font-size:11px;opacity:.6">P의 여행</span></div></div>
+  </div>
+</div></figure>
+
+</div><!-- /grid -->
+
+<div class="st">이 시안이 지킨 것</div>
+<div style="display:flex;flex-wrap:wrap;gap:20px">
+  <div style="width:308px;padding:22px;border-radius:17px;background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.11)">
+    <div style="font-size:14.5px;font-weight:750;color:#E8DFC8">기능을 하나도 안 더했다</div>
+    <p style="font-size:13px;color:#A9A296;margin-top:10px;line-height:1.75">
+      SCREENS.md에 있는 것만 그렸다. 점수·좌표·수집 칸처럼 <b style="color:#E8E4DA">컨셉을 위해 만든 UI가 없다.</b>
+      오히려 뺐다 — 진출로 배지, 검증 배지, 스탯 3칸 표.</p></div>
+  <div style="width:308px;padding:22px;border-radius:17px;background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.11)">
+    <div style="font-size:14.5px;font-weight:750;color:#E8DFC8">여행기가 글이 됐다</div>
+    <p style="font-size:13px;color:#A9A296;margin-top:10px;line-height:1.75">
+      타임라인 표를 <b style="color:#E8E4DA">문단</b>으로 바꿨다. 허탕이 데이터 행이 아니라
+      "그래도 골목은 예뻤고"라는 문장 안에 들어간다. 실패의 서사화가 여기서 실제로 일어난다.</p></div>
+  <div style="width:308px;padding:22px;border-radius:17px;background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.11)">
+    <div style="font-size:14.5px;font-weight:750;color:#E8DFC8">서체 규칙 — 달릴 땐 고딕, 돌아보면 명조</div>
+    <p style="font-size:13px;color:#A9A296;margin-top:10px;line-height:1.75">
+      <b style="color:#E8E4DA">이동 중에 읽는 모든 화면은 Pretendard(고딕).</b>
+      가독성이 안전 문제라 예외가 없다 — 히어로도 발견 카드도 고딕이다.<br><br>
+      <b style="color:#E8E4DA">명조(나눔명조)는 여행기와 공유 카드에만.</b>
+      다 끝나고 앉아서 읽는 화면이라 감성이 우선이고, 운전 중 가독성 제약을 받지 않는다.
+      두 서체가 <b style="color:#E8E4DA">'달리는 중 / 돌아보는 중'</b>을 나눈다.</p></div>
+  <div style="width:308px;padding:22px;border-radius:17px;background:rgba(232,161,61,.1);
+    border:1px solid rgba(232,161,61,.3)">
+    <div style="font-size:14.5px;font-weight:750;color:#E8DFC8">치러야 할 값</div>
+    <p style="font-size:13px;color:#C9B99A;margin-top:10px;line-height:1.75">
+      <b style="color:#F0D9A0">사진에 전적으로 기댄다.</b> 공공데이터 사진이 부실하면 이 시안은 무너진다.
+      M1에서 사진 보유율을 반드시 실측해야 하고, 없는 스팟은 이 화면에 안 올리는 규칙이 필요하다.</p></div>
+</div>
+
+<footer style="margin-top:70px;padding-top:22px;border-top:1px solid rgba(255,255,255,.13);
+  font-size:12.5px;color:#8C857A;line-height:1.85">
+  P의 여행 · 시안 「여행의 기록」 · 2026.08.27<br>
+  이전 시안 — <code style="color:#A9A296">P의여행_프로토타입_v2.html</code> ·
+  <code style="color:#A9A296">P의여행_시안_오후의빛.html</code> ·
+  <code style="color:#A9A296">P의여행_시안_비교_3안.html</code>
+</footer>
+</div>
+</body>
+</html>

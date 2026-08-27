@@ -1,0 +1,42 @@
+# ── 환경변수 · 키 (절대 커밋 금지) ──
+.env
+.env.*
+!.env.example
+*.key
+*.jks
+*.keystore
+
+# ── Flutter / Dart ──
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/build/
+app/.packages
+app/ios/Pods/
+app/ios/.symlinks/
+app/ios/Flutter/Flutter.framework
+app/ios/Flutter/Flutter.podspec
+app/ios/Flutter/Generated.xcconfig
+app/ios/Flutter/flutter_export_environment.sh
+app/android/.gradle/
+app/android/local.properties
+app/android/key.properties
+app/**/*.g.dart
+app/**/*.freezed.dart
+
+# ── Node (pipeline) ──
+pipeline/node_modules/
+pipeline/dist/
+pipeline/.cache/
+npm-debug.log*
+
+# ── Supabase ──
+supabase/.temp/
+supabase/.branches/
+
+# ── macOS / IDE ──
+.DS_Store
+.idea/
+*.iml
+.vscode/
+dart_defines.json
