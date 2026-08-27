@@ -66,5 +66,17 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- 권한 문구는 SCREENS.md §ON·§DR-00의 고정 카피를 그대로 쓴다 -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>레이더가 주변을 살피려면 위치가 필요해요. 이동 중에만 사용하고, 기록은 내 기기에 먼저 저장돼요.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>여행기에 사진을 자동 정리해드려요. 여행한 시간대의 사진만 봅니다.</string>
+	<!-- DR-06 백그라운드 근접 알림 — 2단계 옵트인. 먼저 묻지 않는다 -->
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>앱을 꺼둬도 근처 발견을 알려드려요. 달리는 동안에만 위치를 보고, 여행을 마치면 스스로 꺼져요.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 </dict>
 </plist>
