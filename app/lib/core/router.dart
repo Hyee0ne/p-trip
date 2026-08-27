@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/common/placeholder_screen.dart';
+import '../features/discover/course_screen.dart';
 import '../features/discover/home_screen.dart';
+import '../features/discover/routes_screen.dart';
+import '../features/discover/search_screen.dart';
+import '../features/discover/spot_screen.dart';
 import 'strings.dart';
 import 'theme.dart';
 
@@ -27,11 +31,8 @@ GoRouter buildRouter() => GoRouter(
     GoRoute(
       path: '/search',
       parentNavigatorKey: _rootKey,
-      pageBuilder: (_, state) => MaterialPage(
-        fullscreenDialog: true,
-        key: state.pageKey,
-        child: const PlaceholderScreen(screenId: 'SR', name: '검색', route: '/search'),
-      ),
+      pageBuilder: (_, state) =>
+          MaterialPage(fullscreenDialog: true, key: state.pageKey, child: const SearchScreen()),
     ),
 
     // ── 거점 역진입: 코스 없이 진입 (TECH_SPEC §3.7) ──
@@ -52,18 +53,10 @@ GoRouter buildRouter() => GoRouter(
               path: '/',
               builder: (_, _) => const HomeScreen(),
               routes: [
-                GoRoute(
-                  path: 'routes',
-                  builder: (_, _) =>
-                      const PlaceholderScreen(screenId: 'CO-07', name: '국도 선택', route: '/routes'),
-                ),
+                GoRoute(path: 'routes', builder: (_, _) => const RoutesScreen()),
                 GoRoute(
                   path: 'course/:id',
-                  builder: (_, s) => PlaceholderScreen(
-                    screenId: 'CO-02',
-                    name: '코스 상세',
-                    route: '/course/${s.pathParameters['id']}',
-                  ),
+                  builder: (_, s) => CourseScreen(courseId: s.pathParameters['id']!),
                   routes: [
                     GoRoute(
                       path: 'base',
@@ -77,11 +70,7 @@ GoRouter buildRouter() => GoRouter(
                 ),
                 GoRoute(
                   path: 'spot/:id',
-                  builder: (_, s) => PlaceholderScreen(
-                    screenId: 'CO-03',
-                    name: '스팟 상세',
-                    route: '/spot/${s.pathParameters['id']}',
-                  ),
+                  builder: (_, s) => SpotScreen(spotId: s.pathParameters['id']!),
                 ),
               ],
             ),
