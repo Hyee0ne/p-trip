@@ -193,6 +193,7 @@ class _BrowseState extends ConsumerState<_Browse> {
         ),
         Expanded(
           child: ListView(
+            key: const Key('browse-list'),
             padding: const EdgeInsets.only(bottom: 24),
             children: [
               _axisSection(CurationAxis.today, S.secToday),

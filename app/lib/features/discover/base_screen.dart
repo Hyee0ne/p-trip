@@ -233,9 +233,10 @@ class _BaseScreenState extends ConsumerState<BaseScreen> {
     ref.read(baseCampProvider.notifier).set(BaseCamp(name: _pickedName!, lat: 0, lng: 0));
 
     if (_isReentry) {
-      // 역진입 → CO-06b 국도 제안
-      await BaseSuggestSheet.show(context, baseName: _pickedName!);
-      if (mounted) context.go('/');
+      // 역진입 → CO-06b 국도 제안. 거절해도 아무 일도 일어나지 않는다.
+      final tookRoute = await BaseSuggestSheet.show(context, baseName: _pickedName!);
+      if (!mounted) return;
+      context.go(tookRoute ? '/course/donghae-sea' : '/');
     } else {
       context.pop();
     }

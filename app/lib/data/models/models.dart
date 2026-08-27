@@ -137,3 +137,91 @@ enum CurationAxis {
   /// 요즘 차들이 몰래 가는 곳 — 연관 관광지 유입 변화율.
   tracks,
 }
+
+/// 여행 기록 (TECH_SPEC §2 trips).
+enum TripStatus { draft, active, ended }
+
+/// 정차 종류. skunked = 허탕 — 실패도 기록한다 (기획문서 §5-⑴ 실패의 서사화).
+enum StopKind { visited, passed, skunked }
+
+class TripStop {
+  const TripStop({
+    required this.spotId,
+    required this.spotName,
+    required this.type,
+    required this.at,
+    required this.kind,
+    this.note = '',
+    this.stayMin,
+  });
+
+  final String spotId;
+  final String spotName;
+  final SpotType type;
+
+  /// 'HH:mm'
+  final String at;
+  final StopKind kind;
+
+  /// 자동 생성 한 줄. "'오늘이 마침 장날' 알림에 핸들을 꺾음"
+  final String note;
+  final int? stayMin;
+}
+
+class Trip {
+  const Trip({
+    required this.id,
+    required this.episode,
+    required this.date,
+    required this.routeId,
+    required this.routeName,
+    required this.startName,
+    required this.endName,
+    required this.distanceKm,
+    required this.startedAt,
+    required this.endedAt,
+    required this.stops,
+    required this.photoCount,
+  });
+
+  final String id;
+  final int episode;
+
+  /// '2026.08.27'
+  final String date;
+  final int routeId;
+  final String routeName;
+  final String startName;
+  final String endName;
+  final int distanceKm;
+  final String startedAt;
+  final String endedAt;
+  final List<TripStop> stops;
+  final int photoCount;
+
+  int get visited => stops.where((s) => s.kind == StopKind.visited).length;
+  int get passed => stops.where((s) => s.kind == StopKind.passed).length;
+  int get skunked => stops.where((s) => s.kind == StopKind.skunked).length;
+
+  /// '7번 국도에서 생긴 일'
+  String get title => '$routeName에서 생긴 일';
+}
+
+/// DR-02 근접 발견 카드에 실을 한 건.
+class Discovery {
+  const Discovery({
+    required this.spot,
+    required this.headline,
+    required this.situation,
+    required this.body,
+  });
+
+  final Spot spot;
+
+  /// 존재형 문구. "오늘이 마침 북평 5일장이에요"
+  final String headline;
+
+  /// 상황 라벨. "동해IC 진출로 4분 전 · 오늘만"
+  final String situation;
+  final String body;
+}

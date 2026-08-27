@@ -29,12 +29,30 @@ class BaseSuggestSheet extends StatelessWidget {
   final int discoveryCount;
 
   /// 앵커가 없으면 아무것도 띄우지 않고 그대로 반환한다.
-  static Future<void> show(BuildContext context, {required String baseName}) async {
-    // TODO(M2): Edge Function compare_routes 호출 (TECH_SPEC §3.7).
-    //   키 발급 전이라 지금은 제안을 만들 수 없다.
-    //   ⚠ 소요시간을 지어내지 않는다 — 그건 거짓말이 된다.
-    //   compare_routes가 붙기 전까지 이 시트는 뜨지 않는 게 정상 동작이다.
-    return;
+  static Future<bool> show(BuildContext context, {required String baseName}) async {
+    // TODO(M2): Edge Function compare_routes 호출로 교체 (TECH_SPEC §3.7).
+    //   ⚠ 아래 소요시간은 **임시값**이다. 실값은 거점 확정 직후 1회 정적 조회로 받는다.
+    //   ⚠ 이 값을 ETA·도착시각으로 환산하지 않는다. 비교 근거일 뿐이다.
+    const anchor = '오늘이 북평 장날이고';
+    const discoveries = 9;
+
+    // 앵커가 0건이면 모달을 띄우지 않는다 — 설득 근거 없이 40분을 더 쓰라고 하지 않는다
+    if (anchor.isEmpty) return false;
+
+    final picked = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => const BaseSuggestSheet(
+        baseName: '',
+        highwayLabel: '2시간 10분',
+        routeLabel: '2시간 50분',
+        routeId: 7,
+        anchorText: anchor,
+        discoveryCount: discoveries,
+      ),
+    );
+    return picked ?? false;
   }
 
   @override

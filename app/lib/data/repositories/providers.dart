@@ -59,3 +59,26 @@ final baseCandidatesProvider = FutureProvider<List<Spot>>((ref) async {
   final all = await ref.watch(discoverRepositoryProvider).spots();
   return all.where((s) => s.type == SpotType.stay || s.type == SpotType.camp).toList();
 });
+
+final radarQueueProvider = FutureProvider<List<Discovery>>(
+  (ref) => ref.watch(discoverRepositoryProvider).radarQueue(),
+);
+
+final tripsProvider = FutureProvider<List<Trip>>(
+  (ref) => ref.watch(discoverRepositoryProvider).trips(),
+);
+
+final tripProvider = FutureProvider.family<Trip?, String>(
+  (ref, id) => ref.watch(discoverRepositoryProvider).trip(id),
+);
+
+/// 찜·스쳐간 발견 목록 (MY-01).
+final savedSpotsProvider = FutureProvider.family<List<Spot>, Set<String>>((ref, ids) async {
+  final repo = ref.watch(discoverRepositoryProvider);
+  final out = <Spot>[];
+  for (final id in ids) {
+    final s = await repo.spot(id);
+    if (s != null) out.add(s);
+  }
+  return out;
+});

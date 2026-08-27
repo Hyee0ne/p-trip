@@ -23,4 +23,12 @@ abstract interface class DiscoverRepository {
 
   /// '들른 차들은 다음에' — 연관 관광지(TECH_SPEC spot_links).
   Future<List<Spot>> nextVisits(String spotId);
+
+  /// 레이더 발견 큐 — 데모 모드에서 순서대로 흘러나온다.
+  Future<List<Discovery>> radarQueue();
+
+  /// 여행기 목록 (최신순).
+  Future<List<Trip>> trips();
+
+  Future<Trip?> trip(String id);
 }

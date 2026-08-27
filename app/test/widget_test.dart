@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:p_trip/core/strings.dart';
 import 'package:p_trip/core/widgets/chips.dart';
+import 'package:p_trip/data/models/models.dart';
+import 'package:p_trip/data/repositories/discover_repository.dart';
+import 'package:p_trip/data/repositories/providers.dart';
+import 'package:p_trip/features/radar/radar_view.dart';
 import 'package:p_trip/core/view_mode.dart';
 import 'package:p_trip/main.dart';
 
@@ -20,11 +24,21 @@ void main() {
     expect(find.text(S.appName), findsOneWidget);
   });
 
-  testWidgets('레이더 탭으로 전환하면 DR-01이 뜬다', (tester) async {
+  testWidgets('레이더 탭 — 경로가 아니라 주변 기준이라는 문구가 있다', (tester) async {
     await pumpApp(tester);
     await tester.tap(find.text(S.tabRadar));
-    await tester.pumpAndSettle();
-    expect(find.text('DR-01'), findsOneWidget);
+    // ⚠ 레이더 스윕이 repeat 애니메이션이라 pumpAndSettle이 끝나지 않는다.
+    //   프레임을 몇 번만 돌려 라우트 전환을 완료시킨다.
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 120));
+    }
+
+    expect(find.text(S.radarScanning), findsOneWidget);
+    // 레이더 뷰가 실제로 그려졌는지 (문구는 접혀 있을 수 있어 위젯으로 확인)
+    expect(find.byType(RadarView), findsOneWidget);
+    // ⚠ 레이더에는 뷰 토글이 없다 — 운전 중엔 언제나 한 곳씩
+    expect(find.text(S.viewBrowse), findsNothing);
+    expect(find.text(S.viewOneByOne), findsNothing);
   });
 
   testWidgets('홈 기본 모드는 한 곳씩이고, 오늘의 발견이 전면 카드로 뜬다', (tester) async {
@@ -48,13 +62,37 @@ void main() {
     expect(find.byType(FilterMoreChip), findsOneWidget);
   });
 
-  testWidgets('변화율을 못 내는 축은 섹션을 통째로 숨긴다', (tester) async {
+  testWidgets('훑어보기에 큐레이션 3축이 모두 그려진다', (tester) async {
     await pumpApp(tester);
     await tester.tap(find.byIcon(Icons.grid_view_rounded));
     await tester.pumpAndSettle();
 
-    // 픽스처가 변화율을 지어내지 않으므로 두 섹션은 그려지지 않아야 한다
     expect(find.text(S.secToday), findsOneWidget);
+    // 아래 두 축은 스크롤해야 보인다
+    for (final section in [S.secRising, S.secTracks]) {
+      await tester.dragUntilVisible(
+        find.text(section),
+        find.byKey(const Key('browse-list')),
+        const Offset(0, -240),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(section), findsOneWidget);
+    }
+  });
+
+  testWidgets('데이터가 없는 축은 섹션을 통째로 숨긴다', (tester) async {
+    // 빈 결과를 주는 레포로 갈아끼워 숨김 동작을 직접 검증한다
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [discoverRepositoryProvider.overrideWith((ref) => const _EmptyRepo())],
+        child: const PTripApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.grid_view_rounded));
+    await tester.pumpAndSettle();
+
+    expect(find.text(S.secToday), findsNothing);
     expect(find.text(S.secRising), findsNothing);
     expect(find.text(S.secTracks), findsNothing);
   });
@@ -66,4 +104,30 @@ void main() {
     c.read(viewModeProvider.notifier).toggle();
     expect(c.read(viewModeProvider), ViewMode.browse);
   });
+}
+
+/// 전부 빈 결과를 주는 레포 — "데이터 없으면 섹션을 숨긴다" 검증용.
+class _EmptyRepo implements DiscoverRepository {
+  const _EmptyRepo();
+  @override
+  Future<List<Spot>> spots({CurationAxis? axis, int? routeId}) async => const [];
+  @override
+  Future<List<RouteLine>> routes() async => const [];
+  @override
+  Future<List<Course>> courses({int? routeId}) async => const [];
+  @override
+  Future<Course?> course(String id) async => null;
+  @override
+  Future<Spot?> spot(String id) async => null;
+  @override
+  Future<List<Spot>> search(String q, {bool todayOnly = false, bool nearOnly = false}) async =>
+      const [];
+  @override
+  Future<List<Spot>> nextVisits(String spotId) async => const [];
+  @override
+  Future<List<Discovery>> radarQueue() async => const [];
+  @override
+  Future<List<Trip>> trips() async => const [];
+  @override
+  Future<Trip?> trip(String id) async => null;
 }

@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/common/placeholder_screen.dart';
+import '../features/my/my_screen.dart';
+import '../features/my/trip_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
+import '../features/radar/radar_screen.dart';
 import '../features/discover/base_screen.dart';
 import '../features/discover/course_screen.dart';
 import '../features/discover/home_screen.dart';
@@ -69,17 +72,7 @@ GoRouter buildRouter() => GoRouter(
 
         // 탭2 레이더 — 다크 고정
         StatefulShellBranch(
-          routes: [
-            GoRoute(
-              path: '/radar',
-              builder: (_, _) => const PlaceholderScreen(
-                screenId: 'DR-01',
-                name: '레이더',
-                route: '/radar',
-                dark: true,
-              ),
-            ),
-          ],
+          routes: [GoRoute(path: '/radar', builder: (_, _) => const RadarScreen())],
         ),
 
         // 탭3 마이
@@ -87,16 +80,11 @@ GoRouter buildRouter() => GoRouter(
           routes: [
             GoRoute(
               path: '/my',
-              builder: (_, _) =>
-                  const PlaceholderScreen(screenId: 'MY-01/03', name: '마이', route: '/my'),
+              builder: (_, _) => const MyScreen(),
               routes: [
                 GoRoute(
                   path: 'trip/:id',
-                  builder: (_, s) => PlaceholderScreen(
-                    screenId: 'MY-02',
-                    name: '자동 여행기',
-                    route: '/my/trip/${s.pathParameters['id']}',
-                  ),
+                  builder: (_, s) => TripScreen(tripId: s.pathParameters['id']!),
                 ),
               ],
             ),
