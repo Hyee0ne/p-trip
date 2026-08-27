@@ -10,17 +10,15 @@ class Env {
 
   static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
   static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
-  static const kakaoNativeAppKey =
-      String.fromEnvironment('KAKAO_NATIVE_APP_KEY');
+  static const kakaoNativeAppKey = String.fromEnvironment('KAKAO_NATIVE_APP_KEY');
   static const kakaoJsAppKey = String.fromEnvironment('KAKAO_JS_APP_KEY');
 
   /// 필수 키가 다 들어왔는지. main()에서 확인해 조기에 실패시킨다.
-  static bool get isConfigured =>
-      supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
+  static bool get isConfigured => supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty;
 
   static List<String> get missing => [
-        if (supabaseUrl.isEmpty) 'SUPABASE_URL',
-        if (supabaseAnonKey.isEmpty) 'SUPABASE_ANON_KEY',
-        if (kakaoNativeAppKey.isEmpty) 'KAKAO_NATIVE_APP_KEY',
-      ];
+    if (supabaseUrl.isEmpty) 'SUPABASE_URL',
+    if (supabaseAnonKey.isEmpty) 'SUPABASE_ANON_KEY',
+    if (kakaoNativeAppKey.isEmpty) 'KAKAO_NATIVE_APP_KEY',
+  ];
 }

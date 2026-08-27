@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/common/placeholder_screen.dart';
+import '../features/discover/home_screen.dart';
 import 'strings.dart';
 import 'theme.dart';
 
@@ -49,8 +50,7 @@ GoRouter buildRouter() => GoRouter(
           routes: [
             GoRoute(
               path: '/',
-              builder: (_, _) =>
-                  const PlaceholderScreen(screenId: 'CO-01', name: '홈 (발견)', route: '/'),
+              builder: (_, _) => const HomeScreen(),
               routes: [
                 GoRoute(
                   path: 'routes',
