@@ -330,7 +330,13 @@ class _TripRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 11),
         child: Row(
           children: [
-            SpotImage(type: type, width: 56, height: 56, radius: 13),
+            SpotImage(
+              type: type,
+              spotId: trip.stops.isEmpty ? null : trip.stops.first.spotId,
+              width: 56,
+              height: 56,
+              radius: 13,
+            ),
             const SizedBox(width: 13),
             Expanded(
               child: Column(

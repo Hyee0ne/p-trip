@@ -256,7 +256,7 @@ class _CandidateRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 11),
         child: Row(
           children: [
-            SpotImage(type: spot.type, width: 56, height: 56, radius: 13),
+            SpotImage(type: spot.type, spotId: spot.id, width: 56, height: 56, radius: 13),
             const SizedBox(width: 13),
             Expanded(
               child: Column(

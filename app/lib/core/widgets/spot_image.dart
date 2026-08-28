@@ -10,6 +10,7 @@ class SpotImage extends StatelessWidget {
   const SpotImage({
     super.key,
     required this.type,
+    this.spotId,
     this.width,
     this.height,
     this.radius = 14,
@@ -17,9 +18,15 @@ class SpotImage extends StatelessWidget {
   });
 
   final SpotType type;
+
+  /// 있으면 `assets/images/<spotId>.jpg`를 먼저 찾는다.
+  final String? spotId;
+
   final double? width;
   final double? height;
   final double radius;
+
+  /// M1 이후 TourAPI 사진 URL이 들어온다.
   final String? imageUrl;
 
   /// 유형별 색. 사진이 들어오기 전까지 이 그라데이션이 자리를 지킨다.
@@ -49,6 +56,7 @@ class SpotImage extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = _palettes[type] ?? _palettes[SpotType.attraction]!;
     final light = _lightAt[type] ?? Alignment.topLeft;
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: SizedBox(
@@ -57,7 +65,7 @@ class SpotImage extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 바탕 — 밝은 곳에서 어두운 곳으로
+            // 바탕 — 사진을 못 찾을 때 그대로 남아 자리를 지킨다
             DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -68,7 +76,6 @@ class SpotImage extends StatelessWidget {
                 ),
               ),
             ),
-            // 광원 — 사진의 하이라이트
             DecoratedBox(
               decoration: BoxDecoration(
                 gradient: RadialGradient(
@@ -79,6 +86,13 @@ class SpotImage extends StatelessWidget {
                 ),
               ),
             ),
+            // 사진 — 없으면 조용히 그라데이션만 남는다
+            if (spotId != null)
+              Image.asset(
+                'assets/images/$spotId.jpg',
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+              ),
             // 비네팅 — 가장자리를 눌러 깊이를 만든다
             const DecoratedBox(
               decoration: BoxDecoration(

@@ -52,7 +52,13 @@ class SpotGridCard extends StatelessWidget {
         children: [
           Stack(
             children: [
-              SpotImage(type: spot.type, height: 118, width: double.infinity, radius: 16),
+              SpotImage(
+                type: spot.type,
+                spotId: spot.id,
+                height: 118,
+                width: double.infinity,
+                radius: 16,
+              ),
               if (spot.timeliness != Timeliness.none)
                 Positioned(left: 8, top: 8, child: TimelinessChip(spot.timeliness, compact: true)),
               // 터치 영역 44 · 보이는 원 30 — 한 위젯이 둘 다 소유한다
@@ -106,7 +112,7 @@ class SpotListRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 11),
         child: Row(
           children: [
-            SpotImage(type: spot.type, width: 60, height: 60, radius: 13),
+            SpotImage(type: spot.type, spotId: spot.id, width: 60, height: 60, radius: 13),
             const SizedBox(width: 13),
             Expanded(
               child: Column(
@@ -184,7 +190,7 @@ class FullBleedSpotCard extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          SpotImage(type: spot.type, radius: 0),
+          SpotImage(type: spot.type, spotId: spot.id, radius: 0),
           // 아래에서 위로 어두워지는 스크림 — 글자 대비 확보 (4.5:1)
           const DecoratedBox(
             decoration: BoxDecoration(

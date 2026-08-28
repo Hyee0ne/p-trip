@@ -124,9 +124,12 @@ class _Body extends StatelessWidget {
 
   /// 사진 콜라주 — 큰 것 하나 + 작은 것 둘. 마지막에 +N.
   Widget _photoCollage() {
-    final types = trip.stops.map((s) => s.type).toList();
+    final stops = [...trip.stops];
+    final types = stops.map((s) => s.type).toList();
+    final ids = stops.map<String?>((s) => s.spotId).toList();
     while (types.length < 3) {
       types.add(SpotType.attraction);
+      ids.add(null);
     }
     return SizedBox(
       height: 186,
@@ -134,19 +137,24 @@ class _Body extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 22),
         child: Row(
           children: [
-            Expanded(flex: 13, child: SpotImage(type: types[0], radius: 15)),
+            Expanded(
+              flex: 13,
+              child: SpotImage(type: types[0], spotId: ids[0], radius: 15),
+            ),
             const SizedBox(width: 5),
             Expanded(
               flex: 10,
               child: Column(
                 children: [
-                  Expanded(child: SpotImage(type: types[1], radius: 15)),
+                  Expanded(
+                    child: SpotImage(type: types[1], spotId: ids[1], radius: 15),
+                  ),
                   const SizedBox(height: 5),
                   Expanded(
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        SpotImage(type: types[2], radius: 15),
+                        SpotImage(type: types[2], spotId: ids[2], radius: 15),
                         Positioned(
                           right: 8,
                           bottom: 8,
@@ -318,7 +326,7 @@ class _StopRow extends StatelessWidget {
                 ),
               ),
             ),
-            SpotImage(type: stop.type, width: 44, height: 44, radius: 11),
+            SpotImage(type: stop.type, spotId: stop.spotId, width: 44, height: 44, radius: 11),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

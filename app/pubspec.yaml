@@ -44,6 +44,11 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  assets:
+    # ⚠ 더미 사진 — 화면 검토용. M1에서 TourAPI 관광사진으로 교체한다.
+    #   출처 Lorem Picsum(Unsplash 라이선스). 제출물에는 실데이터 사진을 쓴다.
+    - assets/images/
+
   # Pretendard — 앱 전체 단일 서체 (CLAUDE.md 서체 규칙).
   # 이동 중 화면도 여행기도 전부 이 고딕 하나. 명조 안 씀.
   # SIL OFL 1.1 · assets/fonts/OFL.txt 동봉

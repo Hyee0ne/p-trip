@@ -386,7 +386,7 @@ class _DiscoveryCard extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            SpotImage(type: d.spot.type, radius: 0),
+            SpotImage(type: d.spot.type, spotId: d.spot.id, radius: 0),
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(

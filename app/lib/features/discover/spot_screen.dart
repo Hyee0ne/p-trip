@@ -98,7 +98,13 @@ class _Body extends ConsumerWidget {
   }
 
   Widget _hero(BuildContext context) {
-    return SpotImage(type: spot.type, height: 250, width: double.infinity, radius: 0);
+    return SpotImage(
+      type: spot.type,
+      spotId: spot.id,
+      height: 250,
+      width: double.infinity,
+      radius: 0,
+    );
   }
 
   Widget _floatingBar(BuildContext context) {

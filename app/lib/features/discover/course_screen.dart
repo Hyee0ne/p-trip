@@ -333,7 +333,7 @@ class _MiniFullBleed extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          SpotImage(type: spot.type, radius: 18),
+          SpotImage(type: spot.type, spotId: spot.id, radius: 18),
           const DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
