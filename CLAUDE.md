@@ -102,6 +102,18 @@ p-trip/
     다르면 실행을 거부한다. 검증: `cd pipeline && npm run guard`
   - 자세한 규칙은 `supabase/README.md`
 
+## 빌드 주의사항
+
+- **시뮬레이터 ↔ 실기기 빌드를 번갈아 할 땐 사이에 `flutter clean`.**
+  `objective_c.framework`(네이티브 에셋)가 시뮬레이터용 x86_64 슬라이스를 품은 채
+  기기 빌드로 넘어가 설치가 거부된다 (`invalid signature`).
+  증상: `Failed to verify code signature ... 0xe8008014`
+- 화면 확인용 주입 — `--dart-define=START_AT=/radar` (시작 화면),
+  `--dart-define=AUTO_CARD=false` (레이더 발견 카드 자동 노출 끄기). 시연 리허설에도 쓴다.
+- **화면 작업은 스크린샷으로 확인하기 전까지 완료가 아니다.**
+  `flutter analyze`와 위젯 테스트는 레이아웃 깨짐을 전혀 못 잡는다.
+  `xcrun simctl io <sim> screenshot`으로 눈으로 볼 것.
+
 ## 자주 쓰는 명령
 
 ```bash
