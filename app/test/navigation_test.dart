@@ -12,7 +12,10 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(const ProviderScope(child: PTripApp()));
-    await tester.pumpAndSettle();
+    // ⚠ 홈 스토리 덱이 자동으로 넘어가므로 pumpAndSettle을 쓸 수 없다
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 120));
+    }
   }
 
   Future<void> toBrowse(WidgetTester tester) async {

@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>P의 여행 — 「한 곳씩」 재설계</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<style>
+:root{--bg:#F6FAFB;--ink:#15201F;--ink2:#5E6E70;--ink3:#9AA7A8;--line:#E7EEEF;--line2:#D6E2E4;
+ --rb:#1D4ED8;--green:#3E7C4F;--red:#C2452D;--sun:#E8A13D;--violet:#6D4AA8;
+ --sh:0 1px 2px rgba(30,70,80,.05),0 8px 22px rgba(30,70,80,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Pretendard Variable',Pretendard,-apple-system,sans-serif;background:#F1F3F2;
+ color:var(--ink);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+svg{display:block}
+.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.board{max-width:1340px;margin:0 auto;padding:54px 28px 96px}
+.bh h1{font-size:38px;font-weight:800;letter-spacing:-.035em}
+.bh .sub{font-size:16.5px;color:var(--ink2);margin-top:14px;max-width:700px;line-height:1.72}
+.bh .sub b{color:var(--ink)}
+.diag{margin-top:24px;padding:18px 20px;border-radius:16px;background:#fff;border:1px solid var(--line);max-width:700px}
+.diag .k{font-size:11px;font-weight:800;letter-spacing:.15em;color:var(--ink3)}
+.diag p{font-size:13.5px;color:var(--ink2);margin-top:9px;line-height:1.8}
+.diag p b{color:var(--ink)}
+.st{font-size:11.5px;font-weight:800;letter-spacing:.2em;color:var(--ink3);margin:70px 0 20px}
+.row{display:flex;flex-wrap:wrap;gap:30px;align-items:flex-start}
+.slot{width:340px}
+.slot .cap{font-size:12.5px;color:var(--ink2);margin-bottom:11px;line-height:1.5}
+.slot .cap b{color:var(--ink);font-size:13.5px}
+.note{margin-top:26px;padding:17px 19px;border-radius:14px;background:#fff;border:1px solid var(--line);
+ font-size:13.5px;color:var(--ink2);line-height:1.8;max-width:700px}
+.note b{color:var(--ink)}
+table{border-collapse:collapse;width:100%;max-width:700px;margin-top:14px;font-size:13px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-size:11px;letter-spacing:.08em;color:var(--ink3);font-weight:800}
+td b{color:var(--ink)}
+.ph{width:340px;height:706px;border-radius:32px;overflow:hidden;position:relative;background:var(--bg);
+ display:flex;flex-direction:column;box-shadow:0 14px 40px rgba(30,50,55,.14);border:1px solid var(--line)}
+.sb{height:42px;flex:none;display:flex;align-items:center;justify-content:space-between;
+ padding:0 20px 0 24px;font-size:13px;font-weight:650}
+.tbar{flex:none;height:66px;display:flex;padding-bottom:12px;background:rgba(255,255,255,.95);
+ border-top:1px solid var(--line)}
+.tb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;opacity:.34}
+.tb span{font-size:10px;font-weight:750}.tb.on{opacity:1;color:var(--rb)}
+.rb{display:inline-flex;align-items:center;justify-content:center;background:var(--rb);color:#fff;
+ font-weight:800;border-radius:999px;box-shadow:inset 0 0 0 1.5px #fff;height:21px;min-width:28px;padding:0 7px;font-size:11.5px;flex:none}
+.seg{display:inline-flex;background:#EAEFF0;border-radius:999px;padding:3px;gap:2px}
+.seg b{display:flex;align-items:center;gap:5px;height:30px;padding:0 12px;border-radius:999px;
+ font-size:12px;font-weight:750;color:var(--ink3)}
+.seg b.on{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(20,50,60,.14)}
+/* 카드 */
+.card{flex:1;margin:0 16px;border-radius:22px;overflow:hidden;position:relative;box-shadow:0 10px 28px rgba(20,50,60,.18)}
+.img{position:absolute;inset:0}
+.im-market{background:linear-gradient(150deg,#FFE3B0,#F0A85E 52%,#B85C33)}
+.im-rock{background:linear-gradient(160deg,#CFE6F2,#FCA97E 52%,#D4604F)}
+.im-sea{background:linear-gradient(180deg,#DEF4FB,#7FCCE8 50%,#2E7BA8)}
+.im-pine{background:linear-gradient(160deg,#DFF0D6,#8FBF96 52%,#44725A)}
+.scrim{position:absolute;inset:0;background:linear-gradient(to top,rgba(21,16,11,.95) 0%,rgba(21,16,11,.7) 26%,rgba(21,16,11,.15) 56%,transparent 78%)}
+.body{position:absolute;left:20px;right:20px;bottom:20px;color:#fff}
+.kicker{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 13px;border-radius:999px;
+ background:#fff;color:#15100B;font-size:12.5px;font-weight:800}
+.kicker i{width:7px;height:7px;border-radius:50%;display:block}
+.ttl{font-size:27px;font-weight:800;letter-spacing:-.04em;line-height:1.24;margin-top:12px}
+.sub{font-size:14px;opacity:.92;margin-top:9px;line-height:1.55}
+.meta{display:flex;align-items:center;gap:8px;margin-top:13px;font-size:11.5px;opacity:.85;font-weight:650}
+/* 진행 + 스와이프 힌트 */
+.prog{display:flex;gap:4px;padding:10px 16px 12px}
+.prog i{flex:1;height:3px;border-radius:2px;background:var(--line2);display:block}
+.prog i.on{background:var(--ink)}
+.swipe{position:absolute;right:14px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;
+ align-items:center;gap:5px;color:rgba(255,255,255,.72);font-size:9.5px;font-weight:700}
+/* 액션 바 */
+.acts{flex:none;display:flex;gap:10px;padding:14px 16px 10px;align-items:center}
+.heart{width:52px;height:52px;border-radius:999px;background:#fff;border:1px solid var(--line2);
+ display:flex;align-items:center;justify-content:center;color:var(--red);box-shadow:var(--sh);flex:none}
+.cta{flex:1;height:52px;border-radius:16px;background:var(--rb);color:#fff;display:flex;align-items:center;
+ justify-content:center;gap:7px;font-size:16px;font-weight:750;box-shadow:0 6px 18px rgba(29,78,216,.3)}
+/* 다크(레이더) */
+.dk{background:#12100D}
+.dk .sb{color:#F0EDE6}
+.circ{width:60px;height:60px;border-radius:999px;background:rgba(255,255,255,.17);
+ border:1.5px solid rgba(255,255,255,.37);display:flex;align-items:center;justify-content:center;color:#fff;flex:none}
+.circ.big{width:82px;height:82px;background:#fff;color:#15100B;border:none;flex-direction:column;gap:1px;
+ box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.circ.big span{font-size:11px;font-weight:800}
+</style>
+</head>
+<body>
+<svg style="display:none">
+<symbol id="heart" viewBox="0 0 24 24"><path d="M12 20s-7.4-4.6-7.4-9.5A4.1 4.1 0 0 1 12 7.6a4.1 4.1 0 0 1 7.4 2.9C19.4 15.4 12 20 12 20Z"/></symbol>
+<symbol id="close" viewBox="0 0 24 24"><path d="M6 6 18 18M18 6 6 18"/></symbol>
+<symbol id="loc" viewBox="0 0 24 24"><path d="M20.5 3.5 3.5 10.2l7 3.3 3.3 7Z"/></symbol>
+<symbol id="chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+<symbol id="up" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+<symbol id="road" viewBox="0 0 24 24"><path d="M4 21 7 3M20 21 17 3M12 4v3M12 11v3M12 18v3"/></symbol>
+<symbol id="radar" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12 18.4 5.6"/></symbol>
+<symbol id="user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20a7.6 7.6 0 0 1 14.4 0"/></symbol>
+<symbol id="cards" viewBox="0 0 24 24"><rect x="6" y="3.5" width="12" height="17" rx="2.6"/></symbol>
+<symbol id="grid" viewBox="0 0 24 24"><rect x="3.6" y="3.6" width="7.2" height="7.2" rx="1.6"/><rect x="13.2" y="3.6" width="7.2" height="7.2" rx="1.6"/><rect x="3.6" y="13.2" width="7.2" height="7.2" rx="1.6"/><rect x="13.2" y="13.2" width="7.2" height="7.2" rx="1.6"/></symbol>
+</svg>
+
+<div class="board">
+<header class="bh">
+  <h1>「한 곳씩」 재설계</h1>
+  <p class="sub">전면 카드는 스토리처럼 보이는데 <b>스토리처럼 동작하지 않았습니다.</b>
+    옆으로 넘길 수 없고, 아래 버튼 3개는 무엇을 하는 건지 애매했습니다.</p>
+  <div class="diag">
+    <div class="k">원인 — 운전 중 문법을 홈에 그대로 옮겼다</div>
+    <p>원형 아이콘 3개(✕ / 길안내 / 찜)는 <b>DR-02 레이더 카드의 문법</b>입니다.
+      운전 중엔 글자를 읽을 수 없고, 지금 결정해야 하고, 지나치면 끝이라 ✕가 의미를 갖습니다.<br>
+      홈은 <b>앉아서 계획하는 화면</b>이라 그 전제가 하나도 성립하지 않습니다.</p>
+    <table>
+      <tr><th></th><th>DR-02 (운전 중)</th><th>홈 「한 곳씩」 (계획 중)</th></tr>
+      <tr><td><b>✕</b></td><td>지나침 → 스쳐간 발견 적립</td><td>실제로 지나친 게 아닌데 적립돼 <b>기록이 오염</b></td></tr>
+      <tr><td><b>길안내</b></td><td>지금 들른다 → 내비 실행</td><td>아직 출발 전인데 <b>내비가 켜짐</b></td></tr>
+      <tr><td><b>찜</b></td><td>나중에 보기</td><td>유일하게 맞는 버튼</td></tr>
+    </table>
+  </div>
+</header>
+
+<div class="st">해결 — 스토리 문법을 제대로 준다</div>
+<div class="row">
+
+  <!-- ① 오늘만 스팟 카드 -->
+  <div class="slot"><div class="cap"><b>① 오늘만</b> — 시의성이 있는 발견<br>
+    위아래 스와이프로 넘긴다. ✕ 버튼은 없앤다.</div>
+  <div class="ph">
+    <div class="sb"><span>9:41</span><span style="opacity:.4">▮▮▮</span></div>
+    <div style="display:flex;align-items:center;gap:9px;padding:2px 16px 0">
+      <span class="rb" style="width:28px;min-width:28px;padding:0">P</span>
+      <span style="font-size:15.5px;font-weight:750;letter-spacing:-.03em">P의 여행</span>
+      <div class="seg" style="margin-left:auto">
+        <b class="on"><svg class="i" style="width:13px;height:13px"><use href="#cards"/></svg>한 곳씩</b>
+        <b><svg class="i" style="width:13px;height:13px"><use href="#grid"/></svg></b></div></div>
+    <div class="prog"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+    <div class="card">
+      <div class="img im-market"></div><div class="scrim"></div>
+      <div class="swipe"><svg class="i" style="width:15px;height:15px"><use href="#up"/></svg>넘기기</div>
+      <div class="body">
+        <span class="kicker"><i style="background:var(--red)"></i>오늘만 · 다음 장은 5일 뒤</span>
+        <div class="ttl">북평 5일장</div>
+        <div class="sub">3·8일에만 서요. 메밀전 부치는 냄새가 골목까지 납니다.</div>
+        <div class="meta"><span class="rb">7</span>동해 바닷길 · 국도에서 4분</div></div></div>
+    <div class="acts">
+      <div class="heart"><svg class="i"><use href="#heart"/></svg></div>
+      <div class="cta">이 길 보기<svg class="i" style="width:16px;height:16px"><use href="#chev"/></svg></div></div>
+    <nav class="tbar"><div class="tb on"><svg class="i"><use href="#road"/></svg><span>발견</span></div>
+      <div class="tb"><svg class="i"><use href="#radar"/></svg><span>레이더</span></div>
+      <div class="tb"><svg class="i"><use href="#user"/></svg><span>마이</span></div></nav>
+  </div></div>
+
+  <!-- ② 코스 카드 -->
+  <div class="slot"><div class="cap"><b>② 조용히 뜨는 길</b> — 코스 카드<br>
+    스팟만 흐르지 않는다. <b>코스와 노선도 카드가 된다.</b></div>
+  <div class="ph">
+    <div class="sb"><span>9:41</span><span style="opacity:.4">▮▮▮</span></div>
+    <div style="display:flex;align-items:center;gap:9px;padding:2px 16px 0">
+      <span class="rb" style="width:28px;min-width:28px;padding:0">P</span>
+      <span style="font-size:15.5px;font-weight:750;letter-spacing:-.03em">P의 여행</span>
+      <div class="seg" style="margin-left:auto">
+        <b class="on"><svg class="i" style="width:13px;height:13px"><use href="#cards"/></svg>한 곳씩</b>
+        <b><svg class="i" style="width:13px;height:13px"><use href="#grid"/></svg></b></div></div>
+    <div class="prog"><i></i><i></i><i class="on"></i><i></i><i></i></div>
+    <div class="card">
+      <div class="img im-sea"></div><div class="scrim"></div>
+      <div class="body">
+        <span class="kicker"><i style="background:var(--sun)"></i>지난주보다 검색 +38%</span>
+        <div class="ttl">동해 바닷길</div>
+        <div class="sub">삼척에서 강릉까지, 바다만 보고 달리는 길.<br>오늘 이 길에 장이 섭니다.</div>
+        <div class="meta"><span class="rb">7</span>86km · 발견 9곳 · 순수 주행 2:10</div></div></div>
+    <div class="acts">
+      <div class="heart"><svg class="i"><use href="#heart"/></svg></div>
+      <div class="cta">이 코스 보기<svg class="i" style="width:16px;height:16px"><use href="#chev"/></svg></div></div>
+    <nav class="tbar"><div class="tb on"><svg class="i"><use href="#road"/></svg><span>발견</span></div>
+      <div class="tb"><svg class="i"><use href="#radar"/></svg><span>레이더</span></div>
+      <div class="tb"><svg class="i"><use href="#user"/></svg><span>마이</span></div></nav>
+  </div></div>
+
+  <!-- ③ 노선 카드 -->
+  <div class="slot"><div class="cap"><b>③ 국도 자체</b> — 노선 카드<br>
+    "51선 중 3선째" 수집 서사를 여기서 꺼낸다.</div>
+  <div class="ph">
+    <div class="sb"><span>9:41</span><span style="opacity:.4">▮▮▮</span></div>
+    <div style="display:flex;align-items:center;gap:9px;padding:2px 16px 0">
+      <span class="rb" style="width:28px;min-width:28px;padding:0">P</span>
+      <span style="font-size:15.5px;font-weight:750;letter-spacing:-.03em">P의 여행</span>
+      <div class="seg" style="margin-left:auto">
+        <b class="on"><svg class="i" style="width:13px;height:13px"><use href="#cards"/></svg>한 곳씩</b>
+        <b><svg class="i" style="width:13px;height:13px"><use href="#grid"/></svg></b></div></div>
+    <div class="prog"><i></i><i></i><i></i><i></i><i class="on"></i></div>
+    <div class="card">
+      <div class="img im-pine"></div><div class="scrim"></div>
+      <div class="body">
+        <span class="kicker"><i style="background:var(--rb)"></i>아직 안 달린 길</span>
+        <div class="ttl">44번 국도<br>한계령길</div>
+        <div class="sub">고개 하나 넘으면 바다가 나옵니다.<br>51선 중 3선째 — 이 길이 네 번째가 됩니다.</div>
+        <div class="meta"><span class="rb">44</span>양평–양양 · 138km</div></div></div>
+    <div class="acts">
+      <div class="heart"><svg class="i"><use href="#heart"/></svg></div>
+      <div class="cta">이 길 보기<svg class="i" style="width:16px;height:16px"><use href="#chev"/></svg></div></div>
+    <nav class="tbar"><div class="tb on"><svg class="i"><use href="#road"/></svg><span>발견</span></div>
+      <div class="tb"><svg class="i"><use href="#radar"/></svg><span>레이더</span></div>
+      <div class="tb"><svg class="i"><use href="#user"/></svg><span>마이</span></div></nav>
+  </div></div>
+
+  <!-- ④ 대비: DR-02 -->
+  <div class="slot"><div class="cap"><b>④ DR-02 레이더</b> — 여긴 그대로 둔다<br>
+    운전 중이라 <b>원형 3개가 맞다.</b> 홈과 문법이 달라야 한다.</div>
+  <div class="ph dk">
+    <div class="sb"><span>18:44</span><span style="opacity:.4">▮▮▮</span></div>
+    <div style="flex:1;position:relative">
+      <div class="img im-rock"></div>
+      <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(18,16,13,.6),transparent 24%,transparent 42%,rgba(18,16,13,.92) 84%)"></div>
+      <div style="position:absolute;top:6px;left:18px;right:18px;display:flex;align-items:center;gap:9px;color:#fff">
+        <span class="rb">7</span><span style="font-size:12px;font-weight:700;opacity:.9">7번 국도 61km 기록 중</span></div>
+      <div style="position:absolute;left:20px;right:20px;bottom:120px;color:#fff">
+        <span class="kicker"><i style="background:var(--green)"></i>일몰 40분 전 · 국도에서 6분</span>
+        <div class="ttl" style="font-size:30px;margin-top:14px">곧 추암 촛대바위에<br>해가 져요</div>
+        <div class="sub" style="font-size:15px">바위 사이로 해가 떨어지는 걸 보려고<br>새벽에도 옵니다.</div></div>
+      <div style="position:absolute;left:0;right:0;bottom:22px;display:flex;justify-content:center;align-items:center;gap:18px">
+        <div class="circ"><svg class="i" style="width:25px;height:25px"><use href="#close"/></svg></div>
+        <div class="circ big"><svg class="i" style="width:25px;height:25px"><use href="#loc"/></svg><span>들르기</span></div>
+        <div class="circ"><svg class="i" style="width:25px;height:25px"><use href="#heart"/></svg></div></div>
+    </div>
+  </div></div>
+</div>
+
+<div class="st">규칙</div>
+<div class="note">
+  <b>1. 스와이프가 넘기기다. ✕ 버튼을 없앤다.</b><br>
+  스토리처럼 보이면 스토리처럼 동작해야 합니다. <b>위아래 스와이프</b>로 넘깁니다 —
+  좌우가 아닌 이유는 iOS의 뒤로가기 스와이프와 부딪히기 때문입니다.
+  넘긴 건 <b>아무것도 기록하지 않습니다.</b> 앉아서 훑어본 걸 '스쳐간 발견'에 넣으면 기록이 오염됩니다.<br><br>
+
+  <b>2. 홈에는 글자 있는 버튼을 쓴다.</b><br>
+  원형 아이콘 버튼은 <b>글자를 읽을 수 없는 상황(운전 중)의 문법</b>입니다.
+  홈에서는 읽을 수 있으니 "이 길 보기"라고 적힌 넓은 버튼이 맞습니다. 애매함이 사라집니다.<br><br>
+
+  <b>3. 액션은 둘뿐이다 — 찜, 그리고 이 길 보기.</b><br>
+  주 버튼은 <b>코스 상세(CO-02)로 보냅니다.</b> 홈의 목적은 '오늘 떠날 이유'를 주는 것이고,
+  그 다음 단계는 코스를 고르고 거점을 정하는 것입니다. 길안내는 이 자리에 없습니다 — 아직 출발 전입니다.<br><br>
+
+  <b>4. 카드에 스팟만 흐르지 않는다.</b><br>
+  <b>스팟 · 코스 · 노선</b> 세 종류가 섞여 흐릅니다. 큐레이션 3축이 그대로 카드 종류가 됩니다.
+  덕분에 "51선 중 3선째" 같은 <b>수집 서사</b>도 카드로 꺼낼 수 있습니다.<br><br>
+
+  <b>5. 카드 탭 = 자세히.</b> 스팟이면 CO-03, 코스면 CO-02, 노선이면 CO-07로 갑니다.
+</div>
+
+<div class="st">전면 카드가 큐레이션에서 갖는 힘</div>
+<div class="note">
+  <b>비교 피로가 없습니다.</b> 목록은 "이것 말고 저게 나을까"를 계속 시킵니다.
+  한 곳씩은 그 판단을 없애고 <b>이 하나에 반응할지만</b> 묻습니다.<br><br>
+  <b>그래서 앱이 과감해질 수 있습니다.</b> 넘기는 비용이 0이니
+  "오늘 장날인 시장" 같은 <b>취향에 안 맞을 수도 있는 제안</b>을 앞에 낼 수 있습니다.
+  목록이었다면 묻혔을 것들입니다.<br><br>
+  <b>사진이 설득합니다.</b> 국도변 소도시는 이름으로는 아무 감흥이 없습니다.
+  화면을 채운 사진 한 장이 "여기 가볼까"를 만듭니다. 목록의 118px 썸네일로는 안 되는 일입니다.
+</div>
+
+<footer style="margin-top:56px;padding-top:22px;border-top:1px solid var(--line2);font-size:12.5px;
+ color:var(--ink3);line-height:1.85">
+  P의 여행 · 「한 곳씩」 재설계 · 2026.08.28<br>
+  기존 UI 언어 — <code>P의여행_시안_C보완.html</code>
+</footer>
+</div>
+</body>
+</html>

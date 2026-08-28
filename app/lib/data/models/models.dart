@@ -225,3 +225,139 @@ class Discovery {
   final String situation;
   final String body;
 }
+
+/// 「한 곳씩」 덱에 흐르는 카드 (SCREENS.md CO-01 A).
+///
+/// ⚠ 스팟만 흐르지 않는다. 큐레이션 3축이 그대로 카드 종류가 된다 —
+///   오늘만(스팟) · 조용히 뜨는 길(코스) · 아직 안 달린 길(노선).
+sealed class CurationCard {
+  const CurationCard({
+    required this.kicker,
+    required this.kickerColor,
+    required this.title,
+    required this.body,
+    required this.meta,
+    required this.ctaLabel,
+    required this.route,
+    required this.imageKey,
+    required this.type,
+  });
+
+  /// 카드 상단 흰 알약 문구. "오늘만 · 다음 장은 5일 뒤"
+  final String kicker;
+
+  /// 알약 앞 점 색 — 시의성을 색으로 먼저 알린다.
+  final CardAccent kickerColor;
+
+  final String title;
+  final String body;
+
+  /// RouteBadge 옆 한 줄. "동해 바닷길 · 국도에서 4분"
+  final String meta;
+
+  /// 주 버튼 문구. "이 길 보기" / "이 코스 보기"
+  final String ctaLabel;
+
+  /// 주 버튼이 가는 곳.
+  final String route;
+
+  /// `assets/images/<imageKey>.jpg`
+  final String imageKey;
+
+  /// 사진이 없을 때 쓸 유형색.
+  final SpotType type;
+
+  /// 카드 전체를 탭했을 때 가는 곳 (자세히).
+  String get detailRoute;
+
+  /// 노선 뱃지에 쓸 번호.
+  int get routeId;
+}
+
+enum CardAccent { today, rising, tracks, route }
+
+class SpotCurationCard extends CurationCard {
+  const SpotCurationCard({
+    required this.spot,
+    required super.kicker,
+    required super.kickerColor,
+    required super.body,
+    required super.meta,
+    required super.route,
+  }) : super(title: '', ctaLabel: '이 길 보기', imageKey: '', type: SpotType.attraction);
+
+  final Spot spot;
+
+  @override
+  String get title => spot.name;
+  @override
+  String get imageKey => spot.id;
+  @override
+  SpotType get type => spot.type;
+  @override
+  int get routeId => spot.routeId;
+  @override
+  String get detailRoute => '/spot/${spot.id}';
+}
+
+class CourseCurationCard extends CurationCard {
+  const CourseCurationCard({
+    required this.course,
+    required this.coverKey,
+    required super.kicker,
+    required super.body,
+    required super.meta,
+  }) : super(
+         kickerColor: CardAccent.rising,
+         title: '',
+         ctaLabel: '이 코스 보기',
+         route: '',
+         imageKey: '',
+         type: SpotType.attraction,
+       );
+
+  final Course course;
+
+  /// 표지로 쓸 스팟 사진 키.
+  final String coverKey;
+
+  @override
+  String get title => course.title;
+  @override
+  String get imageKey => coverKey;
+  @override
+  int get routeId => course.routeId;
+  @override
+  String get route => '/course/${course.id}';
+  @override
+  String get detailRoute => '/course/${course.id}';
+}
+
+class RouteCurationCard extends CurationCard {
+  const RouteCurationCard({
+    required this.line,
+    required this.coverKey,
+    required super.kicker,
+    required super.body,
+    required super.meta,
+  }) : super(
+         kickerColor: CardAccent.route,
+         title: '',
+         ctaLabel: '이 길 보기',
+         route: '/routes',
+         imageKey: '',
+         type: SpotType.view,
+       );
+
+  final RouteLine line;
+  final String coverKey;
+
+  @override
+  String get title => '${line.id}번 국도\n${line.name}';
+  @override
+  String get imageKey => coverKey;
+  @override
+  int get routeId => line.id;
+  @override
+  String get detailRoute => '/routes';
+}

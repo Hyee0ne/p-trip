@@ -11,9 +11,17 @@ import 'package:p_trip/core/view_mode.dart';
 import 'package:p_trip/main.dart';
 
 void main() {
+  /// ⚠ 홈의 스토리 덱은 7초마다 자동으로 넘어간다 — 끝나지 않는 애니메이션이라
+  ///   `pumpAndSettle`을 쓰면 영원히 안 끝난다. 프레임을 몇 개만 돌린다.
+  Future<void> settleHome(WidgetTester tester) async {
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 120));
+    }
+  }
+
   Future<void> pumpApp(WidgetTester tester) async {
     await tester.pumpWidget(const ProviderScope(child: PTripApp()));
-    await tester.pumpAndSettle();
+    await settleHome(tester);
   }
 
   testWidgets('3탭 셸이 뜨고 발견 탭이 기본 선택된다', (tester) async {
@@ -124,6 +132,8 @@ class _EmptyRepo implements DiscoverRepository {
       const [];
   @override
   Future<List<Spot>> nextVisits(String spotId) async => const [];
+  @override
+  Future<List<CurationCard>> curationDeck() async => const [];
   @override
   Future<List<Discovery>> radarQueue() async => const [];
   @override

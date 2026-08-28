@@ -24,6 +24,9 @@ abstract interface class DiscoverRepository {
   /// '들른 차들은 다음에' — 연관 관광지(TECH_SPEC spot_links).
   Future<List<Spot>> nextVisits(String spotId);
 
+  /// 「한 곳씩」 덱 — 스팟·코스·노선이 섞여 흐른다.
+  Future<List<CurationCard>> curationDeck();
+
   /// 레이더 발견 큐 — 데모 모드에서 순서대로 흘러나온다.
   Future<List<Discovery>> radarQueue();
 

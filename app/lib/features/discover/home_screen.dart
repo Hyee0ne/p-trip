@@ -11,6 +11,7 @@ import '../../core/widgets/route_badge.dart';
 import '../../core/widgets/view_toggle.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/providers.dart';
+import 'story_deck.dart';
 
 /// CO-01 홈 — 뷰 모드 2개 (SCREENS.md CO-01).
 ///
@@ -56,18 +57,12 @@ class _Header extends StatelessWidget {
 }
 
 // ── A. 한 곳씩 ────────────────────────────────────────────────
-class _OneByOne extends ConsumerStatefulWidget {
+class _OneByOne extends ConsumerWidget {
   const _OneByOne();
-  @override
-  ConsumerState<_OneByOne> createState() => _OneByOneState();
-}
-
-class _OneByOneState extends ConsumerState<_OneByOne> {
-  int _index = 0;
 
   @override
-  Widget build(BuildContext context) {
-    final async = ref.watch(axisSpotsProvider(CurationAxis.today));
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(curationDeckProvider);
     return Column(
       children: [
         const _Header(),
@@ -75,63 +70,10 @@ class _OneByOneState extends ConsumerState<_OneByOne> {
           child: async.when(
             loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
             error: (_, _) => const _ErrorState(),
-            data: (spots) {
-              if (spots.isEmpty) return const _EmptyState();
-              final i = _index.clamp(0, spots.length - 1);
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(AppSpace.gutter, 14, AppSpace.gutter, 10),
-                child: Column(
-                  children: [
-                    _Progress(count: spots.length, index: i),
-                    const SizedBox(height: 14),
-                    Expanded(
-                      child: FullBleedSpotCard(
-                        key: ValueKey(spots[i].id),
-                        spot: spots[i],
-                        routeName: '${spots[i].routeId}번 국도',
-                        showActions: false,
-                      ),
-                    ),
-                    // 액션은 카드 밖 밝은 배경 위에 (시안 C안)
-                    const SizedBox(height: 18),
-                    DiscoveryActions(
-                      spotId: spots[i].id,
-                      onLight: true,
-                      onVisit: () => context.go('/spot/${spots[i].id}'),
-                      onSkip: () => setState(() => _index = i + 1),
-                      onSave: () => setState(() => _index = i + 1),
-                    ),
-                  ],
-                ),
-              );
-            },
+            data: (cards) => cards.isEmpty ? const _EmptyState() : StoryDeck(cards: cards),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _Progress extends StatelessWidget {
-  const _Progress({required this.count, required this.index});
-  final int count;
-  final int index;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: List.generate(count, (i) {
-        return Expanded(
-          child: Container(
-            height: 3,
-            margin: EdgeInsets.only(right: i == count - 1 ? 0 : 4),
-            decoration: BoxDecoration(
-              color: i == index ? AppColors.ink : AppColors.line2,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-        );
-      }),
     );
   }
 }

@@ -21,7 +21,10 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       await tester.pumpWidget(const ProviderScope(child: PTripApp()));
-      await tester.pumpAndSettle();
+      // ⚠ 스토리 덱이 자동으로 넘어가므로 pumpAndSettle을 쓸 수 없다
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 120));
+      }
       expect(tester.takeException(), isNull, reason: '한 곳씩 모드에서 오버플로');
 
       await tester.tap(find.byIcon(Icons.grid_view_rounded));

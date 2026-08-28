@@ -82,3 +82,7 @@ final savedSpotsProvider = FutureProvider.family<List<Spot>, Set<String>>((ref, 
   }
   return out;
 });
+
+final curationDeckProvider = FutureProvider<List<CurationCard>>(
+  (ref) => ref.watch(discoverRepositoryProvider).curationDeck(),
+);

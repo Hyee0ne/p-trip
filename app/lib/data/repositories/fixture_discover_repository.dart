@@ -216,6 +216,55 @@ class FixtureDiscoverRepository implements DiscoverRepository {
   Future<List<Spot>> nextVisits(String spotId) async =>
       _spots.where((s) => s.id != spotId && s.trustScore >= 80).toList();
 
+  // ── 「한 곳씩」 덱 ──
+  //
+  // 큐레이션 3축이 카드 종류가 된다: 오늘만(스팟) · 조용히 뜨는 길(코스) · 아직 안 달린 길(노선).
+  // 한 종류만 연달아 나오지 않게 섞어서 낸다.
+  @override
+  Future<List<CurationCard>> curationDeck() async {
+    Spot byId(String id) => _spots.firstWhere((s) => s.id == id);
+    return [
+      SpotCurationCard(
+        spot: byId('bukpyeong-market'),
+        kicker: '오늘만 · 다음 장은 5일 뒤',
+        kickerColor: CardAccent.today,
+        body: '3·8일에만 서요. 메밀전 부치는 냄새가 골목까지 납니다.',
+        meta: '동해 바닷길 · 국도에서 4분',
+        route: '/course/donghae-sea',
+      ),
+      CourseCurationCard(
+        course: _courses.firstWhere((c) => c.id == 'donghae-sea'),
+        coverKey: 'samcheok-beach',
+        kicker: '지난주보다 검색 +38%',
+        body: '삼척에서 강릉까지, 바다만 보고 달리는 길.\n오늘 이 길에 장이 섭니다.',
+        meta: '86km · 발견 9곳 · 순수 주행 2:10',
+      ),
+      SpotCurationCard(
+        spot: byId('chuam-chotdae'),
+        kicker: '오늘 일몰 19:24',
+        kickerColor: CardAccent.today,
+        body: '바위 사이로 해가 떨어지는 걸 보려고 새벽에도 옵니다.',
+        meta: '동해 바닷길 · 국도에서 6분',
+        route: '/course/donghae-sea',
+      ),
+      SpotCurationCard(
+        spot: byId('nongol-mural'),
+        kicker: '차량 유입이 늘고 있어요',
+        kickerColor: CardAccent.tracks,
+        body: '언덕을 따라 그려진 벽화 골목. 들른 차들은 다음에 묵호등대로 갔어요.',
+        meta: '동해 바닷길 · 국도에서 8분',
+        route: '/course/donghae-sea',
+      ),
+      RouteCurationCard(
+        line: _routes.firstWhere((r) => r.id == 44),
+        coverKey: 'jeongdongjin',
+        kicker: '아직 안 달린 길',
+        body: '고개 하나 넘으면 바다가 나옵니다.\n51선 중 3선째 — 이 길이 네 번째가 됩니다.',
+        meta: '양평–양양 · 138km',
+      ),
+    ];
+  }
+
   // ── 레이더 발견 큐 (DR-02) ──
   @override
   Future<List<Discovery>> radarQueue() async => const [
