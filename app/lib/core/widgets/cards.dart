@@ -66,7 +66,7 @@ class SpotGridCard extends StatelessWidget {
                 right: 2,
                 top: 2,
                 child: HeartButton(
-                  spotId: spot.id,
+                  target: SaveRef.spot(spot.id),
                   iconSize: 15,
                   chipSize: 30,
                   color: AppColors.ink2,
@@ -144,7 +144,7 @@ class SpotListRow extends StatelessWidget {
                 ],
               ),
             ),
-            HeartButton(spotId: spot.id),
+            HeartButton(target: SaveRef.spot(spot.id)),
           ],
         ),
       ),
@@ -325,7 +325,7 @@ class DiscoveryActions extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final primary = drive ? AppTouch.drivePrimary : 62.0;
     final secondary = drive ? AppTouch.driveSecondary : 50.0;
-    final liked = ref.watch(savesProvider).isLiked(spotId);
+    final liked = ref.watch(savesProvider).isLiked(SaveRef.spot(spotId));
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -338,7 +338,7 @@ class DiscoveryActions extends ConsumerWidget {
           liked ? Icons.favorite : Icons.favorite_border,
           secondary,
           () {
-            final added = ref.read(savesProvider.notifier).toggleLike(spotId);
+            final added = ref.read(savesProvider.notifier).toggleLike(SaveRef.spot(spotId));
             if (added) showAppToast(context, S.toastSaved);
             onSave?.call();
           },

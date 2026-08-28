@@ -28,8 +28,10 @@ class _MyScreenState extends ConsumerState<MyScreen> {
   Widget build(BuildContext context) {
     final saves = ref.watch(savesProvider);
     final tripsAsync = ref.watch(tripsProvider);
-    final ids = _showPassed ? saves.passed : saves.liked;
-    final spotsAsync = ref.watch(savedSpotsProvider(ids));
+    // 목록에는 스팟만 띄운다. 코스·노선 찜은 아래 별도 섹션이 필요하지만
+    // 지금은 개수만 세고 목록은 M4에서 붙인다.
+    final spotIds = saves.idsOf(SaveTargetKind.spot, passedOnly: _showPassed);
+    final spotsAsync = ref.watch(savedSpotsProvider(spotIds));
 
     return Scaffold(
       backgroundColor: AppColors.bg,

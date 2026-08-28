@@ -152,7 +152,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
                         _advance(saved: true);
                       },
                       onSave: () {
-                        ref.read(savesProvider.notifier).toggleLike(current.spot.id);
+                        ref.read(savesProvider.notifier).toggleLike(SaveRef.spot(current.spot.id));
                         showAppToast(context, S.toastSaved);
                         _advance(saved: true);
                       },

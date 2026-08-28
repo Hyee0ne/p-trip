@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/saves.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/cards.dart';
@@ -126,7 +127,7 @@ class _Body extends ConsumerWidget {
           btn(Icons.arrow_back_ios_new, () => context.pop()),
           const Spacer(),
           HeartButton(
-            spotId: spot.id,
+            target: SaveRef.spot(spot.id),
             iconSize: 20,
             chipSize: 38,
             tapSize: 44,

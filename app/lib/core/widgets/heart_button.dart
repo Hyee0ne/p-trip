@@ -14,7 +14,7 @@ import 'app_toast.dart';
 class HeartButton extends ConsumerWidget {
   const HeartButton({
     super.key,
-    required this.spotId,
+    required this.target,
     this.iconSize = 15,
     this.tapSize = 44,
     this.chipSize,
@@ -23,7 +23,8 @@ class HeartButton extends ConsumerWidget {
     this.onToggle,
   });
 
-  final String spotId;
+  /// 스팟·코스·노선 무엇이든 담을 수 있다.
+  final SaveRef target;
 
   /// 아이콘 자체 크기.
   final double iconSize;
@@ -40,7 +41,7 @@ class HeartButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final liked = ref.watch(savesProvider).isLiked(spotId);
+    final liked = ref.watch(savesProvider).isLiked(target);
     final icon = Icon(
       liked ? Icons.favorite : Icons.favorite_border,
       size: iconSize,
@@ -54,7 +55,7 @@ class HeartButton extends ConsumerWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () {
-          final added = ref.read(savesProvider.notifier).toggleLike(spotId);
+          final added = ref.read(savesProvider.notifier).toggleLike(target);
           if (added) showAppToast(context, S.toastSaved);
           onToggle?.call();
         },

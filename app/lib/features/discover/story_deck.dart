@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/saves.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/heart_button.dart';
 import '../../core/widgets/route_badge.dart';
@@ -303,31 +304,36 @@ class _Actions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final spotId = card is SpotCurationCard ? (card as SpotCurationCard).spot.id : null;
+    // ⚠ 카드 종류와 상관없이 담을 수 있다. 스팟만 되던 건 구현 한계였지
+    //   설계가 아니었다 (TECH_SPEC §2 saves.spot_id | course_id).
+    final target = switch (card) {
+      SpotCurationCard(:final spot) => SaveRef.spot(spot.id),
+      CourseCurationCard(:final course) => SaveRef.course(course.id),
+      RouteCurationCard(:final line) => SaveRef.route(line.id),
+    };
     return Padding(
       padding: const EdgeInsets.fromLTRB(AppSpace.gutter, 14, AppSpace.gutter, 10),
       child: Row(
         children: [
-          if (spotId != null)
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.line2),
-                boxShadow: AppShadow.card,
-              ),
-              child: Center(
-                child: HeartButton(
-                  spotId: spotId,
-                  iconSize: 21,
-                  tapSize: 52,
-                  color: AppColors.marketRed,
-                ),
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.line2),
+              boxShadow: AppShadow.card,
+            ),
+            child: Center(
+              child: HeartButton(
+                target: target,
+                iconSize: 21,
+                tapSize: 52,
+                color: AppColors.marketRed,
               ),
             ),
-          if (spotId != null) const SizedBox(width: 10),
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: SizedBox(
               height: 52,
