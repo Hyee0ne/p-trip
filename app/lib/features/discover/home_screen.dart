@@ -146,16 +146,19 @@ class _BrowseState extends ConsumerState<_Browse> {
             key: const Key('browse-list'),
             padding: const EdgeInsets.only(bottom: 24),
             children: [
-              _axisSection(CurationAxis.today, S.secToday),
-              _axisSection(CurationAxis.rising, S.secRising),
-              _axisSection(CurationAxis.tracks, S.secTracks),
-              const SizedBox(height: 30),
+              // 국도부터 고르기가 맨 위 — 목적지가 아니라 '길'을 고르는 게
+              // 이 앱의 진입 문법이다 (기획문서 CO-07)
+              const SizedBox(height: 22),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: AppSpace.gutter),
                 child: SectionLabel(S.secRoutes),
               ),
               const SizedBox(height: 14),
               const _RouteRail(),
+              _axisSection(CurationAxis.today, S.secToday),
+              _axisSection(CurationAxis.rising, S.secRising),
+              _axisSection(CurationAxis.tracks, S.secTracks),
+              const SizedBox(height: 30),
             ],
           ),
         ),
