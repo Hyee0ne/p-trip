@@ -6,6 +6,7 @@ import '../../core/saves.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/cards.dart';
+import '../../core/widgets/heart_button.dart';
 import '../../core/widgets/route_badge.dart';
 import '../../core/widgets/spot_image.dart';
 import '../../data/models/models.dart';
@@ -28,10 +29,16 @@ class _MyScreenState extends ConsumerState<MyScreen> {
   Widget build(BuildContext context) {
     final saves = ref.watch(savesProvider);
     final tripsAsync = ref.watch(tripsProvider);
-    // 목록에는 스팟만 띄운다. 코스·노선 찜은 아래 별도 섹션이 필요하지만
-    // 지금은 개수만 세고 목록은 M4에서 붙인다.
-    final spotIds = saves.idsOf(SaveTargetKind.spot, passedOnly: _showPassed);
-    final spotsAsync = ref.watch(savedSpotsProvider(spotIds));
+    final spotsAsync = ref.watch(
+      savedSpotsProvider(saves.idsOf(SaveTargetKind.spot, passedOnly: _showPassed)),
+    );
+    // 코스·노선도 찜 대상이다 (TECH_SPEC §2). 스쳐간 발견은 스팟에만 있는 개념이라 제외.
+    final coursesAsync = ref.watch(
+      savedCoursesProvider(_showPassed ? const {} : saves.idsOf(SaveTargetKind.course)),
+    );
+    final routesAsync = ref.watch(
+      savedRoutesProvider(_showPassed ? const {} : saves.idsOf(SaveTargetKind.route)),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -48,6 +55,8 @@ class _MyScreenState extends ConsumerState<MyScreen> {
             _savedTabs(saves),
             const SizedBox(height: AppSpace.x3),
             _savedList(spotsAsync),
+            _savedCourses(coursesAsync),
+            _savedRoutes(routesAsync),
             const SizedBox(height: AppSpace.x8),
             _tripsSection(tripsAsync),
             const SizedBox(height: AppSpace.x8),
@@ -239,6 +248,102 @@ class _MyScreenState extends ConsumerState<MyScreen> {
                 if (i != spots.length - 1)
                   const Divider(height: 1, thickness: 1, color: AppColors.line),
               ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// 찜한 코스 — 리스트 행. 스팟과 구분되게 노선 뱃지를 앞에 둔다.
+  Widget _savedCourses(AsyncValue<List<Course>> async) {
+    return async.maybeWhen(
+      orElse: () => const SizedBox.shrink(),
+      data: (courses) {
+        if (courses.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.x5, AppSpace.gutter, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SectionLabel('찜한 코스'),
+              const SizedBox(height: AppSpace.x2),
+              for (final c in courses)
+                InkWell(
+                  onTap: () => context.push('/course/${c.id}'),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    child: Row(
+                      children: [
+                        RouteBadge('${c.routeId}', size: BadgeSize.sm),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(c.title, style: AppType.title.copyWith(fontSize: 14.5)),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${c.startName} → ${c.endName} · ${c.distanceKm}km',
+                                style: const TextStyle(fontSize: 12.5, color: AppColors.ink2),
+                              ),
+                            ],
+                          ),
+                        ),
+                        HeartButton(target: SaveRef.course(c.id), iconSize: 16),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// 찜한 노선 — 코스가 아직 없는 길의 '출시 알림' 대체 (SCREENS.md CO-07).
+  Widget _savedRoutes(AsyncValue<List<RouteLine>> async) {
+    return async.maybeWhen(
+      orElse: () => const SizedBox.shrink(),
+      data: (routes) {
+        if (routes.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.x5, AppSpace.gutter, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SectionLabel('찜한 국도', trailing: '코스가 열리면 알려드려요'),
+              const SizedBox(height: AppSpace.x3),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  for (final r in routes)
+                    GestureDetector(
+                      onTap: () => context.push('/routes'),
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(10, 8, 14, 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(AppRadius.chip),
+                          border: Border.all(color: AppColors.line2),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            RouteBadge('${r.id}', size: BadgeSize.sm),
+                            const SizedBox(width: 8),
+                            Text(
+                              r.name,
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
         );

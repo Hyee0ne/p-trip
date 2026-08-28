@@ -86,3 +86,20 @@ final savedSpotsProvider = FutureProvider.family<List<Spot>, Set<String>>((ref, 
 final curationDeckProvider = FutureProvider<List<CurationCard>>(
   (ref) => ref.watch(discoverRepositoryProvider).curationDeck(),
 );
+
+/// 찜한 코스 (MY-01).
+final savedCoursesProvider = FutureProvider.family<List<Course>, Set<String>>((ref, ids) async {
+  final repo = ref.watch(discoverRepositoryProvider);
+  final out = <Course>[];
+  for (final id in ids) {
+    final c = await repo.course(id);
+    if (c != null) out.add(c);
+  }
+  return out;
+});
+
+/// 찜한 노선 (MY-01). 코스가 아직 없는 노선의 '출시 알림' 대체다 (SCREENS.md CO-07).
+final savedRoutesProvider = FutureProvider.family<List<RouteLine>, Set<String>>((ref, ids) async {
+  final all = await ref.watch(discoverRepositoryProvider).routes();
+  return all.where((r) => ids.contains('${r.id}')).toList();
+});

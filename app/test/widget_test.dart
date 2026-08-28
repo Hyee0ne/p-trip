@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:p_trip/core/saves.dart';
 import 'package:p_trip/core/strings.dart';
 import 'package:p_trip/core/widgets/chips.dart';
 import 'package:p_trip/data/models/models.dart';
@@ -103,6 +104,42 @@ void main() {
     expect(find.text(S.secToday), findsNothing);
     expect(find.text(S.secRising), findsNothing);
     expect(find.text(S.secTracks), findsNothing);
+  });
+
+  test('찜은 스팟·코스·노선을 모두 담는다', () {
+    final c = ProviderContainer();
+    addTearDown(c.dispose);
+    final n = c.read(savesProvider.notifier);
+
+    expect(n.toggleLike(const SaveRef.spot('bukpyeong-market')), isTrue);
+    expect(n.toggleLike(const SaveRef.course('donghae-sea')), isTrue);
+    expect(n.toggleLike(SaveRef.route(44)), isTrue);
+
+    final s = c.read(savesProvider);
+    expect(s.liked.length, 3);
+    expect(s.idsOf(SaveTargetKind.spot), {'bukpyeong-market'});
+    expect(s.idsOf(SaveTargetKind.course), {'donghae-sea'});
+    expect(s.idsOf(SaveTargetKind.route), {'44'});
+
+    // 같은 id라도 종류가 다르면 다른 항목이다
+    expect(c.read(savesProvider).isLiked(const SaveRef.spot('donghae-sea')), isFalse);
+
+    // 토글하면 빠진다
+    expect(n.toggleLike(const SaveRef.course('donghae-sea')), isFalse);
+    expect(c.read(savesProvider).idsOf(SaveTargetKind.course), isEmpty);
+  });
+
+  test('스쳐간 발견은 스팟에만 적립되고, 이미 찜한 곳은 내리지 않는다', () {
+    final c = ProviderContainer();
+    addTearDown(c.dispose);
+    final n = c.read(savesProvider.notifier);
+
+    n.markPassed('chuam-chotdae');
+    expect(c.read(savesProvider).isPassed('chuam-chotdae'), isTrue);
+
+    n.toggleLike(const SaveRef.spot('mukho-lighthouse'));
+    n.markPassed('mukho-lighthouse');
+    expect(c.read(savesProvider).isPassed('mukho-lighthouse'), isFalse);
   });
 
   test('뷰 모드 기본값은 한 곳씩', () {

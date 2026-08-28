@@ -89,13 +89,23 @@ class _StoryDeckState extends ConsumerState<StoryDeck> with SingleTickerProvider
   void _onPageChanged(int i) {
     setState(() => _index = i);
     _timer.reset();
-    if (_visible && !_held) _timer.forward();
+    // 스와이프로 넘어온 직후엔 손가락이 이미 떨어졌을 수 있으니 _held를 믿지 않는다
+    if (_visible) _timer.forward();
   }
 
-  /// 길게 누르면 멈춘다 — 읽는 중에 넘어가지 않게 (스토리 관습).
+  /// 손가락을 대고 있는 동안 멈춘다 — 읽는 중에 넘어가지 않게 (스토리 관습).
+  ///
+  /// ⚠ `onLongPressDown`으로 만들면 안 된다. 그건 **손을 대는 순간 무조건 발화**하는데
+  ///   짝이 되는 `onLongPressUp`은 롱프레스가 완성돼야만 온다. 스와이프하려고 만지기만 해도
+  ///   멈춘 채 영영 안 돌아온다. 항상 짝이 맞는 [Listener]의 포인터 이벤트를 쓴다.
   void _hold(bool down) {
+    if (_held == down) return;
     setState(() => _held = down);
-    down ? _timer.stop() : _timer.forward();
+    if (down) {
+      _timer.stop();
+    } else if (_visible) {
+      _timer.forward();
+    }
   }
 
   @override
@@ -104,10 +114,11 @@ class _StoryDeckState extends ConsumerState<StoryDeck> with SingleTickerProvider
       children: [
         _Progress(count: widget.cards.length, index: _index, anim: _timer),
         Expanded(
-          child: GestureDetector(
-            onLongPressDown: (_) => _hold(true),
-            onLongPressUp: () => _hold(false),
-            onLongPressCancel: () => _hold(false),
+          child: Listener(
+            // 포인터 이벤트는 down↔up/cancel 짝이 항상 맞는다
+            onPointerDown: (_) => _hold(true),
+            onPointerUp: (_) => _hold(false),
+            onPointerCancel: (_) => _hold(false),
             child: PageView.builder(
               controller: _page,
               onPageChanged: _onPageChanged,
