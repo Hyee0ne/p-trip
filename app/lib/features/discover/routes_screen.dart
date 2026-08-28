@@ -164,8 +164,9 @@ class _RouteTile extends ConsumerWidget {
             RouteBadge('${route.id}', size: BadgeSize.lg, drivable: drivable),
             const SizedBox(height: 9),
             Text(
-              // 주행 불가 노선은 별명 대신 고정 문구를 쓴다 (SCREENS.md CO-07)
-              drivable ? route.name : S.routeUndrivable,
+              // 주행 불가 노선은 별명 대신 고정 문구 (SCREENS.md CO-07).
+              // 별명이 없으면 "N번 국도" — ⚠ 없는 이름을 지어내지 않는다.
+              drivable ? (route.name.isEmpty ? '${route.id}번 국도' : route.name) : S.routeUndrivable,
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -177,14 +178,17 @@ class _RouteTile extends ConsumerWidget {
                 color: drivable ? AppColors.ink : AppColors.ink2,
               ),
             ),
-            const SizedBox(height: 2),
-            Text(
-              route.fromTo,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 10.5, color: AppColors.ink3),
-            ),
+            // 기점–종점을 모르면 그 줄 자체를 그리지 않는다 (CO-03과 같은 규칙)
+            if (route.fromTo.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                route.fromTo,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 10.5, color: AppColors.ink3),
+              ),
+            ],
           ],
         ),
       ),

@@ -6,6 +6,7 @@ import 'package:p_trip/core/strings.dart';
 import 'package:p_trip/core/widgets/chips.dart';
 import 'package:p_trip/data/models/models.dart';
 import 'package:p_trip/data/repositories/discover_repository.dart';
+import 'package:p_trip/data/repositories/fixture_discover_repository.dart';
 import 'package:p_trip/data/repositories/providers.dart';
 import 'package:p_trip/features/radar/radar_view.dart';
 import 'package:p_trip/core/view_mode.dart';
@@ -104,6 +105,22 @@ void main() {
     expect(find.text(S.secToday), findsNothing);
     expect(find.text(S.secRising), findsNothing);
     expect(find.text(S.secTracks), findsNothing);
+  });
+
+  test('국도는 51선이고 남북 27 · 동서 24로 갈린다', () async {
+    const repo = FixtureDiscoverRepository();
+    final routes = await repo.routes();
+
+    expect(routes.length, 51, reason: '국도 51선');
+    expect(routes.where((r) => r.axis == 'NS').length, 27, reason: '남북(홀수)');
+    expect(routes.where((r) => r.axis == 'EW').length, 24, reason: '동서(짝수)');
+
+    // 홀수=남북, 짝수=동서는 규칙이다
+    for (final r in routes) {
+      expect(r.axis, r.id.isOdd ? 'NS' : 'EW', reason: '${r.id}번');
+    }
+    // 번호 중복 없음
+    expect(routes.map((r) => r.id).toSet().length, 51);
   });
 
   test('찜은 스팟·코스·노선을 모두 담는다', () {

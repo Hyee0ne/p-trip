@@ -14,13 +14,64 @@ import 'discover_repository.dart';
 class FixtureDiscoverRepository implements DiscoverRepository {
   const FixtureDiscoverRepository();
 
+  /// 일반국도 51선 (남북 27 · 동서 24). 홀수=남북, 짝수=동서는 규칙이라 확실하다.
+  ///
+  /// ⚠ M1 `build-routes.ts`가 표준노드링크로 교체할 임시 시드다.
+  ///   - **별명은 우리가 붙인 것**이라 확실한 것만 넣고 나머지는 비운다 → 화면에서 "N번 국도"
+  ///   - **기점–종점도 확실한 것만**. 45개를 기억으로 채우면 틀린 정보를 그럴듯하게 넣는 셈이다
+  ///   - `drivable=false`(북한 구간으로 완주 불가)는 1번만 확실히 표시. 나머지는 M1에서 판정
   static const _routes = <RouteLine>[
-    RouteLine(id: 1, name: '통일을 기다리는 길', axis: 'NS', drivable: false, fromTo: '목포–신의주'),
+    RouteLine(id: 1, name: '', axis: 'NS', drivable: false, fromTo: '목포–신의주'),
+    RouteLine(id: 2, name: '', axis: 'EW', drivable: true, fromTo: '신안–부산'),
+    RouteLine(id: 3, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 4, name: '', axis: 'EW', drivable: true, fromTo: '군산–경주'),
+    RouteLine(id: 5, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 6, name: '', axis: 'EW', drivable: true, fromTo: '인천–강릉'),
     RouteLine(id: 7, name: '동해 바닷길', axis: 'NS', drivable: true, fromTo: '부산–고성'),
-    RouteLine(id: 24, name: '신안–울산', axis: 'EW', drivable: true, fromTo: '신안–울산'),
+    RouteLine(id: 13, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 14, name: '', axis: 'EW', drivable: true, fromTo: ''),
+    RouteLine(id: 15, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 17, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 18, name: '', axis: 'EW', drivable: true, fromTo: ''),
+    RouteLine(id: 19, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 20, name: '', axis: 'EW', drivable: true, fromTo: ''),
+    RouteLine(id: 21, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 22, name: '', axis: 'EW', drivable: true, fromTo: ''),
+    RouteLine(id: 23, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 24, name: '', axis: 'EW', drivable: true, fromTo: '신안–울산'),
+    RouteLine(id: 25, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 26, name: '', axis: 'EW', drivable: true, fromTo: ''),
+    RouteLine(id: 27, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 28, name: '', axis: 'EW', drivable: true, fromTo: ''),
+    RouteLine(id: 29, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 30, name: '', axis: 'EW', drivable: true, fromTo: ''),
+    RouteLine(id: 31, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 32, name: '', axis: 'EW', drivable: true, fromTo: ''),
+    RouteLine(id: 33, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 34, name: '', axis: 'EW', drivable: true, fromTo: ''),
+    RouteLine(id: 35, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 36, name: '', axis: 'EW', drivable: true, fromTo: ''),
+    RouteLine(id: 37, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 38, name: '', axis: 'EW', drivable: true, fromTo: ''),
+    RouteLine(id: 39, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 40, name: '', axis: 'EW', drivable: true, fromTo: ''),
+    RouteLine(id: 42, name: '', axis: 'EW', drivable: true, fromTo: ''),
+    RouteLine(id: 43, name: '', axis: 'NS', drivable: true, fromTo: ''),
     RouteLine(id: 44, name: '한계령길', axis: 'EW', drivable: true, fromTo: '양평–양양'),
+    RouteLine(id: 45, name: '', axis: 'NS', drivable: true, fromTo: ''),
     RouteLine(id: 46, name: '경춘길', axis: 'EW', drivable: true, fromTo: '인천–고성'),
+    RouteLine(id: 47, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 48, name: '', axis: 'EW', drivable: true, fromTo: ''),
+    RouteLine(id: 50, name: '', axis: 'EW', drivable: true, fromTo: ''),
+    RouteLine(id: 58, name: '', axis: 'EW', drivable: true, fromTo: ''),
+    RouteLine(id: 59, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 67, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 75, name: '', axis: 'NS', drivable: true, fromTo: ''),
     RouteLine(id: 77, name: '해안일주', axis: 'NS', drivable: true, fromTo: '부산–파주'),
+    RouteLine(id: 79, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 82, name: '', axis: 'EW', drivable: true, fromTo: ''),
+    RouteLine(id: 87, name: '', axis: 'NS', drivable: true, fromTo: ''),
+    RouteLine(id: 88, name: '', axis: 'EW', drivable: true, fromTo: ''),
   ];
 
   // CLAUDE.md 데모 기준: 7번 국도 삼척–강릉 구간의 실존 스팟.
