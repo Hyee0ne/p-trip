@@ -93,6 +93,35 @@ async function tryFetch(
   return { url: lastUrl, status: lastStatus, body: lastBody, attempts };
 }
 
+/**
+ * 따옴표를 아는 최소 CSV 파서.
+ * ⚠ split(',')로 자르면 주소 안의 콤마에서 열이 밀려, 개설주기 칸에 주소가 들어온다.
+ *   실제로 그 착시 때문에 멀쩡한 데이터를 '오염'으로 오인했다.
+ */
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let quoted = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { cell += '"'; i++; }
+        else quoted = false;
+      } else cell += c;
+      continue;
+    }
+    if (c === '"') quoted = true;
+    else if (c === ',') { row.push(cell.trim()); cell = ''; }
+    else if (c === '\n') { row.push(cell.trim()); rows.push(row); row = []; cell = ''; }
+    else if (c !== '\r') cell += c;
+  }
+  if (cell || row.length) { row.push(cell.trim()); rows.push(row); }
+  return rows.filter((r) => r.some((x) => x));
+}
+
 /** XML/JSON 어느 쪽이 와도 필드 이름을 뽑는다. 스키마 확인이 목적이다. */
 function fieldsOf(body: string): string[] {
   const trimmed = body.trim();
@@ -388,8 +417,8 @@ function probeMarkets() {
   let text = new TextDecoder('euc-kr').decode(raw);
   if (text.includes('\uFFFD')) text = new TextDecoder('utf-8').decode(raw);
 
-  const lines = text.split(/\r?\n/).filter((l) => l.trim());
-  const header = lines[0].split(',').map((h) => h.replace(/^"|"$/g, '').trim());
+  const table = parseCsv(text);
+  const header = table[0] ?? [];
   const cycleIdx = header.findIndex((h) => /개설주기/.test(h));
   const nameIdx = header.findIndex((h) => /시장명/.test(h));
   if (cycleIdx < 0) {
@@ -402,9 +431,7 @@ function probeMarkets() {
     });
   }
 
-  const cells = (line: string) =>
-    line.split(',').map((c) => c.replace(/^"|"$/g, '').trim());
-  const rows = lines.slice(1).map(cells);
+  const rows = table.slice(1);
   const forms = new Map<string, number>();
   for (const r of rows) {
     const v = r[cycleIdx] ?? '';
@@ -412,7 +439,11 @@ function probeMarkets() {
   }
   const top = [...forms].sort((a, b) => b[1] - a[1]).slice(0, 12);
   // 데모 기준 데이터 — 북평 5일장은 3·8일이어야 한다 (CLAUDE.md).
-  const bukpyeong = rows.find((r) => /북평/.test(r[nameIdx] ?? ''));
+  // ⚠ '북평'은 전남 해남에도 있다. 주소로 동해시를 확인해야 한다.
+  const addrIdx = header.findIndex((h) => /소재지도로명주소/.test(h));
+  const inDemo = (r: string[]) => /동해시|삼척시|강릉시/.test(r[addrIdx] ?? '');
+  const bukpyeong = rows.find((r) => /북평/.test(r[nameIdx] ?? '') && inDemo(r));
+  const demoFiveDay = rows.filter((r) => inDemo(r) && /\d일\+/.test(r[cycleIdx] ?? ''));
 
   add({
     name: '전통시장 표준데이터 (파일)',
@@ -423,7 +454,8 @@ function probeMarkets() {
       `개설주기 표기 ${forms.size}종`,
       bukpyeong
         ? `북평장 확인: "${bukpyeong[nameIdx]}" → "${bukpyeong[cycleIdx]}"`
-        : '⚠ 북평장을 못 찾았다 — 데모 시연에 쓸 장날이 없다',
+        : '⚠ 동해시 북평장을 못 찾았다 — 데모 시연에 쓸 장날이 없다',
+      `데모 구간 5일장 ${demoFiveDay.length}곳: ${demoFiveDay.map((r) => `${r[nameIdx]}(${r[cycleIdx]})`).join(', ')}`,
     ].join(' · '),
     fields: header,
     sample: { 표기분포: Object.fromEntries(top), 북평: bukpyeong?.slice(0, 8) },
