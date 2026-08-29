@@ -158,7 +158,7 @@ class S {
   static const passengerPicked = '다음 정차지 후보에 담았어요';
   static const passengerQuiet = '이 앞은 잠시 조용해요';
   static const passengerWider = '더 멀리 보기';
-  static String radarRecording(String route, num km) => '\$route \${km}km 기록 중';
+  static String radarRecording(String route, num km) => '$route ${km}km 기록 중';
   static String baseChipSet(String name) => '오늘 밤 $name — 낮은 마음껏 새어나가세요';
   static const baseChipNone = '오늘 밤 거점 없음 — 그래도 레이더는 돌아가요';
 
@@ -198,9 +198,10 @@ class S {
   static const statVisited = '들른 발견';
   static const statPassed = '스쳐간 발견';
   static const statSkunked = '허탕';
+  static const statUnplannedMeal = '계획에 없던 밥';
   static const photoOpenSettings = '설정 열기';
   static String photoCaption(int n) => '사진 $n장이 GPS·촬영 시각으로 경로 위에 자동 정리됐어요';
-  static String tripFooter(num km) => '국도 수집 +\${km}km · 스쳐간 곳은 찜에 남겨뒀어요';
+  static String tripFooter(num km) => '국도 수집 +${km}km · 스쳐간 곳은 찜에 남겨뒀어요';
   static const tripShare = '여행기 공유하기';
   static const tripShareToast = '시작·끝 300m는 가려져요';
   static const oneMoreDay = '이 동네가 좋았다면, 하루 더?';

@@ -330,6 +330,7 @@ class Trip {
     required this.endedAt,
     required this.stops,
     required this.photoCount,
+    this.courseId = '',
   });
 
   final String id;
@@ -338,6 +339,10 @@ class Trip {
   /// '2026.08.27'
   final String date;
   final int routeId;
+
+  /// 이 여행이 출발할 때 고른 코스. 비어 있으면 '코스 없이 그냥 달렸다'는 뜻이다.
+  /// ⚠ "계획에 없던 밥"을 세려면 **무엇이 계획이었는지**를 알아야 한다 (MY-02).
+  final String courseId;
   final String routeName;
   final String startName;
   final String endName;
@@ -350,6 +355,23 @@ class Trip {
   int get visited => stops.where((s) => s.kind == StopKind.visited).length;
   int get passed => stops.where((s) => s.kind == StopKind.passed).length;
   int get skunked => stops.where((s) => s.kind == StopKind.skunked).length;
+
+  /// 코스에 없던 곳에서 먹은 끼니 (SCREENS.md MY-02).
+  ///
+  /// **이 앱이 하려는 일이 여기 한 숫자로 들어 있다** — 정해둔 대로가 아니라
+  /// 지나다 걸린 곳에서 먹었다는 뜻이다.
+  /// ⚠ 코스 없이 그냥 달린 여행은 셀 수 없다. '계획'이 없으면 '계획에 없던'도 없다 → 0.
+  int unplannedMeals(Set<String> plannedSpotIds) {
+    if (courseId.isEmpty) return 0;
+    return stops
+        .where(
+          (s) =>
+              s.kind == StopKind.visited &&
+              s.type == SpotType.food &&
+              !plannedSpotIds.contains(s.spotId),
+        )
+        .length;
+  }
 
   /// '7번 국도에서 생긴 일'
   String get title => '$routeName에서 생긴 일';

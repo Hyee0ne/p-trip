@@ -106,6 +106,7 @@ class TripLogNotifier extends Notifier<TripLog> {
     required String routeName,
     required String startName,
     required String endName,
+    String courseId = '',
   }) {
     final existing = state.activeId;
     if (existing != null) return existing;
@@ -125,6 +126,7 @@ class TripLogNotifier extends Notifier<TripLog> {
       endedAt: '',
       stops: const [],
       photoCount: 0,
+      courseId: courseId,
     );
     _points[id] = [];
     state = TripLog(trips: [...state.trips, trip], activeId: id);
@@ -223,6 +225,7 @@ class TripLogNotifier extends Notifier<TripLog> {
     endedAt: endedAt ?? t.endedAt,
     stops: stops ?? t.stops,
     photoCount: photoCount ?? t.photoCount,
+    courseId: t.courseId,
   );
 
   Map<String, dynamic> _toJson(Trip t) => {
@@ -242,6 +245,7 @@ class TripLogNotifier extends Notifier<TripLog> {
     'startedAt': t.startedAt,
     'endedAt': t.endedAt,
     'photoCount': t.photoCount,
+    'courseId': t.courseId,
     'stops': [
       for (final s in t.stops)
         {
@@ -279,6 +283,7 @@ class TripLogNotifier extends Notifier<TripLog> {
     startedAt: (m['startedAt'] as String?) ?? '',
     endedAt: (m['endedAt'] as String?) ?? '',
     photoCount: (m['photoCount'] as num?)?.toInt() ?? 0,
+    courseId: (m['courseId'] as String?) ?? '',
     stops: [
       for (final s in (m['stops'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>())
         TripStop(

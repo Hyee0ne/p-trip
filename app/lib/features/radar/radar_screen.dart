@@ -150,6 +150,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
               routeName: course?.title ?? '동해 바닷길',
               startName: course?.startName ?? '삼척',
               endName: course?.endName ?? '강릉',
+              courseId: courseId,
             );
       });
     });
@@ -707,8 +708,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
                   const SizedBox(width: 6),
                   Text(
                     // ⚠ 숫자를 지어내지 않는다. 모의 주행이든 실주행이든 실제 누적 거리다.
-                    '$_routeNo번 국도 '
-                    '${ref.watch(driveProvider).distanceKm.toStringAsFixed(0)}km 기록 중',
+                    S.radarRecording('$_routeNo번 국도', ref.watch(driveProvider).distanceKm.round()),
                     style: const TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,

@@ -45,6 +45,10 @@ class _Body extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final photos = ref.watch(tripPhotosProvider(trip.id)).value;
+    // 코스에 뭐가 있었는지 알아야 '계획에 없던' 밥을 셀 수 있다.
+    final planned = trip.courseId.isEmpty
+        ? const <String>{}
+        : (ref.watch(courseProvider(trip.courseId)).value?.spotIds ?? const []).toSet();
     // 그날 밤 하늘 (SCREENS.md MY-02 §3). 좌표는 그 여행이 지나온 첫 점.
     final path = ref.watch(tripLogProvider.notifier).pointsOf(trip.id);
     final sky = path.isEmpty
@@ -69,7 +73,7 @@ class _Body extends ConsumerWidget {
             _photoDenied(),
             const SizedBox(height: AppSpace.x5),
           ],
-          _statChips(photos?.photos.length ?? 0),
+          _statChips(photos?.photos.length ?? 0, trip.unplannedMeals(planned)),
           const SizedBox(height: AppSpace.x8),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 22),
@@ -260,7 +264,7 @@ class _Body extends ConsumerWidget {
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
   /// 통계는 표가 아니라 칩으로 조용히. 허탕도 같은 크기로 담담하게.
-  Widget _statChips(int photoCount) {
+  Widget _statChips(int photoCount, int unplannedMeals) {
     // ⚠ width 없는 Container에 alignment를 주면 폭이 최대까지 팽창한다 → Row(min)
     Widget chip(String label, Color bg, Color fg) => Container(
       height: 32,
@@ -285,8 +289,16 @@ class _Body extends ConsumerWidget {
         children: [
           chip('${S.statVisited} ${trip.visited}', AppColors.tintGreen, AppColors.onTintGreen),
           chip('${S.statPassed} ${trip.passed}', AppColors.fill, AppColors.ink2),
+          // ⚠ 허탕이 있으면 '계획에 없던 밥' **자리를 대신한다** (SCREENS.md MY-02).
+          //   부정이 아니라 담담한 톤 — 같은 크기, 같은 모양이다.
           if (trip.skunked > 0)
-            chip('${S.statSkunked} ${trip.skunked}', AppColors.tintSun, AppColors.onTintSun),
+            chip('${S.statSkunked} ${trip.skunked}번', AppColors.tintSun, AppColors.onTintSun)
+          else if (unplannedMeals > 0)
+            chip(
+              '${S.statUnplannedMeal} $unplannedMeals',
+              AppColors.tintGreen,
+              AppColors.onTintGreen,
+            ),
           if (photoCount > 0) chip('사진 $photoCount장', AppColors.fill, AppColors.ink2),
         ],
       ),
