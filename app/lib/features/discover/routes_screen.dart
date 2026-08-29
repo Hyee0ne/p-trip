@@ -41,7 +41,7 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
   _Axis _axis = _Axis.all;
   double _extent = _initialExtent;
 
-  /// 위치를 못 받아 자동으로 펼친 적이 있는지 (한 번만 한다).
+  /// 자동으로 펼친 적이 있는지 (한 번만 한다. 그 뒤로는 사용자 것이다).
   bool _autoExpanded = false;
 
   bool get _isExpanded => _extent > _expandedFrom;
@@ -57,9 +57,13 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
     _sheet.animateTo(size, duration: AppMotion.base, curve: AppMotion.curve);
   }
 
-  /// 위치가 없으면 시트를 펼쳐 51선을 보여준다 — 빈 화면으로 막지 않는다.
-  void _autoExpandIfNoFix(LocFix fix) {
-    if (_autoExpanded || fix.hasFix) return;
+  /// 내 주변이 비면 시트를 펼쳐 51선을 보여준다 — 빈 화면으로 막지 않는다.
+  ///
+  /// 접힌 헤더는 "여기서 탈 수 있는 길"이라고 말한다. 그 아래에 내 주변이 아닌
+  /// 51선이 깔리면 헤더가 거짓말을 하게 되므로, 그럴 땐 펼쳐서 "국도 51선"이 되게 한다.
+  /// 위치 거부·측정 실패도 이 경로로 들어온다 (그 경우 목록이 비어 있다).
+  void _autoExpandIfNothingNear(NearbyResult result) {
+    if (_autoExpanded || result.routes.isNotEmpty) return;
     _autoExpanded = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _animateTo(_expanded);
@@ -85,9 +89,9 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
     final nearbyAsync = ref.watch(nearbyRoutesProvider);
     final fixAsync = ref.watch(currentLocationProvider);
 
-    ref.listen(currentLocationProvider, (_, next) {
-      final fix = next.value;
-      if (fix != null) _autoExpandIfNoFix(fix);
+    ref.listen(nearbyRoutesProvider, (_, next) {
+      final result = next.value;
+      if (result != null) _autoExpandIfNothingNear(result);
     });
 
     return Scaffold(
@@ -146,7 +150,7 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
 
   List<Widget> _slivers(
     AsyncValue<List<RouteLine>> routesAsync,
-    AsyncValue<List<NearbyRoute>> nearbyAsync,
+    AsyncValue<NearbyResult> nearbyAsync,
     AsyncValue<LocFix> fixAsync,
   ) {
     bool matchesAxis(RouteLine r) => switch (_axis) {
@@ -156,7 +160,8 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
     };
 
     // 남북/동서 필터는 두 섹션에 똑같이 건다. 한쪽만 걸리면 목록이 서로 어긋난다.
-    final nearby = (nearbyAsync.value ?? const <NearbyRoute>[])
+    final result = nearbyAsync.value;
+    final nearby = (result?.routes ?? const <NearbyRoute>[])
         .where((n) => matchesAxis(n.route))
         .toList();
     final nearbyIds = nearby.map((n) => n.route.id).toSet();
@@ -184,7 +189,7 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
       if (_isExpanded && nearby.isNotEmpty) const _SectionLabel(S.routesSecNear),
       if (nearby.isEmpty)
         SliverToBoxAdapter(
-          child: _NearbyState(fix: fixAsync, onAsk: _askLocation),
+          child: _NearbyState(fix: fixAsync, covered: result?.covered ?? true, onAsk: _askLocation),
         )
       else
         SliverList.list(
@@ -479,8 +484,11 @@ class _SectionLabel extends StatelessWidget {
 /// 내 주변이 비었을 때 — 위치 없음 / 측정 중 / 국도에서 멀리.
 /// **막지 않는다.** 51선 목록은 아래에 그대로 있다.
 class _NearbyState extends StatelessWidget {
-  const _NearbyState({required this.fix, required this.onAsk});
+  const _NearbyState({required this.fix, required this.covered, required this.onAsk});
   final AsyncValue<LocFix> fix;
+
+  /// 이 좌표 주변 노선 데이터를 가지고 있는가. false면 '국도가 없다'고 말하면 안 된다.
+  final bool covered;
   final Future<void> Function(LocFix) onAsk;
 
   @override
@@ -492,7 +500,12 @@ class _NearbyState extends StatelessWidget {
 
     final text = loading
         ? S.routesLocFinding
-        : (askable || unavailable ? S.routesLocOff : S.routesNearEmpty);
+        : askable || unavailable
+        ? S.routesLocOff
+        // 데이터가 없는 지역에서 '국도에서 떨어져 있다'고 하면 거짓말이다.
+        : covered
+        ? S.routesNearEmpty
+        : S.routesNoCoverage;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.x2, AppSpace.gutter, 0),

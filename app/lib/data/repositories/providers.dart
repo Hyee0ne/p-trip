@@ -12,9 +12,10 @@ final discoverRepositoryProvider = Provider<DiscoverRepository>(
 );
 
 /// CO-07 — 현 위치에서 탈 수 있는 노선. 위치가 없으면 빈 리스트.
-final nearbyRoutesProvider = FutureProvider<List<NearbyRoute>>((ref) async {
+final nearbyRoutesProvider = FutureProvider<NearbyResult>((ref) async {
   final fix = await ref.watch(currentLocationProvider.future);
-  if (!fix.hasFix) return const [];
+  // 위치를 모르면 '데이터가 없다'가 아니라 '물어볼 수가 없다'다. covered는 참으로 둔다.
+  if (!fix.hasFix) return const NearbyResult([], covered: true);
   return ref.watch(discoverRepositoryProvider).nearbyRoutes(lat: fix.lat!, lng: fix.lng!);
 });
 

@@ -13,8 +13,9 @@ abstract interface class DiscoverRepository {
   Future<List<RouteLine>> routes();
 
   /// 현 위치에서 탈 수 있는 노선 (SCREENS.md CO-07).
-  /// 가까운 순. 근처에 없으면 빈 리스트 — 억지로 채우지 않는다.
-  Future<List<NearbyRoute>> nearbyRoutes({required double lat, required double lng});
+  /// 가까운 순. 근처에 없으면 빈 결과 — 억지로 채우지 않는다.
+  /// 데이터가 없는 지역은 `covered: false`로 구분해 돌려준다.
+  Future<NearbyResult> nearbyRoutes({required double lat, required double lng});
 
   Future<List<Course>> courses({int? routeId});
 

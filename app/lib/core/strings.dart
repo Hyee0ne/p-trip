@@ -65,6 +65,9 @@ class S {
   /// ⚠ '전체'로 쓰면 남북/동서 필터 칩의 '전체'와 한 화면에서 같은 말이 두 번 나온다.
   static const routesSecAll = '그 밖의 길';
   static const routesNearEmpty = '여긴 국도에서 좀 떨어져 있어요';
+
+  /// ⚠ 위와 구분해서 쓴다. 데이터가 없는 지역에 '국도가 없다'고 하면 거짓말이다.
+  static const routesNoCoverage = '아직 이 지역 길을 모아두지 못했어요';
   static const routesLocOff = '위치를 켜면 여기서 탈 수 있는 길을 알려드려요';
   static const routesLocCta = '위치 켜기';
   static const routesLocFinding = '위치를 찾는 중이에요';

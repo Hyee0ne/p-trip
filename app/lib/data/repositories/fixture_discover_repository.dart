@@ -229,14 +229,14 @@ class FixtureDiscoverRepository implements DiscoverRepository {
   /// 7번(동해안 종단) · 38번(동해–제천) · 42번(동해–인천). 전부 실존 노선이다.
   /// 거리는 지어내지 않고 null로 둔다. 구간 밖이면 빈 리스트.
   @override
-  Future<List<NearbyRoute>> nearbyRoutes({required double lat, required double lng}) async {
+  Future<NearbyResult> nearbyRoutes({required double lat, required double lng}) async {
     final inDemoArea = lat >= 37.30 && lat <= 37.85 && lng >= 128.85 && lng <= 129.45;
-    if (!inDemoArea) return const [];
+    // 구간 밖은 '국도가 없다'가 아니라 '아직 안 모았다'다. 섞으면 거짓말이 된다.
+    if (!inDemoArea) return const NearbyResult.uncovered();
     const ids = [7, 38, 42];
-    return [
-      for (final id in ids)
-        NearbyRoute(_routes.firstWhere((r) => r.id == id)),
-    ];
+    return NearbyResult([
+      for (final id in ids) NearbyRoute(_routes.firstWhere((r) => r.id == id)),
+    ], covered: true);
   }
 
   @override

@@ -64,6 +64,24 @@ class RouteLine {
   final List<GeoPoint> path;
 }
 
+/// 현 위치 조회 결과.
+///
+/// 빈 목록에는 뜻이 둘이다 — "여기엔 국도가 없다"와 "이 지역 데이터를 아직 안 모았다".
+/// 둘을 섞으면 데이터가 없는 지역에서 "국도가 없다"고 거짓말을 하게 된다.
+class NearbyResult {
+  const NearbyResult(this.routes, {required this.covered});
+
+  const NearbyResult.uncovered() : routes = const [], covered = false;
+
+  final List<NearbyRoute> routes;
+
+  /// 이 좌표 주변 노선 데이터를 가지고 있는가.
+  /// 파이프라인이 전국을 채우면(M1) 항상 true가 된다.
+  final bool covered;
+
+  bool get isEmpty => routes.isEmpty;
+}
+
 /// 현 위치에서 탈 수 있는 노선 하나.
 class NearbyRoute {
   const NearbyRoute(this.route, {this.distanceKm});

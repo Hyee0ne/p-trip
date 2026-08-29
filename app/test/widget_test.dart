@@ -177,8 +177,8 @@ class _EmptyRepo implements DiscoverRepository {
   Future<List<RouteLine>> routes() async => const [];
 
   @override
-  Future<List<NearbyRoute>> nearbyRoutes({required double lat, required double lng}) async =>
-      const [];
+  Future<NearbyResult> nearbyRoutes({required double lat, required double lng}) async =>
+      const NearbyResult([], covered: true);
   @override
   Future<List<Course>> courses({int? routeId}) async => const [];
   @override
