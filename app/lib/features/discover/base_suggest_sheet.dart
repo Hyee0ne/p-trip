@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/location.dart';
+import '../../data/models/models.dart';
+import '../../data/repositories/providers.dart';
 
 import '../../core/theme.dart';
 
@@ -28,27 +33,53 @@ class BaseSuggestSheet extends StatelessWidget {
   final String anchorText;
   final int discoveryCount;
 
-  /// 소요시간 비교를 **아직 실제로 계산할 수 없다.**
+  /// 실제로 물어보고 띄운다 (TECH_SPEC §3.7).
   ///
-  /// TECH_SPEC §3.7은 거점 확정 직후 Edge Function 뒤에서 길찾기 REST를 1회 호출해
-  /// 고속도로↔국도를 비교하라고 정한다. 카카오모빌리티 길찾기 키가 아직 없다.
-  ///
-  /// ⚠ 그때까지 **이 모달을 띄우지 않는다.** 전에는 '2시간 10분 / 2시간 50분'이라는
-  ///   지어낸 값을 화면에 내보내고 있었다. 근거 없이 40분을 더 쓰라고 설득하는 건
-  ///   이 예외를 승인한 이유(§3.7 "설득 근거")와 정반대다.
-  /// ⚠ 키가 생기면 아래 주석의 값을 Edge Function 결과로 채워 그대로 켜면 된다.
-  ///   화면(build)은 완성돼 있다.
-  static const hasRealComparison = false;
+  /// ⚠ 아무것도 지어내지 않는다. 셋 중 하나라도 없으면 **모달을 띄우지 않는다**:
+  ///   위치 / 소요시간 비교 / 앵커(오늘 장날). 근거 없이 더 오래 걸리는 길을 권하지 않는다.
+  /// ⚠ 국도가 더 빠르면 Edge Function이 `not_slower`로 거절한다 —
+  ///   '느린 길을 권하는' 이 모달의 전제가 깨지기 때문이다.
+  /// ⚠ 앵커는 **오늘 장날만** 본다. SCREENS는 행사·일몰도 허용하지만,
+  ///   그 문구 모양이 승인된 적 없어 임의로 만들지 않았다.
+  static Future<bool> show(
+    BuildContext context,
+    WidgetRef ref, {
+    required String baseName,
+    required double baseLat,
+    required double baseLng,
+  }) async {
+    final fix = await ref.read(currentLocationProvider.future);
+    if (!fix.hasFix) return false;
 
-  /// 앵커가 없으면 아무것도 띄우지 않고 그대로 반환한다.
-  static Future<bool> show(BuildContext context, {required String baseName}) async {
-    // ignore: dead_code — 키가 생기면 hasRealComparison만 true로 바꾼다.
-    if (!hasRealComparison) return false;
+    final repo = ref.read(discoverRepositoryProvider);
+    final cmp = await repo.compareRoutes(
+      fromLat: fix.lat!,
+      fromLng: fix.lng!,
+      toLat: baseLat,
+      toLng: baseLng,
+    );
+    if (cmp == null) return false;
 
-    // TODO: Edge Function compare_routes 호출 (TECH_SPEC §3.7).
-    //   highwayLabel / routeLabel / anchorText / discoveryCount를 실값으로 채운다.
-    //   ⚠ 이 값을 ETA·도착시각으로 환산하지 않는다. 비교 근거일 뿐이다.
-    return false;
+    // 앵커 — 오늘 장날이 서는 곳. 없으면 설득할 말이 없다.
+    final today = await repo.spots(axis: CurationAxis.today);
+    final market = today.where((s) => s.timeliness == Timeliness.marketDay).firstOrNull;
+    if (market == null) return false;
+
+    if (!context.mounted) return false;
+    final picked = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => BaseSuggestSheet(
+        baseName: baseName,
+        highwayLabel: RouteCompare.label(cmp.highwayMin),
+        routeLabel: RouteCompare.label(cmp.routeMin),
+        routeId: market.routeId,
+        anchorText: '오늘이 ${market.name} 장날이고',
+        discoveryCount: today.length,
+      ),
+    );
+    return picked ?? false;
   }
 
   @override

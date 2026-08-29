@@ -276,7 +276,13 @@ class _BaseScreenState extends ConsumerState<BaseScreen> {
 
     if (_isReentry) {
       // 역진입 → CO-06b 국도 제안. 거절해도 아무 일도 일어나지 않는다.
-      final tookRoute = await BaseSuggestSheet.show(context, baseName: _pickedName!);
+      final tookRoute = await BaseSuggestSheet.show(
+        context,
+        ref,
+        baseName: _pickedName!,
+        baseLat: lat,
+        baseLng: lng,
+      );
       if (!mounted) return;
       // ⚠ '/course/donghae-sea'로 가고 있었다. **그런 코스는 없다** — 에러 화면이 떴다.
       context.go(tookRoute ? '/course/$kDemoCourseId' : '/');

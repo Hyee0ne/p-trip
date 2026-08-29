@@ -191,6 +191,14 @@ class _EmptyRepo implements DiscoverRepository {
   Future<Map<int, int>> matchRouteKm(List<TripPoint> points) async => const {};
 
   @override
+  Future<RouteCompare?> compareRoutes({
+    required double fromLat,
+    required double fromLng,
+    required double toLat,
+    required double toLng,
+  }) async => null;
+
+  @override
   Future<NightSky?> nightSkyOn({
     required double lat,
     required double lng,

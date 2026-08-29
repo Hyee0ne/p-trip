@@ -31,7 +31,11 @@ class SpotScreen extends ConsumerWidget {
       backgroundColor: AppColors.bg,
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-        error: (_, _) => const Center(child: Text(S.errNetwork)),
+        // ⚠ 왜 실패했는지 남긴다. 조용히 삼키면 화면만 보고는 원인을 못 찾는다.
+        error: (e, st) {
+          debugPrint('[spot] $spotId 실패: $e\n$st');
+          return const Center(child: Text(S.errNetwork));
+        },
         data: (spot) => spot == null ? const Center(child: Text(S.errNetwork)) : _Body(spot: spot),
       ),
     );

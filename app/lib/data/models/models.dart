@@ -79,6 +79,23 @@ class RouteLine {
 ///   "은하수가 보였다"는 구름을 모르니 말할 수 없다.
 /// ⚠ 달이 **떠 있던** 밤은 문장을 만들지 않는다 — 데이터의 moonset은 그날 아침에 진
 ///   달이라 '몇 시에 졌다'를 쓸 수가 없다. 틀린 문장보다 없는 줄이 낫다.
+/// 고속도로 ↔ 국도 소요시간 (TECH_SPEC §3.7). **비교 근거일 뿐 ETA가 아니다.**
+///
+/// ⚠ 도착 시각으로 환산하지 않는다. Edge Function도 분 두 개만 돌려준다 —
+///   경로 좌표를 안 받는 게 구조적 방어다.
+class RouteCompare {
+  const RouteCompare({required this.highwayMin, required this.routeMin});
+
+  final int highwayMin;
+  final int routeMin;
+
+  /// 국도가 더 걸리는 시간(분). 이 차이가 "그래도 갈래?"의 값이다.
+  int get extraMin => routeMin - highwayMin;
+
+  static String label(int min) =>
+      min < 60 ? '$min분' : '${min ~/ 60}시간${min % 60 == 0 ? '' : ' ${min % 60}분'}';
+}
+
 class NightSky {
   const NightSky({this.moonless, this.eventTitle});
 

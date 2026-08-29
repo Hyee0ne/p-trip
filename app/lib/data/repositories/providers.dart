@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/env.dart';
@@ -13,10 +14,14 @@ import 'supabase_discover_repository.dart';
 /// ⚠ 픽스처는 지운 게 아니라 **폴백으로 남긴다.** 위젯 테스트가 키 없이 돌아야 하고,
 ///   네트워크 없는 데서 화면을 확인할 일도 있다.
 /// 화면은 [DiscoverRepository] 인터페이스만 보므로 어느 쪽이든 손대지 않는다.
-final discoverRepositoryProvider = Provider<DiscoverRepository>(
-  (ref) =>
-      Env.isConfigured ? const SupabaseDiscoverRepository() : const FixtureDiscoverRepository(),
-);
+final discoverRepositoryProvider = Provider<DiscoverRepository>((ref) {
+  // ⚠ 어느 쪽이 도는지 한 번은 남긴다. 픽스처가 도는 걸 모르고 화면의 숫자를
+  //   실데이터로 착각하면 데모에서 틀린 값을 말하게 된다.
+  debugPrint(
+    Env.isConfigured ? '[repo] Supabase' : '[repo] Fixture — 없는 키: ${Env.missing.join(", ")}',
+  );
+  return Env.isConfigured ? const SupabaseDiscoverRepository() : const FixtureDiscoverRepository();
+});
 
 /// CO-07 — 현 위치에서 탈 수 있는 노선. 위치가 없으면 빈 리스트.
 final nearbyRoutesProvider = FutureProvider<NearbyResult>((ref) async {

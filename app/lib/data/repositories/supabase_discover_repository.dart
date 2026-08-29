@@ -195,6 +195,33 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
   }
 
   @override
+  Future<RouteCompare?> compareRoutes({
+    required double fromLat,
+    required double fromLng,
+    required double toLat,
+    required double toLng,
+  }) async {
+    try {
+      final res = await _db.functions.invoke(
+        'compare_routes',
+        body: {
+          'from': [fromLat, fromLng],
+          'to': [toLat, toLng],
+        },
+      );
+      final d = res.data as Map<String, dynamic>?;
+      if (d == null || d['ok'] != true) return null;
+      return RouteCompare(
+        highwayMin: (d['highwayMin'] as num).toInt(),
+        routeMin: (d['routeMin'] as num).toInt(),
+      );
+    } catch (_) {
+      // 못 물어봤으면 비교가 없는 것이다. 지어내지 않는다.
+      return null;
+    }
+  }
+
+  @override
   Future<Map<int, int>> matchRouteKm(List<TripPoint> points) async {
     if (points.length < 2) return const {};
     final rows =

@@ -39,6 +39,16 @@ abstract interface class DiscoverRepository {
   /// 오늘 이 자리의 해·달. 일몰 타이밍 가중치(§3.1)와 별 보기 좋은 밤(§3.8)이 쓴다.
   Future<TodaySky?> todaySky({required double lat, required double lng});
 
+  /// 고속도로 ↔ 국도 소요시간 비교 (TECH_SPEC §3.7). **거점 확정 직후 1회.**
+  /// ⚠ 길찾기 키는 Edge Function 뒤에 있다. 앱은 분 두 개만 받는다.
+  /// ⚠ 비교가 성립하지 않으면(키 없음·경로 없음·국도가 더 빠름) null — 모달을 안 띄운다.
+  Future<RouteCompare?> compareRoutes({
+    required double fromLat,
+    required double fromLng,
+    required double toLat,
+    required double toLng,
+  });
+
   /// 지나온 점들을 노선에 붙여 **노선별 km**를 낸다 (51선 수집).
   /// ⚠ 길안내가 아니다 — 지나온 뒤 어디였는지 셀 뿐이다 (원칙 1).
   Future<Map<int, int>> matchRouteKm(List<TripPoint> points);
