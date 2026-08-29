@@ -40,6 +40,11 @@ routes: id(int, 노선번호 7), name('동해 바닷길'), axis('NS'|'EW'),
 courses: id, route_id, title('7번 국도 바다길'), start_name, end_name,
          distance_km, duration_min, geom(LineString), is_demo(bool)
 
+-- 천문현상 (천문연 천문현상 정보 API)
+-- ⚠ **좌표가 없다.** 전국 공통 값이라 "여기서만"이 아니라 "오늘만"으로만 쓴다.
+--    스팟으로 만들어 레이더에 띄우면 위치를 지어내는 것이다 (원칙 2 위반).
+astro_events: locdate(date), title, event_time(time), description
+
 -- 스팟 (관광지/음식점/문화시설/뷰포인트/숙박/캠핑장/시장 — 전부 동급)
 spots: id, tourapi_contentid, type(enum), name, lat, lng, geom(Point),
        addr, tel, image_url, photo_count(int), overview, open_hours, tags(text[]),
@@ -108,7 +113,8 @@ Supabase RPC `discover_nearby(lat, lng, heading, now)`:
    - **3~7분 구간에서만 카드를 띄운다** (상의·결정할 시간 확보 — 페르소나 ② 대응)
    - ⚠ 라우팅 API를 쓰지 않는다. 노선 형상 + 현재 속도만으로 산출하는 정적 추정치
 6. 중복 억제: 같은 type 연속 노출 금지, 30분당 최대 2회 (클라이언트에서)
-- 일몰 시각: 천문연 API를 파이프라인이 일 단위 캐시 (좌표 격자별)
+- 일몰 시각: 천문연 출몰시각 API를 파이프라인이 일 단위 캐시 (좌표 격자별)
+  - 같은 응답에 **월출·월몰·박명(시민·항해·천문)**이 함께 온다. 전부 캐시한다 — §3.3의 전제다
 
 ### 3.2 장날 판정
 `is_market_day(open_cycle, date)`: `EXTRACT(day FROM date) % 10 = ANY(open_cycle)`.
@@ -168,6 +174,35 @@ trip 종료 시:
 - 반환된 A·B는 **비교 근거**일 뿐 ETA가 아니다. 도착 시각 환산·이동 중 갱신 금지
 - 거절 시 아무 일도 일어나지 않고, 다시 묻지 않는다
 
+### 3.8 별 보기 좋은 밤 (2026-08-29 추가)
+
+**만들 수 없는 것부터**: 한국에 밤하늘 어둡기 데이터는 공공데이터로 없다.
+있는 건 빛공해 실태조사 지점 정보인데 도시 조명 **규제**용이라 방향이 반대다.
+→ **"여기는 별이 잘 보인다"고 단정하는 기능은 만들지 않는다.** 근거가 없다.
+
+만들 수 있는 건 두 가지의 곱이다:
+
+```
+그날 밤   dark_window = [저녁 천문박명, 다음날 아침 천문박명]
+          moon_free   = dark_window에서 달이 지평선 아래인 구간
+                        (월출·월몰로 계산. 월령이 삭에 가까울수록 방해 적음)
+   ×
+그 장소   spots.type IN (view, camp) OR 천문대(culture)
+   +
+있으면    astro_events 그날 항목 (유성우 극대 시각 등)
+```
+
+- `Timeliness`에 `starryNight`를 추가한다. **`SpotType`을 늘리지 않는다** —
+  천문대는 이미 culture, 전망대는 view, 야영장은 camp다. 같은 장소를 두 타입으로 만들면 중복이고,
+  별보기는 장소의 속성이 아니라 **그날 밤의 조건**이다(같은 전망대도 보름달 밤엔 아니다).
+- **노출은 CO-06(거점 확정 후)과 MY-02(여행기)로 제한한다.**
+  유성우 극대는 대개 새벽이라 주행 중 레이더에 띄우면 안 된다 — 안전 문제다.
+- ⚠ 금지: 점수·등급·순위 노출("별 보기 좋은 곳 TOP N", 관측 조건 게이지). 원칙 3 위반이고
+  폐기된 점수 패널과 같은 모양이다. **한 줄 문장으로만** 나간다.
+- ⚠ 단정할 수 있는 것과 아닌 것:
+  "달이 새벽 1시에 집니다" ○ (계산된 사실) / "은하수가 보입니다" ✗ (구름을 모른다)
+  IDA 국제밤하늘보호공원처럼 **공인 등급이 있는 곳만** 어둡다고 말할 수 있다
+
 ## 4. 외부 API·키 목록
 
 | 서비스 | 용도 | 발급처 | 소비 위치 |
@@ -177,6 +212,7 @@ trip 종료 시:
 | 천문연 출몰시각 | 일몰 | data.go.kr | pipeline |
 | 카카오내비 SDK | 핸드오프 | developers.kakao.com | 앱 |
 | 카카오맵 | 지도 표시 | developers.kakao.com | 앱 |
+| 천문연 천문현상 정보 | 유성우·월식·슈퍼문 — CO-06·MY-02 '오늘 밤' 문맥 | data.go.kr (B090041) | pipeline |
 | 한국관광 데이터랩 (검색·방문 변화율) | CO-01 "조용히 뜨는 길" | datalab.visitkorea.or.kr | pipeline |
 | 카카오모빌리티 길찾기 REST | **§3.7 전용** (고속도로↔국도 비교 1회) | developers.kakaomobility.com | Edge Fn **전용** |
 | Supabase | BaaS | supabase.com | 전체 |
@@ -185,6 +221,9 @@ trip 종료 시:
 
 환경변수: `SUPABASE_URL/ANON_KEY`(앱), `TOURAPI_KEY, DATA_GO_KR_KEY`(pipeline/EdgeFn),
 `KAKAO_NATIVE_APP_KEY`(앱). 서비스 키는 앱에 절대 포함 금지.
+
+⚠ data.go.kr 인증키는 **계정 단위**다. 출몰시각·천문현상·전통시장은 API마다 활용신청만
+따로 하면 같은 `DATA_GO_KR_KEY`를 쓴다 — 키가 늘지 않는다.
 
 ## 5. 화면 ↔ 구현 매핑 (기획 문서 화면ID 기준)
 
