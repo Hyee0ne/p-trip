@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/strings.dart';
@@ -27,8 +30,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   bool _today = false;
   bool _near = false;
 
-  // TODO(M2): 최근 검색을 SharedPreferences에 저장
-  final _recent = <String>['묵호등대', '5일장', '해수욕장'];
+  /// 최근 검색. **비어서 시작한다** — 한 번도 검색한 적 없는 사람에게
+  /// 검색 기록을 보여주고 있었다. 없는 걸 지어내지 않는다.
+  final _recent = <String>[];
+  static const _kRecent = 'search.recent.v1';
+  static const _maxRecent = 8;
 
   static const _suggestions = ['오늘 장날', '물회', '등대', '캠핑장', '해수욕장', '전통시장'];
 
@@ -36,6 +42,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _focus.requestFocus());
+    unawaited(_restoreRecent());
   }
 
   @override
@@ -51,8 +58,29 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       _controller.text = q;
       _recent.remove(q);
       if (q.isNotEmpty) _recent.insert(0, q);
+      if (_recent.length > _maxRecent) _recent.removeRange(_maxRecent, _recent.length);
     });
     _focus.unfocus();
+    unawaited(_save());
+  }
+
+  Future<void> _restoreRecent() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final saved = p.getStringList(_kRecent);
+      if (saved == null || !mounted || _recent.isNotEmpty) return;
+      setState(() => _recent.addAll(saved));
+    } catch (_) {
+      // 저장소를 못 열어도 검색은 된다. 이번 실행에만 기록이 없다.
+    }
+  }
+
+  Future<void> _save() async {
+    try {
+      await (await SharedPreferences.getInstance()).setStringList(_kRecent, _recent);
+    } catch (_) {
+      /* 무시 */
+    }
   }
 
   @override
@@ -168,7 +196,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               const SectionLabel(S.searchRecent),
               const Spacer(),
               GestureDetector(
-                onTap: () => setState(_recent.clear),
+                onTap: () {
+                  setState(_recent.clear);
+                  unawaited(_save());
+                },
                 child: const Text(
                   S.searchClear,
                   style: TextStyle(
@@ -197,7 +228,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () => setState(() => _recent.removeAt(i)),
+                      onTap: () {
+                        setState(() => _recent.removeAt(i));
+                        unawaited(_save());
+                      },
                       child: const Icon(Icons.close, size: 15, color: AppColors.ink3),
                     ),
                   ],

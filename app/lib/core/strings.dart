@@ -101,6 +101,7 @@ class S {
   static String baseSet(String name) => '오늘 밤 거점: $name';
   static const baseSetSub = '계획 끝. 이제 가는 길은 비워둬도 돼요';
   static const baseConfirmed = '확정됨';
+  static const baseToastNoCoord = '이 후보는 위치를 몰라요. 다른 곳을 골라주세요.';
   static const baseToastExternal = '예약은 외부에서 — 여기선 위치만 받아요';
   static const baseToastPickFirst = '거점을 먼저 골라주세요';
 

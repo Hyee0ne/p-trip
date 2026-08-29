@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:p_trip/core/strings.dart';
@@ -141,8 +142,28 @@ void main() {
     expect(find.text(S.viewBrowse), findsNothing);
     expect(find.text(S.tabRadar), findsNothing);
     // 입력 전 화면
-    expect(find.text(S.searchRecent), findsOneWidget);
+    // ⚠ '최근 검색'은 **처음 켠 앱에 없는 게 맞다.** 전에는 가짜 기록을 심어두고
+    //   그게 보이는지 검사하고 있었다 — 없는 걸 있다고 검증하던 셈이다.
+    expect(find.text(S.searchRecent), findsNothing);
     expect(find.text(S.searchSuggest), findsOneWidget);
+  });
+
+  testWidgets('검색하면 그때부터 최근 검색이 생긴다', (tester) async {
+    await pumpApp(tester);
+    await toBrowse(tester);
+    await tester.tap(find.text(S.searchHint));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), '물회');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+
+    // 검색 중에는 결과가 보인다. 입력을 비워야 입력 전 화면으로 돌아온다.
+    await tester.enterText(find.byType(TextField), '');
+    await tester.pumpAndSettle();
+
+    expect(find.text(S.searchRecent), findsOneWidget);
+    expect(find.text('물회'), findsWidgets);
   });
 
   testWidgets('검색어를 넣으면 결과가 리스트로 나온다', (tester) async {

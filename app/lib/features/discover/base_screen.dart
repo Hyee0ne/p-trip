@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/base_camp.dart';
+import '../../core/demo.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/app_toast.dart';
@@ -263,15 +264,22 @@ class _BaseScreenState extends ConsumerState<BaseScreen> {
       return;
     }
     // TODO(M2): 지도 핀으로 직접 찍는 경로. 지금은 후보 목록에서 고른 좌표를 쓴다.
-    ref
-        .read(baseCampProvider.notifier)
-        .set(BaseCamp(name: _pickedName!, lat: _pickedLat ?? 0, lng: _pickedLng ?? 0));
+    // ⚠ 좌표가 없으면 **거점으로 삼지 않는다.** 0,0을 넣으면 기니만이 목적지가 된다 —
+    //   내비 핸드오프가 대서양으로 안내한다.
+    final lat = _pickedLat;
+    final lng = _pickedLng;
+    if (lat == null || lng == null) {
+      showAppToast(context, S.baseToastNoCoord);
+      return;
+    }
+    ref.read(baseCampProvider.notifier).set(BaseCamp(name: _pickedName!, lat: lat, lng: lng));
 
     if (_isReentry) {
       // 역진입 → CO-06b 국도 제안. 거절해도 아무 일도 일어나지 않는다.
       final tookRoute = await BaseSuggestSheet.show(context, baseName: _pickedName!);
       if (!mounted) return;
-      context.go(tookRoute ? '/course/donghae-sea' : '/');
+      // ⚠ '/course/donghae-sea'로 가고 있었다. **그런 코스는 없다** — 에러 화면이 떴다.
+      context.go(tookRoute ? '/course/$kDemoCourseId' : '/');
     } else {
       context.pop();
     }

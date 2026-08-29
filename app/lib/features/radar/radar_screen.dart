@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/base_camp.dart';
 import '../../core/drive.dart';
+import '../../core/demo.dart';
 import '../../core/env.dart';
 import '../../core/journey.dart';
 import '../../core/saves.dart';
@@ -71,7 +72,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
   Discovery? _current;
 
   /// 데모 코스(동해 바닷길). 실주행에서는 사용자가 고른 코스가 들어온다.
-  static const _demoCourseId = '7d0e6a2c-0000-4000-8000-000000000007';
+  static const _demoCourseId = kDemoCourseId;
 
   /// 카드를 띄우는 구간 — 진출로까지 3~7분 (TECH_SPEC §3.1 5번).
   /// 너무 이르면 잊어버리고, 너무 늦으면 상의할 시간이 없다.

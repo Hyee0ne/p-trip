@@ -28,31 +28,27 @@ class BaseSuggestSheet extends StatelessWidget {
   final String anchorText;
   final int discoveryCount;
 
+  /// 소요시간 비교를 **아직 실제로 계산할 수 없다.**
+  ///
+  /// TECH_SPEC §3.7은 거점 확정 직후 Edge Function 뒤에서 길찾기 REST를 1회 호출해
+  /// 고속도로↔국도를 비교하라고 정한다. 카카오모빌리티 길찾기 키가 아직 없다.
+  ///
+  /// ⚠ 그때까지 **이 모달을 띄우지 않는다.** 전에는 '2시간 10분 / 2시간 50분'이라는
+  ///   지어낸 값을 화면에 내보내고 있었다. 근거 없이 40분을 더 쓰라고 설득하는 건
+  ///   이 예외를 승인한 이유(§3.7 "설득 근거")와 정반대다.
+  /// ⚠ 키가 생기면 아래 주석의 값을 Edge Function 결과로 채워 그대로 켜면 된다.
+  ///   화면(build)은 완성돼 있다.
+  static const hasRealComparison = false;
+
   /// 앵커가 없으면 아무것도 띄우지 않고 그대로 반환한다.
   static Future<bool> show(BuildContext context, {required String baseName}) async {
-    // TODO(M2): Edge Function compare_routes 호출로 교체 (TECH_SPEC §3.7).
-    //   ⚠ 아래 소요시간은 **임시값**이다. 실값은 거점 확정 직후 1회 정적 조회로 받는다.
+    // ignore: dead_code — 키가 생기면 hasRealComparison만 true로 바꾼다.
+    if (!hasRealComparison) return false;
+
+    // TODO: Edge Function compare_routes 호출 (TECH_SPEC §3.7).
+    //   highwayLabel / routeLabel / anchorText / discoveryCount를 실값으로 채운다.
     //   ⚠ 이 값을 ETA·도착시각으로 환산하지 않는다. 비교 근거일 뿐이다.
-    const anchor = '오늘이 북평 장날이고';
-    const discoveries = 9;
-
-    // 앵커가 0건이면 모달을 띄우지 않는다 — 설득 근거 없이 40분을 더 쓰라고 하지 않는다
-    if (anchor.isEmpty) return false;
-
-    final picked = await showModalBottomSheet<bool>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => const BaseSuggestSheet(
-        baseName: '',
-        highwayLabel: '2시간 10분',
-        routeLabel: '2시간 50분',
-        routeId: 7,
-        anchorText: anchor,
-        discoveryCount: discoveries,
-      ),
-    );
-    return picked ?? false;
+    return false;
   }
 
   @override
