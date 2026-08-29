@@ -15,6 +15,7 @@ import '../../core/widgets/route_badge.dart';
 import '../../core/widgets/spot_image.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/providers.dart';
+import 'share_card.dart';
 
 /// MY-02 자동 여행기 (SCREENS.md MY-02).
 ///
@@ -90,7 +91,7 @@ class _Body extends ConsumerWidget {
           // ⚠ 없으면 줄을 그리지 않는다. 밤하늘은 있으면 얹는 것이지 채우는 칸이 아니다.
           if (sky?.line != null) _nightSky(sky!.line!),
           const SizedBox(height: AppSpace.x6),
-          _actions(context),
+          _actions(context, path, sky?.line, trip.unplannedMeals(planned)),
         ],
       ),
     );
@@ -373,7 +374,7 @@ class _Body extends ConsumerWidget {
     );
   }
 
-  Widget _actions(BuildContext context) {
+  Widget _actions(BuildContext context, List<TripPoint> path, String? sky, int meals) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 22),
       child: Column(
@@ -388,7 +389,15 @@ class _Body extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(AppRadius.button),
                 ),
               ),
-              onPressed: () => showAppToast(context, S.tripShareToast),
+              // ⚠ 바로 안 보낸다. 무엇이 나가는지 보여준 뒤 사용자가 누른다 —
+              //   경로가 담긴 이미지라 더 그렇다.
+              onPressed: () => ShareCardSheet.show(
+                context,
+                trip: trip,
+                path: path,
+                nightSky: sky,
+                unplannedMeals: meals,
+              ),
               icon: const Icon(Icons.ios_share, size: 18),
               label: const Text(
                 S.tripShare,

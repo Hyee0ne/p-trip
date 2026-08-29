@@ -203,6 +203,7 @@ class S {
   static String photoCaption(int n) => '사진 $n장이 GPS·촬영 시각으로 경로 위에 자동 정리됐어요';
   static String tripFooter(num km) => '국도 수집 +${km}km · 스쳐간 곳은 찜에 남겨뒀어요';
   static const tripShare = '여행기 공유하기';
+  static const tripSharing = '카드 만드는 중…';
   static const tripShareToast = '시작·끝 300m는 가려져요';
   static const oneMoreDay = '이 동네가 좋았다면, 하루 더?';
   static const tripEmpty = '이번엔 그냥 달린 날 — 스쳐간 곳은 다음 핑계예요';

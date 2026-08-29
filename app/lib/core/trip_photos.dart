@@ -1,10 +1,9 @@
-import 'dart:math' as math;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 import '../data/models/models.dart';
+import 'geo.dart';
 import 'trip_log.dart';
 
 /// 사진첩 접근 상태. UI는 이 값만 보고 분기한다.
@@ -124,18 +123,11 @@ String? nearestStop(double lat, double lng, List<TripStop> stops) {
   var bestKm = 0.3;
   for (final s in stops) {
     if (s.lat == null || s.lng == null) continue;
-    final d = _roughKm(lat, lng, s.lat!, s.lng!);
+    final d = roughKm(lat, lng, s.lat!, s.lng!);
     if (d < bestKm) {
       bestKm = d;
       best = s.spotName;
     }
   }
   return best;
-}
-
-/// 대략 거리(km). 위도 37도 평면 근사면 충분하다.
-double _roughKm(double aLat, double aLng, double bLat, double bLng) {
-  final dx = (bLng - aLng) * 88.0;
-  final dy = (bLat - aLat) * 111.0;
-  return math.sqrt(dx * dx + dy * dy);
 }
