@@ -15,6 +15,7 @@ class DriveState {
   const DriveState({
     this.running = false,
     this.elapsedSec = 0,
+    this.stoppedSec = 0,
     this.lat,
     this.lng,
     this.headingDeg = 0,
@@ -28,6 +29,9 @@ class DriveState {
 
   /// 주행을 시작한 뒤 흐른 실시간(초). 레이더를 먼저 보여줄 틈을 재는 데 쓴다.
   final double elapsedSec;
+
+  /// 멈춰 있은 실시간(초). 정차 3분이 DR-03 몰아보기의 조건이다.
+  final double stoppedSec;
   final double? lat;
   final double? lng;
 
@@ -55,6 +59,7 @@ class DriveState {
   DriveState copyWith({
     bool? running,
     double? elapsedSec,
+    double? stoppedSec,
     double? lat,
     double? lng,
     double? headingDeg,
@@ -65,6 +70,7 @@ class DriveState {
   }) => DriveState(
     running: running ?? this.running,
     elapsedSec: elapsedSec ?? this.elapsedSec,
+    stoppedSec: stoppedSec ?? this.stoppedSec,
     lat: lat ?? this.lat,
     lng: lng ?? this.lng,
     headingDeg: headingDeg ?? this.headingDeg,
@@ -135,6 +141,27 @@ class DriveNotifier extends Notifier<DriveState> {
     state = state.copyWith(running: false, speedKmh: 0);
   }
 
+  /// 잠깐 멈춘다 (들른 곳에 도착). 진행률·거리는 그대로 두고 시계만 센다 —
+  /// 정차 시간이 DR-03 몰아보기의 조건이다.
+  void pause() {
+    if (!state.running) return;
+    _tick?.cancel();
+    state = state.copyWith(running: false, speedKmh: 0, stoppedSec: 0);
+    const dt = Duration(milliseconds: 250);
+    _tick = Timer.periodic(dt, (_) {
+      state = state.copyWith(stoppedSec: state.stoppedSec + dt.inMilliseconds / 1000.0);
+    });
+  }
+
+  /// 다시 달린다. 멈춰 있던 시간은 잊는다.
+  void resume() {
+    if (state.running || _path.length < 2) return;
+    _tick?.cancel();
+    state = state.copyWith(running: true, speedKmh: _kmh, stoppedSec: 0);
+    const dt = Duration(milliseconds: 250);
+    _tick = Timer.periodic(dt, (_) => _step(dt.inMilliseconds / 1000.0));
+  }
+
   /// 끝까지 갔으면 멈춘다. 되감지 않는다 — 여행은 한 번 끝나면 끝이다.
   void _step(double seconds) {
     final total = _cum.isEmpty ? 0.0 : _cum.last;
@@ -160,6 +187,7 @@ class DriveNotifier extends Notifier<DriveState> {
     final p = _pointAt(next);
     state = state.copyWith(
       elapsedSec: state.elapsedSec + seconds,
+      stoppedSec: 0,
       distanceKm: next,
       frac: next / total,
       lat: p.$1.lat,

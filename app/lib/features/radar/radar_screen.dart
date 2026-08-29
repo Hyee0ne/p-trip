@@ -12,6 +12,7 @@ import '../../core/saves.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/trip_log.dart';
+import 'catchup_sheet.dart';
 import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/route_badge.dart';
 import '../../core/widgets/spot_image.dart';
@@ -171,6 +172,35 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   /// ⚠ 매 프레임 쓰지 않는다 — 0.5km마다 한 점이면 여행기를 그리기에 충분하다.
   double _lastLoggedKm = -1;
 
+  /// 몰아보기를 이미 띄웠는지. 한 번 멈출 때 한 번만 띄운다.
+  bool _catchupShown = false;
+
+  /// 정차 3분이면 아까 스쳐간 것들을 모아 보여준다 (SCREENS DR-03).
+  /// ⚠ 주행 시간 기준이다 — 시연 배속과 무관하게 '3분 멈춤'이어야 한다.
+  void _maybeCatchup(DriveState drive) {
+    if (drive.running) {
+      _catchupShown = false;
+      return;
+    }
+    if (_catchupShown || _cardVisible || _passed.length < 2) return;
+    if (drive.stoppedSec * Env.driveScale / 60 < 3) return;
+    _catchupShown = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      CatchupSheet.show(
+        context,
+        passed: [..._passed],
+        onDone: (remaining) {
+          _passed
+            ..clear()
+            ..addAll(remaining);
+          // 시트를 닫으면 다시 달린다. 멈춘 채로 두면 시연이 거기서 끝난다.
+          if (mounted) ref.read(driveProvider.notifier).resume();
+        },
+      );
+    });
+  }
+
   void _record(DriveState drive) {
     if (!drive.running || !drive.hasFix) return;
     final log = ref.read(tripLogProvider.notifier);
@@ -226,6 +256,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     // ⚠ build 안에서 provider를 고치면 안 된다 (Riverpod). 주행이 바뀔 때만 반응한다.
     ref.listen(driveProvider, (_, next) {
       _record(next);
+      _maybeCatchup(next);
       _pickAhead(next, ref.read(radarQueueProvider).value ?? const []);
     });
 
@@ -270,6 +301,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
                             current.spot.lng,
                           ),
                         );
+                        // 들르러 갔으니 잠깐 멈춘다. 정차가 DR-03 몰아보기의 조건이다.
+                        ref.read(driveProvider.notifier).pause();
                         _advance(saved: true);
                       },
                       onSave: () {

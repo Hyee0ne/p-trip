@@ -131,6 +131,13 @@ class S {
   static const radarNotRoute = '경로를 따라가지 않아요. 지금 내 주변만 봅니다 — 길을 바꿔도, 목적지가 바뀌어도 그대로 작동해요.';
   static const radarSolo = '혼자 운전 중이라면 말로 하세요 — "응, 들를래" / "찜해줘". 대답이 없으면 조용히 찜에 담아둘게요.';
   static const radarFinish = '오늘 여행 마치기 → 여행기 만들기';
+
+  // ── DR-03 몰아보기 (정차 시) ──
+  /// ⚠ "되돌아가기" 유도 문구를 쓰지 않는다. 갈지 말지는 사용자가 정한다 (SCREENS DR-03).
+  static const catchupTitle = '아까 스쳐간 곳들';
+  static const catchupGo = '지금 가기';
+  static const catchupKeep = '계속 찜';
+  static const catchupDrop = '지우기';
   static String radarRecording(String route, num km) => '\$route \${km}km 기록 중';
   static String baseChipSet(String name) => '오늘 밤 $name — 낮은 마음껏 새어나가세요';
   static const baseChipNone = '오늘 밤 거점 없음 — 그래도 레이더는 돌아가요';
