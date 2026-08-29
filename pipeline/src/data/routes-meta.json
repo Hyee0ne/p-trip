@@ -1,0 +1,359 @@
+[
+  {
+    "id": 1,
+    "name": "",
+    "axis": "NS",
+    "drivable": false,
+    "from_to": "목포–신의주"
+  },
+  {
+    "id": 2,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": "신안–부산"
+  },
+  {
+    "id": 3,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 4,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": "군산–경주"
+  },
+  {
+    "id": 5,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 6,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": "인천–강릉"
+  },
+  {
+    "id": 7,
+    "name": "동해 바닷길",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": "부산–고성"
+  },
+  {
+    "id": 13,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 14,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 15,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 17,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 18,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 19,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 20,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 21,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 22,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 23,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 24,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": "신안–울산"
+  },
+  {
+    "id": 25,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 26,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 27,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 28,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 29,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 30,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 31,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 32,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 33,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 34,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 35,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 36,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 37,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 38,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 39,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 40,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 42,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 43,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 44,
+    "name": "한계령길",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": "양평–양양"
+  },
+  {
+    "id": 45,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 46,
+    "name": "경춘길",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": "인천–고성"
+  },
+  {
+    "id": 47,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 48,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 50,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 58,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 59,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 67,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 75,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 77,
+    "name": "해안일주",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": "부산–파주"
+  },
+  {
+    "id": 79,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 82,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 87,
+    "name": "",
+    "axis": "NS",
+    "drivable": true,
+    "from_to": ""
+  },
+  {
+    "id": 88,
+    "name": "",
+    "axis": "EW",
+    "drivable": true,
+    "from_to": ""
+  }
+]

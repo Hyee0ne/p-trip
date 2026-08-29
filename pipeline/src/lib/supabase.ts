@@ -1,5 +1,10 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import 'dotenv/config';
+import { config } from 'dotenv';
+
+// .env는 리포 루트에 있다. 스크립트는 pipeline/에서 돌지만 루트에서 부를 수도 있어
+// 양쪽을 다 본다. 먼저 읽힌 값이 이긴다.
+config({ path: '../.env' });
+config({ path: '.env' });
 
 /**
  * Supabase 클라이언트 — **프로젝트 오조준 방지 가드 포함**.
