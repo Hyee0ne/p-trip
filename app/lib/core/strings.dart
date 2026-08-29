@@ -84,6 +84,9 @@ class S {
   static const courseStart = '이 코스로 출발';
   static const courseStartWithoutBase = '거점 없이도 출발할 수 있어요';
 
+  /// CO-06 보조 버튼. 거점은 선택사항이라 나가는 길이 반드시 있어야 한다.
+  static const baseSkipAndStart = '건너뛰고 출발';
+
   // ── 거점 (CO-06) ──
   static const baseTitle = '오늘 밤 거점';
   static const baseIntro = '거점은 숙소가 아니라 \'위치\'예요. 어디서 예약했든 상관없어요 — 핀 하나만 찍으면 레이더의 기준점이 됩니다.';

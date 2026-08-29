@@ -209,6 +209,16 @@ void main() {
 
     expect(find.text(S.baseTitle), findsOneWidget);
     expect(find.text(S.baseIntro), findsOneWidget);
+
+    // ⚠ 거점은 **선택사항**이다 (원칙 4). 여기서 나가는 길이 반드시 있어야 한다.
+    //   이 버튼이 없으면 거점을 안 정한 사람은 영영 출발을 못 한다.
+    expect(find.text(S.baseSkipAndStart), findsOneWidget);
+    await tester.tap(find.text(S.baseSkipAndStart));
+    // 레이더는 스윕이 계속 돌아 pumpAndSettle이 끝나지 않는다.
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+    expect(find.text(S.radarFinish), findsWidgets, reason: '거점 없이도 레이더로 들어가야 한다');
   });
 
   testWidgets('거점은 위치만 받는다 — 예약 버튼은 외부 링크', (tester) async {

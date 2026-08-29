@@ -272,20 +272,26 @@ class _Body extends ConsumerWidget {
   }
 
   /// 거점 미설정이면 CO-06으로 유도(강제하지 않는다), 설정됐으면 HND 시트.
-  void _onDepart(BuildContext context) {
+  Future<void> _onDepart(BuildContext context) async {
     final base = ProviderScope.containerOf(context).read(baseCampProvider);
+
+    // ⚠ **거점은 선택사항이다.** 없다고 출발을 막지 않는다 (원칙 4).
+    //   권하기만 하고, 그 화면에서 '건너뛰고 출발'로 바로 레이더에 들어갈 수 있다.
     if (base == null) {
       showAppToast(context, S.courseStartWithoutBase);
       context.push('/course/${course.id}/base');
       return;
     }
+
     // 출발 = 거점이 목적지. 경유는 코스 위 '오늘의 앵커'인데, 아직 앵커 선정 로직이
     // 없어서 비워 둔다 — 없는 경유지를 지어내지 않는다 (TECH_SPEC §3.3).
-    HandoffSheet.show(
+    await HandoffSheet.show(
       context,
       mode: HandoffMode.depart,
       destination: HandoffPlace(base.name, base.lat, base.lng),
     );
+    // 내비를 켰든 취소했든 우리 앱은 레이더로 넘어간다 (SCREENS.md CO-02 → DR-01).
+    if (context.mounted) context.go('/radar');
   }
 
   Widget _cta(BuildContext context) {

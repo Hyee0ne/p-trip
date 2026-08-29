@@ -34,6 +34,10 @@ class BaseScreen extends ConsumerStatefulWidget {
 class _BaseScreenState extends ConsumerState<BaseScreen> {
   String? _pickedName;
 
+  /// ⚠ 좌표를 안 들고 있으면 거점을 정해도 내비가 엉뚱한 데로 간다.
+  double? _pickedLat;
+  double? _pickedLng;
+
   bool get _isReentry => widget.courseId == null;
 
   @override
@@ -57,7 +61,9 @@ class _BaseScreenState extends ConsumerState<BaseScreen> {
       body: Stack(
         children: [
           ListView(
-            padding: const EdgeInsets.only(bottom: 124),
+            // 하단 CTA가 목록을 가리지 않게 비운다.
+            // ⚠ '건너뛰고 출발'이 붙으면서 CTA가 44pt 높아졌다 — 여백도 같이 커져야 한다.
+            padding: EdgeInsets.only(bottom: _isReentry ? 124 : 168),
             children: [
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: AppSpace.gutter),
@@ -175,7 +181,7 @@ class _BaseScreenState extends ConsumerState<BaseScreen> {
           child: Column(
             children: [
               for (var i = 0; i < spots.length; i++) ...[
-                _CandidateRow(spot: spots[i], onPick: () => _pick(spots[i].name)),
+                _CandidateRow(spot: spots[i], onPick: () => _pick(spots[i])),
                 if (i != spots.length - 1)
                   const Divider(height: 1, thickness: 1, color: AppColors.line),
               ],
@@ -186,8 +192,12 @@ class _BaseScreenState extends ConsumerState<BaseScreen> {
     );
   }
 
-  void _pick(String name) {
-    setState(() => _pickedName = name);
+  void _pick(Spot spot) {
+    setState(() {
+      _pickedName = spot.name;
+      _pickedLat = spot.lat;
+      _pickedLng = spot.lng;
+    });
     showAppToast(context, S.baseToastExternal);
   }
 
@@ -206,19 +216,42 @@ class _BaseScreenState extends ConsumerState<BaseScreen> {
             stops: [0, 0.66, 1],
           ),
         ),
-        child: SizedBox(
-          height: 56,
-          child: FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.violet,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: 56,
+              width: double.infinity,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.violet,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.button),
+                  ),
+                ),
+                onPressed: _confirm,
+                child: const Text(
+                  S.baseCta,
+                  style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700),
+                ),
+              ),
             ),
-            onPressed: _confirm,
-            child: const Text(
-              S.baseCta,
-              style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700),
-            ),
-          ),
+            // ⚠ **거점은 선택사항이다** (원칙 4 — 거점은 위치 입력값일 뿐).
+            //   이 버튼이 없으면 거점을 안 정한 사람은 출발할 길이 없다.
+            //   코스에서 온 경우에만 낸다 — 역진입(/base)은 거점이 목적 그 자체다.
+            if (!_isReentry)
+              TextButton(
+                onPressed: () => context.go('/radar'),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(0, AppTouch.min),
+                  foregroundColor: AppColors.ink2,
+                ),
+                child: const Text(
+                  S.baseSkipAndStart,
+                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -229,8 +262,10 @@ class _BaseScreenState extends ConsumerState<BaseScreen> {
       showAppToast(context, S.baseToastPickFirst);
       return;
     }
-    // TODO(M2): 실제 좌표를 카카오 장소검색/지도 핀에서 받는다
-    ref.read(baseCampProvider.notifier).set(BaseCamp(name: _pickedName!, lat: 0, lng: 0));
+    // TODO(M2): 지도 핀으로 직접 찍는 경로. 지금은 후보 목록에서 고른 좌표를 쓴다.
+    ref
+        .read(baseCampProvider.notifier)
+        .set(BaseCamp(name: _pickedName!, lat: _pickedLat ?? 0, lng: _pickedLng ?? 0));
 
     if (_isReentry) {
       // 역진입 → CO-06b 국도 제안. 거절해도 아무 일도 일어나지 않는다.
