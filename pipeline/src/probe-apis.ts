@@ -28,6 +28,8 @@ const TODAY = new Date();
 const yyyymmdd = (d: Date) =>
   `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
 
+type Attempt = { url: string; status: number; err: string };
+
 type Probe = {
   name: string;
   question: string;
@@ -37,6 +39,8 @@ type Probe = {
   note: string;
   fields?: string[];
   sample?: unknown;
+  /** 실패한 후보까지 전부 남긴다 — 경로가 틀린 건지 신청이 안 된 건지 갈라야 한다. */
+  attempts?: Attempt[];
 };
 
 const report: Probe[] = [];
@@ -52,29 +56,41 @@ function mask(url: string): string {
  */
 async function tryFetch(
   candidates: string[],
-): Promise<{ url: string; status: number; body: string } | null> {
-  for (const url of candidates) {
+): Promise<{ url: string; status: number; body: string; attempts: Attempt[] } | null> {
+  const attempts: Attempt[] = [];
+  let lastBody = '';
+  let lastUrl = '';
+  let lastStatus = 0;
+
+  // http도 같이 본다. data.go.kr은 서비스마다 https 지원이 갈린다.
+  const expanded = candidates.flatMap((u) =>
+    u.startsWith('https://') ? [u, u.replace('https://', 'http://')] : [u],
+  );
+
+  for (const url of expanded) {
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
       const body = await res.text();
-      // data.go.kr은 실패해도 200에 에러 XML을 실어 보낸다. 본문까지 봐야 한다.
-      const failed =
-        !res.ok ||
-        /SERVICE[_ ]?ERROR|SERVICE_KEY_IS_NOT_REGISTERED|NO_OPENAPI_SERVICE_ERROR|APPLICATION_ERROR|<errMsg>/i.test(
-          body,
-        );
-      if (!failed) return { url, status: res.status, body };
-      // 마지막 후보면 실패 본문이라도 돌려줘서 원인을 볼 수 있게 한다.
-      if (url === candidates[candidates.length - 1]) {
-        return { url, status: res.status, body };
-      }
+      // data.go.kr은 실패해도 200에 에러 XML/JSON을 실어 보낸다. 본문까지 봐야 한다.
+      const code =
+        body.match(
+          /(SERVICE_KEY_IS_NOT_REGISTERED\w*|NO_OPENAPI_SERVICE_ERROR|SERVICE_ACCESS_DENIED\w*|LIMITED_NUMBER_OF_SERVICE_REQUESTS\w*|APPLICATION_ERROR|DEADLINE_HAS_EXPIRED\w*|UNREGISTERED_IP\w*|HTTP_ERROR)/i,
+        )?.[1] ?? '';
+      const failed = !res.ok || Boolean(code) || /<errMsg>/i.test(body);
+      attempts.push({ url: mask(url), status: res.status, err: code || (failed ? '실패' : '') });
+      if (!failed) return { url, status: res.status, body, attempts };
+      lastBody = body;
+      lastUrl = url;
+      lastStatus = res.status;
     } catch (e) {
-      if (url === candidates[candidates.length - 1]) {
-        return { url, status: 0, body: String(e) };
-      }
+      attempts.push({ url: mask(url), status: 0, err: String(e).slice(0, 80) });
+      lastBody = String(e);
+      lastUrl = url;
+      lastStatus = 0;
     }
   }
-  return null;
+  if (!lastUrl) return null;
+  return { url: lastUrl, status: lastStatus, body: lastBody, attempts };
 }
 
 /** XML/JSON 어느 쪽이 와도 필드 이름을 뽑는다. 스키마 확인이 목적이다. */
@@ -114,6 +130,10 @@ function add(p: Probe) {
   console.log(`  결과: ${p.note}`);
   if (p.url) console.log(`  URL : ${mask(p.url)} (${p.status})`);
   if (p.fields?.length) console.log(`  필드: ${p.fields.join(', ')}`);
+  if (!p.ok && p.attempts?.length) {
+    console.log('  시도한 후보:');
+    for (const a of p.attempts) console.log(`    - [${a.status}] ${a.err} ${a.url.split('?')[0]}`);
+  }
 }
 
 // ──────────────────────────────────────────────────────────
@@ -146,9 +166,82 @@ async function probeTourApi(key: string) {
       ? `반경 5km totalCount = ${count}. 사용할 엔드포인트: ${r.url.includes('KorService2') ? 'KorService2' : 'KorService1'}`
       : `totalCount를 못 읽었다. 응답 앞부분: ${r.body.slice(0, 220)}`,
     fields: fieldsOf(r.body).slice(0, 40),
-    sample: r.body.slice(0, 1200),
+    sample: r.body.slice(0, 9000),
   });
   return r;
+}
+
+// ──────────────────────────────────────────────────────────
+// 1-b. detailCommon/detailIntro — trust_score 배점의 실제 충족률
+//    사진35 + 추가10 + 전화15 + 영업20 + 주소10 + 개요10, 게이트 60.
+//    locationBasedList에는 개요·영업시간이 없다. 여기서 채워지는지가 관건이다.
+// ──────────────────────────────────────────────────────────
+async function probeDetail(key: string, listBody: string) {
+  let ids: { id: string; type: string }[] = [];
+  try {
+    const items = JSON.parse(listBody)?.response?.body?.items?.item ?? [];
+    ids = items
+      .slice(0, 8)
+      .map((i: Record<string, string>) => ({ id: i.contentid, type: i.contenttypeid }));
+  } catch {
+    /* 아래에서 빈 배열로 처리 */
+  }
+  if (!ids.length) {
+    return add({
+      name: 'trust_score 충족률',
+      question: '데모 구간 스팟이 신뢰도 게이트(60점)를 넘는가',
+      ok: false,
+      note: '목록 응답을 파싱하지 못해 검사하지 못했다',
+    });
+  }
+
+  const common = `serviceKey=${key}&MobileOS=ETC&MobileApp=PTrip&_type=json`;
+  const rows: string[] = [];
+  let pass = 0;
+
+  for (const { id, type } of ids) {
+    const c = await tryFetch([
+      `https://apis.data.go.kr/B551011/KorService2/detailCommon2?${common}&contentId=${id}`,
+    ]);
+    const i = await tryFetch([
+      `https://apis.data.go.kr/B551011/KorService2/detailIntro2?${common}&contentId=${id}&contentTypeId=${type}`,
+    ]);
+    const pick = (b: string | undefined, k: string): string => {
+      if (!b) return '';
+      try {
+        const it = JSON.parse(b)?.response?.body?.items?.item;
+        const o = Array.isArray(it) ? it[0] : it;
+        return String(o?.[k] ?? '').trim();
+      } catch {
+        return '';
+      }
+    };
+    const title = pick(c?.body, 'title');
+    const photo = Boolean(pick(c?.body, 'firstimage'));
+    const addr = Boolean(pick(c?.body, 'addr1'));
+    const overview = pick(c?.body, 'overview').length > 30;
+    const tel = Boolean(pick(c?.body, 'tel'));
+    // 영업시간 필드는 유형마다 이름이 다르다 (usetime / opentimefood / checkintime …)
+    const openHours = i?.body ? /"(usetime|opentime|checkintime|playtime|usetimefestival)[^"]*"\s*:\s*"[^"]+"/i.test(i.body) : false;
+
+    const score =
+      (photo ? 35 : 0) + (tel ? 15 : 0) + (openHours ? 20 : 0) + (addr ? 10 : 0) + (overview ? 10 : 0);
+    if (score >= 60) pass++;
+    rows.push(
+      `${score >= 60 ? '○' : '✗'} ${String(score).padStart(3)}점  ${title || id}  ` +
+        `[사진${photo ? '○' : '✗'} 전화${tel ? '○' : '✗'} 영업${openHours ? '○' : '✗'} 주소${addr ? '○' : '✗'} 개요${overview ? '○' : '✗'}]`,
+    );
+  }
+
+  const rate = Math.round((pass / ids.length) * 100);
+  add({
+    name: 'trust_score 충족률 (게이트 60)',
+    question: '데모 구간 스팟이 실제로 신뢰도 게이트를 넘는가 — 넘는 게 없으면 레이더에 띄울 게 없다',
+    ok: rate >= 50,
+    note: `${ids.length}건 중 ${pass}건 통과 (${rate}%)`,
+    sample: rows,
+  });
+  rows.forEach((r) => console.log(`         ${r}`));
 }
 
 // ──────────────────────────────────────────────────────────
@@ -159,9 +252,14 @@ async function probeRelated(key: string) {
   const prev = new Date(TODAY.getFullYear(), TODAY.getMonth() - 2, 1);
   const baseYm = `${prev.getFullYear()}${String(prev.getMonth() + 1).padStart(2, '0')}`;
   const common = `serviceKey=${key}&MobileOS=ETC&MobileApp=PTrip&_type=json&numOfRows=5&pageNo=1`;
+  // 강원 동해시. 법정동 코드(51/51170)와 구 지역코드(32) 둘 다 본다 —
+  // 코드 체계가 틀린 건지 서비스 신청이 안 된 건지 갈라야 한다.
+  const base1 = 'https://apis.data.go.kr/B551011/TarRlteTarService1/areaBasedList1';
   const r = await tryFetch([
-    `https://apis.data.go.kr/B551011/TarRlteTarService1/areaBasedList1?${common}&baseYm=${baseYm}&areaCd=51&signguCd=51150`,
-    `https://apis.data.go.kr/B551011/TarRlteTarService/areaBasedList?${common}&baseYm=${baseYm}&areaCd=51&signguCd=51150`,
+    `${base1}?${common}&baseYm=${baseYm}&areaCd=51&signguCd=51170`,
+    `${base1}?${common}&baseYm=${baseYm}&areaCd=32&signguCd=6`,
+    `${base1}?${common}&baseYm=${baseYm}`,
+    `https://apis.data.go.kr/B551011/TarRlteTarService/areaBasedList?${common}&baseYm=${baseYm}`,
   ]);
   if (!r) return add({ name: '연관 관광지', question: '기준연월 파라미터를 받는가', ok: false, note: '호출 실패' });
 
@@ -178,6 +276,7 @@ async function probeRelated(key: string) {
       : `안 되거나 파라미터가 다르다. ${err ?? r.body.slice(0, 220)}`,
     fields: fieldsOf(r.body).slice(0, 30),
     sample: r.body.slice(0, 1000),
+    attempts: r.attempts,
   });
 }
 
@@ -211,7 +310,7 @@ async function probeRiseSet(key: string) {
       moon && twilight ? '→ 달 방해 계산 가능' : '→ 필드가 모자라면 계산식을 줄여야 한다',
     ].join(' · '),
     fields: f,
-    sample: r.body.slice(0, 1200),
+    sample: r.body.slice(0, 9000),
   });
 }
 
@@ -222,8 +321,8 @@ async function probeAstro(key: string) {
   const base =
     'https://apis.data.go.kr/B090041/openapi/service/AstroEventInfoService/getAstroEventInfo';
   const year = TODAY.getFullYear();
-  // 8월 페르세우스자리, 12월 쌍둥이자리 — 유성우가 실제로 실리는지 보기 좋은 달.
-  const months = ['08', '12', String(TODAY.getMonth() + 1).padStart(2, '0')];
+  // 1년 전체를 훑는다. 데모·시연 기간에 쓸 게 있는지 알아야 한다.
+  const months = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
   const titles: string[] = [];
   const events: string[] = [];
   let last: Awaited<ReturnType<typeof tryFetch>> = null;
@@ -243,6 +342,7 @@ async function probeAstro(key: string) {
   // 천문연 보도자료는 달빛 방해를 문장으로 적는다. 그게 API에도 실리는지가 핵심.
   const condition = events.filter((e) => /달빛|관측 조건|보름달|월령/.test(e));
 
+  // 월별로 몇 건인지 함께 남긴다 — 시연 월에 쓸 게 있는지가 실무 질문이다.
   add({
     name: '천문현상',
     question: '유성우·월식이 들어오는가, astroEvent에 관측 조건(달빛) 문장이 실리는가',
@@ -253,15 +353,15 @@ async function probeAstro(key: string) {
       titles.length === 0
         ? `현상이 하나도 안 왔다. 응답 앞부분: ${last?.body.slice(0, 220) ?? '(없음)'}`
         : [
-            `총 ${titles.length}건`,
-            `유성우 ${meteor.length}건${meteor.length ? ` (${meteor.slice(0, 3).join(', ')})` : ''}`,
-            `월식·일식 ${eclipse.length}건`,
+            `${year}년 총 ${titles.length}건`,
+            `유성우 ${meteor.length}건${meteor.length ? ` (${meteor.join(' / ')})` : ''}`,
+            `월식·일식 ${eclipse.length}건${eclipse.length ? ` (${eclipse.join(' / ')})` : ''}`,
             condition.length
               ? `관측 조건 문장 ○ (${condition.length}건) → 그대로 인용 가능`
               : `관측 조건 문장 ✗ → 달 방해는 출몰시각으로 우리가 계산해야 한다`,
           ].join(' · '),
     fields: last ? fieldsOf(last.body).slice(0, 20) : undefined,
-    sample: { titles: titles.slice(0, 12), events: events.slice(0, 4) },
+    sample: { meteor, eclipse, titles, events: events.slice(0, 6) },
   });
 }
 
@@ -269,8 +369,12 @@ async function probeAstro(key: string) {
 // 5. 전통시장 표준데이터 — 장날 끝자리가 어떤 표기로 오는가
 // ──────────────────────────────────────────────────────────
 async function probeMarkets(key: string) {
+  // ⚠ 표준데이터(odcloud)는 데이터셋마다 uddi가 달라서 추측이 불가능하다.
+  //   MARKETS_ENDPOINT에 마이페이지의 요청주소를 넣으면 그걸 우선 쓴다.
+  const custom = process.env.MARKETS_ENDPOINT?.trim();
+  const sep = custom?.includes('?') ? '&' : '?';
   const r = await tryFetch([
-    `https://api.odcloud.kr/api/15052837/v1/uddi:a9b3e0d0-1c04-4b2c-9a0f-b96f6f18e56f?serviceKey=${key}&page=1&perPage=5`,
+    ...(custom ? [`${custom}${sep}serviceKey=${key}&page=1&perPage=5`] : []),
     `https://apis.data.go.kr/1741000/StandardMarket/getStandardMarketList?serviceKey=${key}&pageNo=1&numOfRows=5&type=json`,
   ]);
   const f = r ? fieldsOf(r.body) : [];
@@ -283,9 +387,10 @@ async function probeMarkets(key: string) {
     status: r?.status,
     note: dayField
       ? `장날 필드 발견: ${dayField}. 표기 정규화 규칙을 여기서 정한다`
-      : `엔드포인트를 못 찾았다. 표준데이터는 파일(CSV)로도 받을 수 있으니 그쪽이 빠를 수 있다. 응답: ${r?.body.slice(0, 200) ?? '(없음)'}`,
+      : `엔드포인트 미확인. 표준데이터는 uddi가 데이터셋마다 달라 추측할 수 없다 — .env에 MARKETS_ENDPOINT를 넣거나 파일(CSV)로 받는다. 응답: ${r?.body.slice(0, 160) ?? '(없음)'}`,
     fields: f.slice(0, 30),
     sample: r?.body.slice(0, 800),
+    attempts: r?.attempts,
   });
 }
 
@@ -302,7 +407,8 @@ async function main() {
   );
 
   if (tour) {
-    await probeTourApi(tour);
+    const list = await probeTourApi(tour);
+    if (list) await probeDetail(tour, list.body);
     await probeRelated(tour);
   } else {
     console.log('\n⚠ TOURAPI_KEY가 없어 TourAPI 검사를 건너뛴다.');
