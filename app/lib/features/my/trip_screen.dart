@@ -1,8 +1,12 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:photo_manager/photo_manager.dart';
 
 import '../../core/strings.dart';
+import '../../core/trip_photos.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/cards.dart';
@@ -33,12 +37,13 @@ class TripScreen extends ConsumerWidget {
   }
 }
 
-class _Body extends StatelessWidget {
+class _Body extends ConsumerWidget {
   const _Body({required this.trip});
   final Trip trip;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final photos = ref.watch(tripPhotosProvider(trip.id)).value;
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.only(bottom: 32),
@@ -46,9 +51,15 @@ class _Body extends StatelessWidget {
           _appBar(context),
           _header(),
           const SizedBox(height: AppSpace.x5),
-          _photoCollage(),
-          const SizedBox(height: AppSpace.x5),
-          _statChips(),
+          // 사진이 없으면 자리도 만들지 않는다 — 없는 걸 채우지 않는다.
+          if (photos != null && photos.photos.isNotEmpty) ...[
+            _photoStrip(photos.photos),
+            const SizedBox(height: AppSpace.x5),
+          ] else if (photos != null && photos.access == PhotoAccess.denied) ...[
+            _photoDenied(),
+            const SizedBox(height: AppSpace.x5),
+          ],
+          _statChips(photos?.photos.length ?? 0),
           const SizedBox(height: AppSpace.x8),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 22),
@@ -57,8 +68,10 @@ class _Body extends StatelessWidget {
           const SizedBox(height: AppSpace.x3),
           _timeline(),
           const SizedBox(height: AppSpace.x5),
-          _photoNote(),
-          const SizedBox(height: AppSpace.x3),
+          if (photos != null && photos.photos.isNotEmpty) ...[
+            _photoNote(photos.photos.length),
+            const SizedBox(height: AppSpace.x3),
+          ],
           _footer(),
           const SizedBox(height: AppSpace.x6),
           _actions(context),
@@ -122,68 +135,120 @@ class _Body extends StatelessWidget {
     );
   }
 
-  /// 사진 콜라주 — 큰 것 하나 + 작은 것 둘. 마지막에 +N.
-  Widget _photoCollage() {
-    final stops = [...trip.stops];
-    final types = stops.map((s) => s.type).toList();
-    final ids = stops.map<String?>((s) => s.spotId).toList();
-    while (types.length < 3) {
-      types.add(SpotType.attraction);
-      ids.add(null);
-    }
+  /// 사진 스트립 — **내 사진만.** 라벨은 스팟명·시각 (SCREENS.md MY-02).
+  ///
+  /// ⚠ 스팟 사진을 내 사진인 척 채우지 않는다. 그건 여행기가 아니라 카탈로그다.
+  Widget _photoStrip(List<TripPhoto> photos) {
+    final shown = photos.take(4).toList();
+    final more = photos.length - shown.length;
     return SizedBox(
-      height: 186,
-      child: Padding(
+      height: 150,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 22),
-        child: Row(
+        itemCount: shown.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 6),
+        itemBuilder: (_, i) => _photoTile(shown[i], i == shown.length - 1 ? more : 0),
+      ),
+    );
+  }
+
+  Widget _photoTile(TripPhoto p, int more) {
+    final label = p.spotName ?? _hhmm(p.at);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(15),
+      child: SizedBox(
+        width: 118,
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            Expanded(
-              flex: 13,
-              child: SpotImage(type: types[0], spotId: ids[0], radius: 15),
+            Container(color: AppColors.fill),
+            FutureBuilder<Uint8List?>(
+              future: p.asset.thumbnailDataWithSize(const ThumbnailSize(300, 380)),
+              builder: (_, snap) => snap.data == null
+                  ? const SizedBox.shrink()
+                  : Image.memory(snap.data!, fit: BoxFit.cover),
             ),
-            const SizedBox(width: 5),
-            Expanded(
-              flex: 10,
-              child: Column(
-                children: [
-                  Expanded(
-                    child: SpotImage(type: types[1], spotId: ids[1], radius: 15),
-                  ),
-                  const SizedBox(height: 5),
-                  Expanded(
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        SpotImage(type: types[2], spotId: ids[2], radius: 15),
-                        Positioned(
-                          right: 8,
-                          bottom: 8,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: const Color(0xEBFFFFFF),
-                              borderRadius: BorderRadius.circular(AppRadius.chip),
-                            ),
-                            child: Text(
-                              '+${trip.photoCount - 2}',
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.center,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0x00000000), Color(0xB3000000)],
+                ),
               ),
             ),
+            Positioned(
+              left: 8,
+              right: 8,
+              bottom: 7,
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            if (more > 0)
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xEBFFFFFF),
+                    borderRadius: BorderRadius.circular(AppRadius.chip),
+                  ),
+                  child: Text(
+                    '+$more',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 
+  /// 권한이 없을 때. 막지 않고 왜 비어 있는지만 말한다 (SCREENS.md MY-02 상태).
+  Widget _photoDenied() => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 22),
+    child: Container(
+      padding: const EdgeInsets.all(AppSpace.x4),
+      decoration: BoxDecoration(
+        color: AppColors.fill,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.photo_library_outlined, size: 18, color: AppColors.ink3),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              S.photoDenied,
+              style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.ink2),
+            ),
+          ),
+          TextButton(
+            onPressed: PhotoManager.openSetting,
+            style: TextButton.styleFrom(minimumSize: const Size(0, AppTouch.min)),
+            child: const Text(S.photoOpenSettings, style: TextStyle(fontSize: 13)),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  static String _hhmm(DateTime d) =>
+      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
   /// 통계는 표가 아니라 칩으로 조용히. 허탕도 같은 크기로 담담하게.
-  Widget _statChips() {
+  Widget _statChips(int photoCount) {
     // ⚠ width 없는 Container에 alignment를 주면 폭이 최대까지 팽창한다 → Row(min)
     Widget chip(String label, Color bg, Color fg) => Container(
       height: 32,
@@ -210,7 +275,7 @@ class _Body extends StatelessWidget {
           chip('${S.statPassed} ${trip.passed}', AppColors.fill, AppColors.ink2),
           if (trip.skunked > 0)
             chip('${S.statSkunked} ${trip.skunked}', AppColors.tintSun, AppColors.onTintSun),
-          chip('사진 ${trip.photoCount}장', AppColors.fill, AppColors.ink2),
+          if (photoCount > 0) chip('사진 $photoCount장', AppColors.fill, AppColors.ink2),
         ],
       ),
     );
@@ -231,7 +296,7 @@ class _Body extends StatelessWidget {
     );
   }
 
-  Widget _photoNote() {
+  Widget _photoNote(int photoCount) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 22),
       child: Row(
@@ -240,7 +305,7 @@ class _Body extends StatelessWidget {
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              S.photoCaption(trip.photoCount),
+              S.photoCaption(photoCount),
               style: const TextStyle(fontSize: 11.5, height: 1.5, color: AppColors.ink3),
             ),
           ),

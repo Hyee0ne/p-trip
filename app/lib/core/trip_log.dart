@@ -164,6 +164,8 @@ class TripLogNotifier extends Notifier<TripLog> {
       type: spot.type,
       at: '${_pad(now.hour)}:${_pad(now.minute)}',
       kind: kind,
+      lat: spot.lat,
+      lng: spot.lng,
     );
     _replace(trip.id, (t) => _copy(t, stops: [...t.stops, stop]));
   }
@@ -248,6 +250,8 @@ class TripLogNotifier extends Notifier<TripLog> {
           'type': s.type.name,
           'at': s.at,
           'kind': s.kind.name,
+          'lat': s.lat,
+          'lng': s.lng,
           'note': s.note,
           'stayMin': s.stayMin,
         },
@@ -285,6 +289,8 @@ class TripLogNotifier extends Notifier<TripLog> {
             orElse: () => SpotType.attraction,
           ),
           at: (s['at'] as String?) ?? '',
+          lat: (s['lat'] as num?)?.toDouble(),
+          lng: (s['lng'] as num?)?.toDouble(),
           kind: StopKind.values.firstWhere(
             (e) => e.name == s['kind'],
             orElse: () => StopKind.visited,

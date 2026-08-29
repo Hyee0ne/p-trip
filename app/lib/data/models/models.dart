@@ -244,6 +244,8 @@ class TripStop {
     required this.type,
     required this.at,
     required this.kind,
+    this.lat,
+    this.lng,
     this.note = '',
     this.stayMin,
   });
@@ -255,6 +257,11 @@ class TripStop {
   /// 'HH:mm'
   final String at;
   final StopKind kind;
+
+  /// 그 스팟의 좌표. 사진을 어느 곳에서 찍었는지 귀속할 때 쓴다 (MY-02).
+  /// ⚠ null이면 '모른다'는 뜻이다. 0,0으로 채우지 않는다 — 기니만으로 안내하게 된다.
+  final double? lat;
+  final double? lng;
 
   /// 자동 생성 한 줄. "'오늘이 마침 장날' 알림에 핸들을 꺾음"
   final String note;

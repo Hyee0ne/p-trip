@@ -198,6 +198,7 @@ class S {
   static const statVisited = '들른 발견';
   static const statPassed = '스쳐간 발견';
   static const statSkunked = '허탕';
+  static const photoOpenSettings = '설정 열기';
   static String photoCaption(int n) => '사진 $n장이 GPS·촬영 시각으로 경로 위에 자동 정리됐어요';
   static String tripFooter(num km) => '국도 수집 +\${km}km · 스쳐간 곳은 찜에 남겨뒀어요';
   static const tripShare = '여행기 공유하기';
