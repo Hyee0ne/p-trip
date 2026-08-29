@@ -39,7 +39,10 @@
 - **앱**: Flutter (Dart), 상태관리 Riverpod, 라우팅 go_router
 - **백엔드**: Supabase (Postgres + PostGIS, Auth, Storage, Edge Functions)
 - **데이터 파이프라인**: Node.js 스크립트 (TourAPI 수집 → Supabase 적재, 로컬/cron 실행)
-- **지도**: kakao_map_plugin (카카오 생태계 통일)
+- **지도**: kakao_map_sdk (카카오맵 **네이티브** SDK v2 래퍼). 2026-08-29 확정.
+  WebView 기반 kakao_map_plugin에서 갈아탔다 — 노선 폴리라인을 여러 개 얹어야 해서
+  네이티브 렌더링이 필요하다. **네이티브 앱 키**를 쓰고, 내비 핸드오프와 같은 키다.
+  iOS 13.0+ / Android minSdk 23
 - **주요 패키지**: geolocator(위치), kakao_flutter_sdk_navi(내비 핸드오프),
   flutter_tts(음성), photo_manager(사진 메타데이터), share_plus(여행기 공유),
   flutter_local_notifications(DR-06 백그라운드 근접 알림)

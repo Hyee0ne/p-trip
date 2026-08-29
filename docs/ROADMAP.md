@@ -68,10 +68,11 @@ Figma는 만들지 않는다 — CSS 변수 → `theme.dart` 1:1 이식이 목�
 
 여기서 막히면 M1 시작 전에 설계를 고친다.
 
-- [ ] 카카오맵에 하드코딩 LineString 1개 + 핀 3개 렌더 → **지도 플러그인 확정**
-      (`kakao_map_plugin` 0.4.0은 0.x 커뮤니티 패키지 — 대안 검토 포함)
-- [ ] **CO-07 지도 부하 실측** — 폴리라인 10 / 30 / 51개를 얹고 핀치 줌·드래그 프레임 확인.
-      WebView라 51개가 안 되면 `getBounds()` 기반 가시영역 필터로 설계 고정 (SCREENS.md CO-07)
+- [x] **지도 플러그인 확정 — `kakao_map_sdk` 1.2.6 (네이티브 SDK v2 래퍼)**. 2026-08-29.
+      WebView 기반 `kakao_map_plugin`에서 갈아탔다. pod install·Xcode 빌드 통과 확인.
+      네이티브 렌더링이라 폴리라인 개수 부하 문제가 사라진다 — 가시영역 필터도 불필요.
+      ⚠ 실제 타일 렌더는 **네이티브 앱 키**가 있어야 확인된다
+- [ ] 노선 LineString 1개 + 핀 3개 실렌더 (키 주입 후)
 - [ ] `NaviApi.navigate(viaList:)` **실기기** 1회 호출 → 핸드오프 가능 여부 확정
 - [ ] geolocator 스트림 + heading/speed 실측 → §3.1 방향 필터 임계값 조정
 

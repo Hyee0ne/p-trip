@@ -11,6 +11,8 @@ class Env {
   static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
   static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
   static const kakaoNativeAppKey = String.fromEnvironment('KAKAO_NATIVE_APP_KEY');
+  /// ⚠ 더 이상 쓰지 않는다. 지도는 네이티브 SDK로 전환했다 (2026-08-29).
+  ///   웹 지도를 다시 붙일 일이 생기면 그때 되살린다.
   static const kakaoJsAppKey = String.fromEnvironment('KAKAO_JS_APP_KEY');
 
   /// 개발용 — 앱을 특정 화면에서 시작시킨다.
@@ -37,7 +39,10 @@ class Env {
   static const sheetExpanded = String.fromEnvironment('SHEET_AT') == 'expanded';
 
   /// 카카오 지도 키가 붙었는지. 없으면 CO-07은 지도 자리를 비워둔다.
-  static bool get hasMapKey => kakaoJsAppKey.isNotEmpty;
+  ///
+  /// ⚠ 2026-08-29 네이티브 SDK(kakao_map_sdk)로 전환하면서 **네이티브 앱 키**를 본다.
+  ///   지도와 내비 핸드오프가 같은 키를 쓴다. JS 키는 더 이상 쓰지 않는다.
+  static bool get hasMapKey => kakaoNativeAppKey.isNotEmpty;
 
   /// 레이더 발견 카드를 자동으로 띄울지. 스크린샷·시연 중 수동 제어용.
   /// `--dart-define=AUTO_CARD=false`

@@ -223,7 +223,7 @@ trip 종료 시:
 | 전국전통시장표준데이터 | 장날 | data.go.kr | pipeline |
 | 천문연 출몰시각 | 일몰 | data.go.kr | pipeline |
 | 카카오내비 SDK | 핸드오프 | developers.kakao.com | 앱 |
-| 카카오맵 | 지도 표시 | developers.kakao.com | 앱 |
+| 카카오맵 **네이티브 SDK v2** | 지도 표시 (kakao_map_sdk) | developers.kakao.com | 앱 — **네이티브 앱 키**, 내비와 공용 |
 | 천문연 천문현상 정보 | 유성우·월식·슈퍼문 — CO-06·MY-02 '오늘 밤' 문맥 | data.go.kr (B090041) | pipeline |
 | 한국관광 데이터랩 (검색·방문 변화율) | CO-01 "조용히 뜨는 길" | datalab.visitkorea.or.kr | pipeline |
 | 카카오모빌리티 길찾기 REST | **§3.7 전용** (고속도로↔국도 비교 1회) | developers.kakaomobility.com | Edge Fn **전용** |
