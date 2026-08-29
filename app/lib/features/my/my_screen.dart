@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/saves.dart';
+import '../../core/proximity_alert.dart';
+import '../../core/settings.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/cards.dart';
@@ -23,7 +25,6 @@ class MyScreen extends ConsumerStatefulWidget {
 
 class _MyScreenState extends ConsumerState<MyScreen> {
   bool _showPassed = false;
-  bool _demoMode = true;
 
   @override
   Widget build(BuildContext context) {
@@ -416,15 +417,31 @@ class _MyScreenState extends ConsumerState<MyScreen> {
           padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
           child: Column(
             children: [
-              row('알림 · 음성', const Icon(Icons.chevron_right, size: 18, color: AppColors.ink3)),
+              row(
+                '앱을 꺼둬도 알림',
+                Switch(
+                  value: ref.watch(backgroundAlertsProvider),
+                  activeThumbColor: Colors.white,
+                  activeTrackColor: AppColors.routeBlue,
+                  // ⚠ 끄면 알림만 멈춘다. OS 권한은 그대로 둔다 (SCREENS.md DR-06).
+                  //   켤 땐 권한부터 — 권한 없이 켜두면 켠 줄 알고 기다리게 된다.
+                  onChanged: (v) async {
+                    if (!v) return ref.read(backgroundAlertsProvider.notifier).set(false);
+                    final ok = await ref.read(proximityAlertsProvider).requestPermission();
+                    await ref.read(backgroundAlertsProvider.notifier).set(ok);
+                  },
+                ),
+              ),
               const Divider(height: 1, thickness: 1, color: AppColors.line),
               row(
                 '데모 모드',
                 Switch(
-                  value: _demoMode,
+                  value: ref.watch(demoModeProvider),
                   activeThumbColor: Colors.white,
                   activeTrackColor: AppColors.routeBlue,
-                  onChanged: (v) => setState(() => _demoMode = v),
+                  // ⚠ 켜면 모의 주행(코스 선형 배속), 끄면 진짜 GPS.
+                  //   다음 출발부터 적용된다 — 달리는 중에 갈아타면 기록이 끊긴다.
+                  onChanged: (v) => ref.read(demoModeProvider.notifier).set(v),
                 ),
               ),
               const Divider(height: 1, thickness: 1, color: AppColors.line),

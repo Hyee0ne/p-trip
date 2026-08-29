@@ -129,7 +129,16 @@ class S {
   // ── DR-01 레이더 ──
   static const radarScanning = '주변을 살피는 중';
   static const radarNotRoute = '경로를 따라가지 않아요. 지금 내 주변만 봅니다 — 길을 바꿔도, 목적지가 바뀌어도 그대로 작동해요.';
-  static const radarSolo = '혼자 운전 중이라면 말로 하세요 — "응, 들를래" / "찜해줘". 대답이 없으면 조용히 찜에 담아둘게요.';
+
+  /// ⚠ 원래 '조용히 찜에 담아둘게요'였는데 동작은 **스쳐간 발견** 적립이다
+  ///   (SCREENS DR-02). 무응답은 '지나쳤다'이지 '담았다'가 아니라서,
+  ///   문구를 동작에 맞췄다 — 화면이 거짓말하지 않게.
+  /// DR-00 — 실주행인데 위치 권한이 없을 때. 막지 않고 이유만 말한다.
+  static const radarNeedsLocation = '위치를 켜야 앞에 뭐가 있는지 볼 수 있어요.';
+  static const radarOpenSettings = '설정 열기';
+  static const radarUseDemo = '데모 모드로 보기';
+
+  static const radarSolo = '혼자 운전 중이라면 말로 하세요 — "응, 들를래" / "찜해줘". 대답이 없으면 조용히 스쳐간 발견에 담아둘게요.';
   static const radarFinish = '오늘 여행 마치기 → 여행기 만들기';
 
   // ── DR-03 몰아보기 (정차 시) ──

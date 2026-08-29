@@ -3,15 +3,20 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/base_camp.dart';
 import '../../core/drive.dart';
 import '../../core/env.dart';
+import '../../core/journey.dart';
 import '../../core/saves.dart';
+import '../../core/proximity_alert.dart';
+import '../../core/settings.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/trip_log.dart';
+import '../../core/voice.dart';
 import 'catchup_sheet.dart';
 import 'passenger_mode.dart';
 import '../../core/widgets/app_toast.dart';
@@ -32,8 +37,11 @@ class RadarScreen extends ConsumerStatefulWidget {
   ConsumerState<RadarScreen> createState() => _RadarScreenState();
 }
 
-class _RadarScreenState extends ConsumerState<RadarScreen> {
+class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingObserver {
   Timer? _nextCard;
+
+  /// 15초 무응답 타이머. 카드가 사라지면 같이 꺼진다.
+  Timer? _noAnswer;
   bool _cardVisible = false;
   bool _voiceOn = true;
   bool _started = false;
@@ -71,12 +79,30 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   static const _maxAhead = 7.0;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     // ⚠ 탭 셸이 IndexedStack이라 이 화면은 다른 탭에 있어도 살아 있다.
     //   TickerMode를 보고 실제로 보일 때만 주행을 돌린다.
     //   안 그러면 발견 탭에 있는 동안에도 GPS 로깅이 도는 셈이 된다.
     _setRunning(TickerMode.valuesOf(context).enabled);
+  }
+
+  /// 앱이 뒤에 있는가. 알림을 켠 사람만 뒤에서도 주행이 돈다.
+  bool _background = false;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState s) {
+    final on = ref.read(backgroundAlertsProvider);
+    final away = s == AppLifecycleState.paused || s == AppLifecycleState.inactive;
+    // ⚠ 알림을 안 켠 사람은 뒤에서 위치를 보지 않는다. 켠 사람만 계속 돈다.
+    if (away && !on) ref.read(driveProvider.notifier).stop();
+    _background = away && on;
   }
 
   void _setRunning(bool run) {
@@ -87,20 +113,38 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     if (_started) return;
     _started = true;
     // ⚠ 모의 주행은 **실제 코스 선형**을 따라간다. 좌표를 지어내지 않는다.
-    //   실주행으로 바꿀 땐 DriveNotifier만 geolocator 스트림으로 갈아끼우면 된다.
-    ref.read(courseGeometryProvider(_demoCourseId).future).then((path) {
+    //   데모 모드를 끄면 같은 선형 위를 진짜 GPS로 달린다 (마이 탭 설정).
+    final demo = ref.read(demoModeProvider);
+    // 발견 탭에서 고른 코스. 레이더 탭을 바로 누른 사람에겐 데모 코스가 돈다.
+    final courseId = ref.read(startedCourseIdProvider) ?? _demoCourseId;
+    ref.read(courseGeometryProvider(courseId).future).then((path) {
       if (!mounted || path.length < 2) return;
-      ref.read(driveProvider.notifier).start(path);
+      if (demo) {
+        ref.read(driveProvider.notifier).start(path);
+      } else {
+        ref.read(driveProvider.notifier).startLive(path);
+      }
       // 달리기 시작 = 여행 시작. 기기 안에 기록이 쌓인다 (core/trip_log.dart).
-      ref
-          .read(tripLogProvider.notifier)
-          .start(routeId: 7, routeName: '동해 바닷길', startName: '삼척', endName: '강릉');
+      // ⚠ 노선·구간을 **고른 코스에서** 가져온다. 박아두면 어느 길을 달려도 7번이 된다.
+      ref.read(courseProvider(courseId).future).then((course) {
+        if (!mounted) return;
+        ref
+            .read(tripLogProvider.notifier)
+            .start(
+              routeId: course?.routeId ?? 7,
+              routeName: course?.title ?? '동해 바닷길',
+              startName: course?.startName ?? '삼척',
+              endName: course?.endName ?? '강릉',
+            );
+      });
     });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _nextCard?.cancel();
+    _noAnswer?.cancel();
     super.dispose();
   }
 
@@ -137,9 +181,21 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     _shown.add(best.spot.id);
     _lastType = best.spot.type;
     _shownAtMin.add(_driveMinutes(drive));
+
+    // DR-06 — 앱이 뒤에 있으면 카드 대신 알림으로 나간다.
+    // ⚠ 시의성 없는 스팟은 ProximityAlerts가 알아서 거른다. 꺼둔 앱이 말을 걸 이유는 '오늘만' 뿐이다.
+    if (_background) {
+      ref
+          .read(proximityAlertsProvider)
+          .notify(spot: best.spot, head: best.headline, title: best.spot.name);
+      return;
+    }
+
     _current = best;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _cardVisible = true);
+      if (!mounted) return;
+      setState(() => _cardVisible = true);
+      _announce(best!);
     });
   }
 
@@ -184,6 +240,18 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
 
   /// 정차 3분이면 아까 스쳐간 것들을 모아 보여준다 (SCREENS DR-03).
   /// ⚠ 주행 시간 기준이다 — 시연 배속과 무관하게 '3분 멈춤'이어야 한다.
+  /// 40분간 이동이 없으면 레이더를 접는다 (SCREENS.md DR-06).
+  /// ⚠ 무음 알림 한 번. 접었다는 사실만 남기고 아무것도 재촉하지 않는다.
+  bool _folded = false;
+
+  void _maybeFold(DriveState drive) {
+    if (_folded || !_background) return;
+    if (drive.stoppedSec < ProximityAlerts.foldAfter.inSeconds) return;
+    _folded = true;
+    ref.read(proximityAlertsProvider).foldUp(S.bgStopped);
+    ref.read(driveProvider.notifier).stop();
+  }
+
   void _maybeCatchup(DriveState drive) {
     if (drive.running) {
       _catchupShown = false;
@@ -229,9 +297,29 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     return pick.take(8).toList();
   }
 
+  /// 낭독 + 무응답 타이머 (SCREENS.md DR-02).
+  ///
+  /// ⚠ 15초는 **실시간**이다. 쿨다운·정차와 달리 이건 여정이 아니라
+  ///   **사람의 반응 시간**이라 시연 배속과 무관해야 한다.
+  void _announce(Discovery d) {
+    if (_voiceOn) {
+      // 헤드 + 상황 한 줄만. 본문까지 읽으면 운전 중에 길다.
+      ref.read(voiceProvider).speak('${d.headline}. ${d.situation}');
+    }
+    _noAnswer?.cancel();
+    _noAnswer = Timer(const Duration(seconds: 15), () {
+      if (!mounted || !_cardVisible || _current?.spot.id != d.spot.id) return;
+      // ⚠ 무응답은 '지나쳤다'이지 '담았다'가 아니다. 안 한 결정을 대신 하지 않는다.
+      _advance(saved: false);
+    });
+  }
+
   void _advance({required bool saved}) {
     final current = _current;
     if (current == null) return;
+
+    _noAnswer?.cancel();
+    ref.read(voiceProvider).stop();
 
     final log = ref.read(tripLogProvider.notifier);
     if (saved) {
@@ -263,6 +351,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     // ⚠ build 안에서 provider를 고치면 안 된다 (Riverpod). 주행이 바뀔 때만 반응한다.
     ref.listen(driveProvider, (_, next) {
       _record(next);
+      _maybeFold(next);
       _maybeCatchup(next);
       _pickAhead(next, ref.read(radarQueueProvider).value ?? const []);
     });
@@ -289,6 +378,9 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
                   }),
                 );
               }
+              // DR-00 — 실주행인데 위치를 못 받는다. 레이더는 위치가 전부라
+              // 빈 화면을 보여주느니 이유를 말하고 길을 둘 다 열어둔다.
+              if (drive.needsLocation) return _needsLocation();
               final current = _current;
               return Stack(
                 children: [
@@ -340,12 +432,130 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     );
   }
 
+  /// ⚠ 막지 않는다. 설정으로 보내거나 데모로 보거나 — 고르는 건 사용자다.
+  Widget _needsLocation() => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(AppSpace.gutter),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.my_location, size: 30, color: AppColors.darkInk2),
+          const SizedBox(height: AppSpace.x4),
+          const Text(
+            S.radarNeedsLocation,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 15.5, height: 1.6, color: AppColors.darkInk),
+          ),
+          const SizedBox(height: AppSpace.x5),
+          Wrap(
+            spacing: AppSpace.x2,
+            alignment: WrapAlignment.center,
+            children: [
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(0, AppTouch.min),
+                  side: const BorderSide(color: AppColors.darkLine),
+                  foregroundColor: AppColors.darkInk,
+                ),
+                onPressed: Geolocator.openAppSettings,
+                child: const Text(S.radarOpenSettings),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, AppTouch.min),
+                  backgroundColor: AppColors.routeBlue,
+                ),
+                onPressed: () {
+                  ref.read(demoModeProvider.notifier).set(true);
+                  _started = false;
+                  _setRunning(true);
+                },
+                child: const Text(S.radarUseDemo),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ),
+  );
+
+  /// 지금 달리는 노선 번호. 기록 중인 여행에서 가져온다 —
+  /// 화면에 7을 박아두면 어느 길을 달려도 7번 국도라고 말하게 된다.
+  int get _routeNo => ref.watch(tripLogProvider).active?.routeId ?? 7;
+
+  /// DR-06a 유도 화면. **조건부 1회** — 여기가 유일하게 권한을 묻는 자리다.
+  Future<void> _askBackground() async {
+    final yes = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: AppColors.darkSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.x6, AppSpace.gutter, 26),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              S.bgOptInTitle,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+                color: AppColors.darkInk,
+              ),
+            ),
+            const SizedBox(height: AppSpace.x2),
+            const Text(
+              S.bgOptInSub,
+              style: TextStyle(fontSize: 14, height: 1.6, color: AppColors.darkInk2),
+            ),
+            const SizedBox(height: AppSpace.x5),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: AppTouch.min,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.darkLine),
+                        foregroundColor: AppColors.darkInk2,
+                      ),
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text(S.bgOptInNo),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpace.x2),
+                Expanded(
+                  child: SizedBox(
+                    height: AppTouch.min,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(backgroundColor: AppColors.routeBlue),
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: const Text(S.bgOptInYes),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    if (yes != true) return;
+    // ⚠ 권한을 거절하면 켜지 않는다. 켠 줄 알고 기다리게 두지 않는다.
+    final ok = await ref.read(proximityAlertsProvider).requestPermission();
+    await ref.read(backgroundAlertsProvider.notifier).set(ok);
+  }
+
   Widget _topBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 2, 12, 0),
       child: Row(
         children: [
-          const RouteBadge('7', size: BadgeSize.sm),
+          RouteBadge('$_routeNo', size: BadgeSize.sm),
           const SizedBox(width: 10),
           const Expanded(
             child: Text(
@@ -357,13 +567,25 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
               ),
             ),
           ),
+          // DR-06a — 여행을 2번 이상 마친 사람에게만, 이미 켰으면 안 보인다.
+          // ⚠ 온보딩·첫 진입에서는 절대 묻지 않는다 (권한 피로 = 이탈).
+          if (ref.watch(tripsProvider).value != null &&
+              ref.watch(tripsProvider).value!.length >= 2 &&
+              !ref.watch(backgroundAlertsProvider))
+            IconButton(
+              icon: const Icon(Icons.notifications_none, color: AppColors.darkInk2, size: 20),
+              onPressed: _askBackground,
+            ),
           IconButton(
             icon: Icon(
               _voiceOn ? Icons.volume_up_outlined : Icons.volume_off_outlined,
               color: AppColors.darkInk2,
               size: 20,
             ),
-            onPressed: () => setState(() => _voiceOn = !_voiceOn),
+            onPressed: () {
+              setState(() => _voiceOn = !_voiceOn);
+              if (!_voiceOn) ref.read(voiceProvider).stop();
+            },
           ),
           IconButton(
             icon: Icon(
@@ -445,7 +667,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
                   const SizedBox(width: 6),
                   Text(
                     // ⚠ 숫자를 지어내지 않는다. 모의 주행이든 실주행이든 실제 누적 거리다.
-                    '7번 국도 ${ref.watch(driveProvider).distanceKm.toStringAsFixed(0)}km 기록 중',
+                    '$_routeNo번 국도 '
+                    '${ref.watch(driveProvider).distanceKm.toStringAsFixed(0)}km 기록 중',
                     style: const TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,

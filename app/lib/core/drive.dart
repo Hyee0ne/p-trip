@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../data/models/models.dart';
 import 'env.dart';
@@ -23,6 +24,7 @@ class DriveState {
     this.distanceKm = 0,
     this.frac = 0,
     this.courseKm = 0,
+    this.needsLocation = false,
   });
 
   final bool running;
@@ -46,6 +48,10 @@ class DriveState {
   final double frac;
   final double courseKm;
 
+  /// 실주행인데 위치를 못 받는 상태. 화면이 이유를 말하는 데 쓴다 (DR-00).
+  /// ⚠ 모의 주행에서는 항상 false다 — 데모는 권한 없이도 돌아야 한다.
+  final bool needsLocation;
+
   bool get hasFix => lat != null && lng != null;
 
   /// 지금 속도로 [exitFrac] 지점까지 남은 시간(분).
@@ -67,6 +73,7 @@ class DriveState {
     double? distanceKm,
     double? frac,
     double? courseKm,
+    bool? needsLocation,
   }) => DriveState(
     running: running ?? this.running,
     elapsedSec: elapsedSec ?? this.elapsedSec,
@@ -78,6 +85,7 @@ class DriveState {
     distanceKm: distanceKm ?? this.distanceKm,
     frac: frac ?? this.frac,
     courseKm: courseKm ?? this.courseKm,
+    needsLocation: needsLocation ?? this.needsLocation,
   );
 }
 
@@ -93,6 +101,7 @@ final driveProvider = NotifierProvider<DriveNotifier, DriveState>(DriveNotifier.
 ///   실주행으로 바꿀 때는 이 클래스만 geolocator 스트림으로 갈아끼우면 된다.
 class DriveNotifier extends Notifier<DriveState> {
   Timer? _tick;
+  StreamSubscription<Position>? _sub;
   List<GeoPoint> _path = const [];
 
   /// 구간별 누적 거리(km). 진행률↔거리 변환에 쓴다.
@@ -105,7 +114,10 @@ class DriveNotifier extends Notifier<DriveState> {
 
   @override
   DriveState build() {
-    ref.onDispose(() => _tick?.cancel());
+    ref.onDispose(() {
+      _tick?.cancel();
+      _sub?.cancel();
+    });
     return const DriveState();
   }
 
@@ -138,7 +150,92 @@ class DriveNotifier extends Notifier<DriveState> {
   void stop() {
     _tick?.cancel();
     _tick = null;
+    _sub?.cancel();
+    _sub = null;
     state = state.copyWith(running: false, speedKmh: 0);
+  }
+
+  /// **실주행.** GPS 스트림을 받아 같은 DriveState를 채운다.
+  ///
+  /// ⚠ 여기서도 길안내를 하지 않는다 (원칙 1). 코스 선형은 "코스의 몇 %를 지났나"를
+  ///   내는 데만 쓴다 — 벗어나도 아무 일도 일어나지 않고, 되돌아가라고 말하지 않는다.
+  Future<void> startLive(List<GeoPoint> course) async {
+    _tick?.cancel();
+    _tick = null;
+    _sub?.cancel();
+
+    _path = course;
+    _cum = [0];
+    for (var i = 1; i < course.length; i++) {
+      _cum.add(_cum[i - 1] + _distKm(course[i - 1], course[i]));
+    }
+    state = DriveState(running: true, courseKm: _cum.isEmpty ? 0 : _cum.last);
+
+    // ⚠ 권한을 먼저 묻는다. 안 물어보고 스트림을 열면 iOS에서 조용히 아무것도 안 온다.
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        state = state.copyWith(running: false, needsLocation: true);
+        return;
+      }
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
+      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
+        state = state.copyWith(running: false, needsLocation: true);
+        return;
+      }
+    } catch (_) {
+      state = state.copyWith(running: false, needsLocation: true);
+      return;
+    }
+
+    try {
+      _sub = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          // 10m마다. 더 촘촘히 받아도 화면이 달라지지 않고 배터리만 먹는다.
+          distanceFilter: 10,
+        ),
+      ).listen(_onFix);
+    } catch (_) {
+      // 기기가 못 주면 멈춰 있는다. 좌표를 지어내지 않는다.
+      state = state.copyWith(running: false, needsLocation: true);
+    }
+  }
+
+  GeoPoint? _lastFix;
+
+  void _onFix(Position p) {
+    final here = GeoPoint(p.latitude, p.longitude);
+    final moved = _lastFix == null ? 0.0 : _distKm(_lastFix!, here);
+    _lastFix = here;
+
+    // 코스 위 어디쯤인지 — 가장 가까운 점을 찾아 누적거리 비율로 환산한다.
+    var best = 0;
+    var bestD = double.infinity;
+    for (var i = 0; i < _path.length; i++) {
+      final d = _distKm(_path[i], here);
+      if (d < bestD) {
+        bestD = d;
+        best = i;
+      }
+    }
+    final total = _cum.isEmpty ? 0.0 : _cum.last;
+
+    state = state.copyWith(
+      running: true,
+      needsLocation: false,
+      lat: p.latitude,
+      lng: p.longitude,
+      // heading이 없으면(정차) 직전 값을 유지한다 — 0으로 튀면 방향 필터가 엉킨다.
+      headingDeg: p.heading >= 0 ? p.heading : state.headingDeg,
+      speedKmh: (p.speed * 3.6).clamp(0, 200),
+      distanceKm: state.distanceKm + moved,
+      // ⚠ 코스에서 500m 넘게 떨어지면 진행률을 갱신하지 않는다.
+      //   벗어난 채로 %를 계속 올리면 있지도 않은 진행을 말하게 된다.
+      frac: bestD > 0.5 || total <= 0 ? state.frac : _cum[best] / total,
+      elapsedSec: state.elapsedSec + 1,
+      stoppedSec: p.speed < 0.5 ? state.stoppedSec + 1 : 0,
+    );
   }
 
   /// 잠깐 멈춘다 (들른 곳에 도착). 진행률·거리는 그대로 두고 시계만 센다 —

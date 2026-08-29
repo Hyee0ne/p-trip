@@ -62,11 +62,23 @@ class TripLogNotifier extends Notifier<TripLog> {
       // 그새 사용자가 출발했으면 복원이 그걸 덮으면 안 된다.
       if (raw == null || _dirty) return;
       final list = (jsonDecode(raw) as List<dynamic>).cast<Map<String, dynamic>>();
-      state = TripLog(trips: [for (final m in list) _fromJson(m)]);
+      // ⚠ 앱이 죽으면 달리던 여행은 activeId를 잃고 '끝난 여행'이 된다.
+      //   아무것도 안 남긴 주행(0km·들른 곳 0)까지 여행기로 세면 유령 EP가 쌓인다.
+      //   뭐라도 남긴 여행은 끝맺음이 없어도 살린다 — 달린 기록을 우리가 지울 수는 없다.
+      state = TripLog(
+        trips: [
+          for (final m in list)
+            if (_worthKeeping(_fromJson(m))) _fromJson(m),
+        ],
+      );
     } catch (_) {
       // 저장소를 못 열어도 앱은 돌아야 한다. 이번 실행에만 안 남는다.
     }
   }
+
+  /// 남길 만한 여행인가. 끝맺었으면 무조건 남긴다.
+  static bool _worthKeeping(Trip t) =>
+      t.endedAt.isNotEmpty || t.distanceKm > 0 || t.stops.isNotEmpty;
 
   /// ⚠ 저장소가 아직 안 열렸으면 **기다렸다가** 쓴다. 그냥 넘기면 기록이 사라진다.
   Future<void> _persist() async {

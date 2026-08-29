@@ -100,4 +100,38 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(second.read(savesProvider).isLiked(const SaveRef.spot('bukpyeong')), isTrue);
   });
+
+  test('강제 종료된 빈 주행은 여행기로 남지 않는다', () async {
+    SharedPreferences.setMockInitialValues({});
+    var c = ProviderContainer();
+    c
+        .read(tripLogProvider.notifier)
+        .start(routeId: 7, routeName: '동해 바닷길', startName: '삼척', endName: '강릉');
+    // end()를 안 부르고 앱이 죽은 상황.
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    c.dispose();
+
+    c = ProviderContainer();
+    c.read(tripLogProvider);
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    expect(c.read(tripLogProvider).finished, isEmpty, reason: '0km·0곳은 EP가 되면 안 된다');
+    c.dispose();
+  });
+
+  test('달린 흔적이 있으면 끝맺음이 없어도 남는다', () async {
+    SharedPreferences.setMockInitialValues({});
+    var c = ProviderContainer();
+    final n = c.read(tripLogProvider.notifier);
+    n.start(routeId: 7, routeName: '동해 바닷길', startName: '삼척', endName: '강릉');
+    n.updateDistance(12);
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    c.dispose();
+
+    c = ProviderContainer();
+    c.read(tripLogProvider);
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    expect(c.read(tripLogProvider).finished.length, 1);
+    expect(c.read(tripLogProvider).finished.first.distanceKm, 12);
+    c.dispose();
+  });
 }

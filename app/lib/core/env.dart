@@ -42,6 +42,10 @@ class Env {
   /// 모의 주행 배속. `--dart-define=DRIVE_SCALE=10` (기본 20 = 1초에 20초 주행).
   /// 데모 코스 65km가 기본값으로 약 3분 걸린다. 리허설 속도를 여기서 맞춘다.
   /// ⚠ Dart에 `double.fromEnvironment`는 없다. int로 받아 변환한다.
+  /// 데모 모드 초깃값. 시연 리허설에서 실주행 경로를 확인할 때
+  /// `--dart-define=DEMO=false`로 껐다 켠다. 저장된 설정이 있으면 그쪽이 이긴다.
+  static const demoDefault = bool.fromEnvironment('DEMO', defaultValue: true);
+
   static const driveScale = int.fromEnvironment('DRIVE_SCALE', defaultValue: 20) * 1.0;
 
   /// 레이더를 동승자 모드로 시작한다. `--dart-define=RADAR_MODE=passenger`
