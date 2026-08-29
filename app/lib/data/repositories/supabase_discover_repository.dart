@@ -10,6 +10,8 @@ import 'discover_repository.dart';
 /// 화면은 [DiscoverRepository]만 보므로, 이 클래스를 끼우는 것으로 픽스처가 실데이터로 바뀐다.
 ///
 /// ⚠ 별점·후기·랭킹을 읽지 않는다 (원칙 3). 스키마에 그런 컬럼이 아예 없다.
+/// ⚠ **`.order()`의 기본값은 내림차순이다** (postgrest-dart). 방향을 늘 명시한다 —
+///   빼먹으면 "지나는 순서"가 거꾸로 나오는데 화면만 봐서는 알아채기 어렵다.
 /// ⚠ 날짜에 따라 달라지는 판정(장날·행사 임박)은 DB의 `spot_cards` 뷰가 한다 —
 ///   앱 시계와 서버 날짜가 어긋나는 문제를 피한다.
 class SupabaseDiscoverRepository implements DiscoverRepository {
@@ -24,7 +26,7 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
     final rows = await _db
         .from('routes')
         .select('id, name, axis, drivable, from_to, total_km')
-        .order('id');
+        .order('id', ascending: true);
     return [for (final r in rows) _route(r)];
   }
 
@@ -92,7 +94,7 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
         .select('to_spot_id, rank, base_ym')
         .eq('from_spot_id', spotId)
         .order('base_ym', ascending: false)
-        .order('rank')
+        .order('rank', ascending: true)
         .limit(8);
     final ids = {for (final l in links) l['to_spot_id'] as String}.toList();
     if (ids.isEmpty) return const [];
@@ -119,7 +121,7 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
   Future<List<Course>> courses({int? routeId}) async {
     var q = _db.from('courses').select();
     if (routeId != null) q = q.eq('route_id', routeId);
-    final rows = await q.order('created_at');
+    final rows = await q.order('created_at', ascending: true);
     return [for (final r in rows) await _course(r)];
   }
 
@@ -175,7 +177,7 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
         .not('exit_frac', 'is', null)
         .gte('trust_score', 60)
         .lte('detour_min', 10)
-        .order('exit_frac')
+        .order('exit_frac', ascending: true)
         .limit(30);
     return [
       for (final r in rows)
@@ -264,7 +266,7 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
         .not('exit_frac', 'is', null)
         .gte('trust_score', 60)
         .lte('detour_min', 10)
-        .order('exit_frac')
+        .order('exit_frac', ascending: true)
         .limit(12);
     return Course(
       id: r['id'] as String,
