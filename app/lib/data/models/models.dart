@@ -42,6 +42,7 @@ class RouteLine {
     required this.drivable,
     required this.fromTo,
     this.paths = const [],
+    this.totalKm = 0,
   });
 
   /// 노선 번호. 7, 44, 46…
@@ -58,6 +59,9 @@ class RouteLine {
 
   /// '부산–고성'
   final String fromTo;
+
+  /// 총 연장(km). 0이면 아직 선형을 안 넣은 노선이다.
+  final int totalKm;
 
   /// 지도용 노선 선형. **갈래가 여럿이다** — 국도는 도심통과·우회로 실제로 끊겨 있고
   /// DB도 MultiLineString으로 담는다. 한 갈래로 억지로 이으면 노선 대부분을 버리게 된다.

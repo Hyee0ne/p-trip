@@ -213,6 +213,7 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
     axis: (r['axis'] as String?) ?? 'NS',
     drivable: (r['drivable'] as bool?) ?? true,
     fromTo: (r['from_to'] as String?) ?? '',
+    totalKm: (r['total_km'] as num?)?.round() ?? 0,
     paths: paths,
   );
 

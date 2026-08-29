@@ -186,6 +186,9 @@ class S {
   static const savedEmpty = '아직 담긴 발견이 없어요. 레이더가 담아주거나, ❤️로 직접 담아요.';
   static const tripsTitle = '여행기';
 
+  /// ⚠ 섹션 라벨만 덩그러니 두지 않는다 — 빈 화면에 아무 말이 없으면 고장으로 읽힌다.
+  static const tripsEmpty = '아직 여행기가 없어요. 레이더를 켜고 한 번 달리면 여기 쌓여요.';
+
   // ── 토스트 (§0.2 — 단일 스타일, 1.9초) ──
   static const toastSaved = '찜에 담았어요';
   static const toastPassed = '스쳐간 발견에 담아뒀어요';

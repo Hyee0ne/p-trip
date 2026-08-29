@@ -25,6 +25,13 @@ final nearbyRoutesProvider = FutureProvider<NearbyResult>((ref) async {
   return ref.watch(discoverRepositoryProvider).nearbyRoutes(lat: fix.lat!, lng: fix.lng!);
 });
 
+/// 국도 51선 총 연장. 마이 탭 '완주까지 Nkm'가 이걸 쓴다 —
+/// 기획 표기 14,000km를 하드코딩하면 노선이 바뀌어도 안 움직인다.
+final totalRoadKmProvider = FutureProvider<int>((ref) async {
+  final all = await ref.watch(routesProvider.future);
+  return all.fold<int>(0, (a, r) => a + r.totalKm);
+});
+
 final routesProvider = FutureProvider<List<RouteLine>>(
   (ref) => ref.watch(discoverRepositoryProvider).routes(),
 );
@@ -88,10 +95,17 @@ final tripProvider = FutureProvider.family<Trip?, String>(
 );
 
 /// 찜·스쳐간 발견 목록 (MY-01).
-final savedSpotsProvider = FutureProvider.family<List<Spot>, Set<String>>((ref, ids) async {
+/// ⚠ `family`의 키는 `==`로 비교된다. **Dart의 `Set`은 값 동등성이 없다** —
+///   `{'a'} == {'a'}`가 false다. Set을 키로 쓰면 매 빌드마다 새 provider가 생겨
+///   영원히 로딩 상태가 되고(빈 상태 문구조차 안 뜬다) 네트워크도 계속 친다.
+///   그래서 정렬해 이어붙인 문자열을 키로 쓴다.
+String savedKey(Set<String> ids) => (ids.toList()..sort()).join(',');
+Set<String> _parseKey(String key) => key.isEmpty ? const {} : key.split(',').toSet();
+
+final savedSpotsProvider = FutureProvider.family<List<Spot>, String>((ref, key) async {
   final repo = ref.watch(discoverRepositoryProvider);
   final out = <Spot>[];
-  for (final id in ids) {
+  for (final id in _parseKey(key)) {
     final s = await repo.spot(id);
     if (s != null) out.add(s);
   }
@@ -103,10 +117,10 @@ final curationDeckProvider = FutureProvider<List<CurationCard>>(
 );
 
 /// 찜한 코스 (MY-01).
-final savedCoursesProvider = FutureProvider.family<List<Course>, Set<String>>((ref, ids) async {
+final savedCoursesProvider = FutureProvider.family<List<Course>, String>((ref, key) async {
   final repo = ref.watch(discoverRepositoryProvider);
   final out = <Course>[];
-  for (final id in ids) {
+  for (final id in _parseKey(key)) {
     final c = await repo.course(id);
     if (c != null) out.add(c);
   }
@@ -114,7 +128,10 @@ final savedCoursesProvider = FutureProvider.family<List<Course>, Set<String>>((r
 });
 
 /// 찜한 노선 (MY-01). 코스가 아직 없는 노선의 '출시 알림' 대체다 (SCREENS.md CO-07).
-final savedRoutesProvider = FutureProvider.family<List<RouteLine>, Set<String>>((ref, ids) async {
+final savedRoutesProvider = FutureProvider.family<List<RouteLine>, String>((ref, key) async {
+  // 찜한 노선이 없으면 51선을 통째로 받아올 이유가 없다.
+  final ids = _parseKey(key);
+  if (ids.isEmpty) return const [];
   final all = await ref.watch(discoverRepositoryProvider).routes();
   return all.where((r) => ids.contains('${r.id}')).toList();
 });

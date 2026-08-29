@@ -30,14 +30,14 @@ class _MyScreenState extends ConsumerState<MyScreen> {
     final saves = ref.watch(savesProvider);
     final tripsAsync = ref.watch(tripsProvider);
     final spotsAsync = ref.watch(
-      savedSpotsProvider(saves.idsOf(SaveTargetKind.spot, passedOnly: _showPassed)),
+      savedSpotsProvider(savedKey(saves.idsOf(SaveTargetKind.spot, passedOnly: _showPassed))),
     );
     // 코스·노선도 찜 대상이다 (TECH_SPEC §2). 스쳐간 발견은 스팟에만 있는 개념이라 제외.
     final coursesAsync = ref.watch(
-      savedCoursesProvider(_showPassed ? const {} : saves.idsOf(SaveTargetKind.course)),
+      savedCoursesProvider(savedKey(_showPassed ? const {} : saves.idsOf(SaveTargetKind.course))),
     );
     final routesAsync = ref.watch(
-      savedRoutesProvider(_showPassed ? const {} : saves.idsOf(SaveTargetKind.route)),
+      savedRoutesProvider(savedKey(_showPassed ? const {} : saves.idsOf(SaveTargetKind.route))),
     );
 
     return Scaffold(
@@ -104,6 +104,8 @@ class _MyScreenState extends ConsumerState<MyScreen> {
   Widget _collection(List<Trip> trips) {
     final collected = trips.map((t) => t.routeId).toSet().toList()..sort();
     final km = trips.fold<int>(0, (a, t) => a + t.distanceKm);
+    // 아직 못 받았으면 기획 표기값으로 버틴다. 실측이 오면 그걸 쓴다.
+    final totalKm = ref.watch(totalRoadKmProvider).value ?? 14000;
     final ratio = collected.length / 51;
 
     return Padding(
@@ -167,7 +169,9 @@ class _MyScreenState extends ConsumerState<MyScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              '지금까지 ${km}km · 완주까지 ${14000 - km}km',
+              // ⚠ 14000km는 기획 표기다. 실제 선형 합계는 13,910km로 DB에 있다 —
+              //   노선이 늘거나 선형이 바뀌면 같이 움직여야 한다.
+              '지금까지 ${km}km · 완주까지 ${totalKm - km}km',
               style: const TextStyle(fontSize: 12, color: AppColors.ink2),
             ),
           ],
@@ -362,6 +366,15 @@ class _MyScreenState extends ConsumerState<MyScreen> {
             child: SectionLabel(S.tripsTitle, trailing: '전체 ${trips.length}편'),
           ),
           const SizedBox(height: AppSpace.x3),
+          if (trips.isEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(AppSpace.gutter, 0, AppSpace.gutter, 20),
+              child: Text(
+                S.tripsEmpty,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, height: 1.6, color: AppColors.ink3),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
             child: Column(
