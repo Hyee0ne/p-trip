@@ -57,6 +57,20 @@ class S {
   static const routeUndrivable = '통일을 기다리는 길';
   static const routeNoCourse = '이 길의 코스를 준비하고 있어요';
 
+  // CO-07 지도 + 바텀시트 (SCREENS.md CO-07, 2026-08-29 확정)
+  static const routesNearTitle = '여기서 탈 수 있는 길';
+  static const routesAllCta = '51선 전체';
+  static const routesSecNear = '내 주변';
+
+  /// ⚠ '전체'로 쓰면 남북/동서 필터 칩의 '전체'와 한 화면에서 같은 말이 두 번 나온다.
+  static const routesSecAll = '그 밖의 길';
+  static const routesNearEmpty = '여긴 국도에서 좀 떨어져 있어요';
+  static const routesLocOff = '위치를 켜면 여기서 탈 수 있는 길을 알려드려요';
+  static const routesLocCta = '위치 켜기';
+  static const routesLocFinding = '위치를 찾는 중이에요';
+  static const routesMapPending = '지도는 준비 중이에요';
+  static String routesNearCount(int n) => '$n개';
+
   // ── CO-02 코스 상세 ──
   static const courseDiscoveries = '경로 위의 발견';
   static const courseOrder = '지나는 순서';

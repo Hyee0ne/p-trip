@@ -24,6 +24,16 @@ enum Timeliness {
   none,
 }
 
+/// 지도에 찍는 좌표 한 점.
+///
+/// ⚠ 카카오 `LatLng`을 쓰지 않는다 — 데이터 계층이 지도 플러그인에 묶이면
+/// M0.5에서 플러그인을 갈아탈 때 모델까지 따라 바뀐다.
+class GeoPoint {
+  const GeoPoint(this.lat, this.lng);
+  final double lat;
+  final double lng;
+}
+
 class RouteLine {
   const RouteLine({
     required this.id,
@@ -31,6 +41,7 @@ class RouteLine {
     required this.axis,
     required this.drivable,
     required this.fromTo,
+    this.path = const [],
   });
 
   /// 노선 번호. 7, 44, 46…
@@ -47,6 +58,21 @@ class RouteLine {
 
   /// '부산–고성'
   final String fromTo;
+
+  /// 지도용 노선 선형. M1 `build-routes.ts`가 채운다.
+  /// 비어 있으면 지도에 그리지 않는다 — 없는 선을 그리지 않는다.
+  final List<GeoPoint> path;
+}
+
+/// 현 위치에서 탈 수 있는 노선 하나.
+class NearbyRoute {
+  const NearbyRoute(this.route, {this.distanceKm});
+
+  final RouteLine route;
+
+  /// 현 위치에서 노선까지 최단 거리. **모르면 null** — 지어내지 않는다.
+  /// 노선 선형이 들어오는 M1부터 실제 값이 찬다.
+  final double? distanceKm;
 }
 
 class Spot {

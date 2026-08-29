@@ -18,6 +18,27 @@ class Env {
   /// 스크린샷 촬영과 시연 리허설에 쓴다. 비어 있으면 '/'.
   static const startAt = String.fromEnvironment('START_AT', defaultValue: '/');
 
+  /// 개발·시연 주입 — 위치를 고정한다. `--dart-define=FAKE_LOCATION=37.5245,129.1143`
+  /// (동해시. 데모 구간 7번 국도 위) 실기기 없이 CO-07 지도를 확인할 때 쓴다.
+  /// ⚠ 값이 있으면 geolocator를 아예 호출하지 않는다 — 권한 팝업도 안 뜬다.
+  static const _fakeLocation = String.fromEnvironment('FAKE_LOCATION');
+
+  /// 파싱된 위/경도. 형식이 틀리면 null (조용히 실제 위치로 떨어진다).
+  static (double, double)? get fakeLocation {
+    final parts = _fakeLocation.split(',');
+    if (parts.length != 2) return null;
+    final lat = double.tryParse(parts[0].trim());
+    final lng = double.tryParse(parts[1].trim());
+    return (lat == null || lng == null) ? null : (lat, lng);
+  }
+
+  /// CO-07 바텀시트를 펼친 채로 시작한다. `--dart-define=SHEET_AT=expanded`
+  /// START_AT·AUTO_CARD와 같은 용도 — 스크린샷과 시연 리허설.
+  static const sheetExpanded = String.fromEnvironment('SHEET_AT') == 'expanded';
+
+  /// 카카오 지도 키가 붙었는지. 없으면 CO-07은 지도 자리를 비워둔다.
+  static bool get hasMapKey => kakaoJsAppKey.isNotEmpty;
+
   /// 레이더 발견 카드를 자동으로 띄울지. 스크린샷·시연 중 수동 제어용.
   /// `--dart-define=AUTO_CARD=false`
   static const autoCard = String.fromEnvironment('AUTO_CARD', defaultValue: 'true') != 'false';

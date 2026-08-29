@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/location.dart';
 import '../models/models.dart';
 import 'discover_repository.dart';
 import 'fixture_discover_repository.dart';
@@ -9,6 +10,13 @@ import 'fixture_discover_repository.dart';
 final discoverRepositoryProvider = Provider<DiscoverRepository>(
   (ref) => const FixtureDiscoverRepository(),
 );
+
+/// CO-07 — 현 위치에서 탈 수 있는 노선. 위치가 없으면 빈 리스트.
+final nearbyRoutesProvider = FutureProvider<List<NearbyRoute>>((ref) async {
+  final fix = await ref.watch(currentLocationProvider.future);
+  if (!fix.hasFix) return const [];
+  return ref.watch(discoverRepositoryProvider).nearbyRoutes(lat: fix.lat!, lng: fix.lng!);
+});
 
 final routesProvider = FutureProvider<List<RouteLine>>(
   (ref) => ref.watch(discoverRepositoryProvider).routes(),

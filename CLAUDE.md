@@ -109,7 +109,13 @@ p-trip/
   기기 빌드로 넘어가 설치가 거부된다 (`invalid signature`).
   증상: `Failed to verify code signature ... 0xe8008014`
 - 화면 확인용 주입 — `--dart-define=START_AT=/radar` (시작 화면),
-  `--dart-define=AUTO_CARD=false` (레이더 발견 카드 자동 노출 끄기). 시연 리허설에도 쓴다.
+  `--dart-define=AUTO_CARD=false` (레이더 발견 카드 자동 노출 끄기),
+  `--dart-define=SHEET_AT=expanded` (CO-07 바텀시트를 펼친 채 시작),
+  `--dart-define=FAKE_LOCATION=37.5245,129.1143` (위치 고정. 있으면 geolocator를 아예 안 부른다).
+  시연 리허설에도 쓴다.
+- 시뮬레이터 위치는 `xcrun simctl location <sim> set 37.5245,129.1143`로 넣는다.
+  권한 팝업은 `xcrun simctl privacy <sim> grant location com.ptrip.roadtrip2026`으로 미리 준다.
+  이러면 FAKE_LOCATION 없이 **실제 geolocator 경로**를 확인할 수 있다.
 - **화면 작업은 스크린샷으로 확인하기 전까지 완료가 아니다.**
   `flutter analyze`와 위젯 테스트는 레이아웃 깨짐을 전혀 못 잡는다.
   `xcrun simctl io <sim> screenshot`으로 눈으로 볼 것.

@@ -6,6 +6,15 @@ import 'package:p_trip/main.dart';
 
 /// 발견 탭 화면 간 이동이 실제로 되는지 — 라우트 선언만으로는 안 잡히는 것.
 void main() {
+  /// ⚠ CO-07에서는 pumpAndSettle을 쓸 수 없다. 위치를 재는 동안 스피너가 돌고,
+  ///   테스트 환경에선 geolocator 채널이 응답하지 않아 영원히 돈다.
+  ///   실기기에서는 8초 타임아웃이 걸려 있어 멈춘다.
+  Future<void> settleRoutes(WidgetTester tester) async {
+    for (var i = 0; i < 14; i++) {
+      await tester.pump(const Duration(milliseconds: 60));
+    }
+  }
+
   Future<void> pumpApp(WidgetTester tester) async {
     tester.view.physicalSize = const Size(393 * 3, 852 * 3);
     tester.view.devicePixelRatio = 3;
@@ -33,16 +42,45 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('전체 51'));
+    await settleRoutes(tester);
+  }
+
+  /// 바텀시트를 끌어올린다 — 이 화면의 '모드 전환'이 곧 이 제스처다.
+  Future<void> pullSheetUp(WidgetTester tester) async {
+    await tester.drag(find.byKey(const Key('routes-sheet-list')), const Offset(0, -520));
+    await settleRoutes(tester);
+  }
+
+  /// 시트 안에서 노선 줄을 찾아 탭한다. 51줄이라 화면 밖으로 나간다.
+  Future<void> tapRoute(WidgetTester tester, String name) async {
+    await tester.dragUntilVisible(
+      find.text(name),
+      find.byKey(const Key('routes-sheet-list')),
+      const Offset(0, -120),
+    );
+    await settleRoutes(tester);
+    await tester.tap(find.text(name));
     await tester.pumpAndSettle();
   }
 
-  testWidgets('홈 → 국도 선택(CO-07): 51선 그리드와 주행 불가 노선 문구', (tester) async {
+  testWidgets('홈 → 국도 선택(CO-07): 지도 + 바텀시트, 주행 불가 노선 문구', (tester) async {
     await pumpApp(tester);
     await toBrowse(tester);
 
     await toRoutes(tester);
 
+    // 접힘: 지도가 주인공이고 시트는 '여기서 탈 수 있는 길'만 말한다
+    expect(find.text(S.routesNearTitle), findsOneWidget);
+    expect(find.text(S.routesAllCta), findsOneWidget);
+    expect(find.text(S.routesTitle), findsNothing);
+    // 제목은 시트가 갖는다 — 앱바에 같은 말을 또 쓰지 않는다
+    expect(find.descendant(of: find.byType(AppBar), matching: find.byType(Text)), findsNothing);
+
+    // 끌어올림: 같은 화면이 51선 전체가 된다. 토글이 아니다
+    await pullSheetUp(tester);
     expect(find.text(S.routesTitle), findsOneWidget);
+    expect(find.text('${S.routesSub} · 총 14,000km'), findsOneWidget);
+    expect(find.text('남북(홀수)'), findsOneWidget);
     // 북한 구간은 별명 대신 고정 문구 (SCREENS.md CO-07)
     expect(find.text(S.routeUndrivable), findsOneWidget);
   });
@@ -52,8 +90,7 @@ void main() {
     await toBrowse(tester);
     await toRoutes(tester);
 
-    await tester.tap(find.text('동해 바닷길'));
-    await tester.pumpAndSettle();
+    await tapRoute(tester, '동해 바닷길');
 
     expect(find.text('순수 주행시간'), findsOneWidget);
     // 스탯 숫자는 RichText(값+단위)로 그려서 findRichText가 필요하다
@@ -68,8 +105,7 @@ void main() {
     await pumpApp(tester);
     await toBrowse(tester);
     await toRoutes(tester);
-    await tester.tap(find.text('동해 바닷길'));
-    await tester.pumpAndSettle();
+    await tapRoute(tester, '동해 바닷길');
 
     expect(find.text(S.courseDiscoveries), findsOneWidget);
     expect(find.text(S.courseOrder), findsOneWidget);
@@ -166,8 +202,7 @@ void main() {
     await pumpApp(tester);
     await toBrowse(tester);
     await toRoutes(tester);
-    await tester.tap(find.text('동해 바닷길'));
-    await tester.pumpAndSettle();
+    await tapRoute(tester, '동해 바닷길');
 
     await tester.tap(find.text(S.courseStart));
     await tester.pumpAndSettle();
@@ -180,8 +215,7 @@ void main() {
     await pumpApp(tester);
     await toBrowse(tester);
     await toRoutes(tester);
-    await tester.tap(find.text('동해 바닷길'));
-    await tester.pumpAndSettle();
+    await tapRoute(tester, '동해 바닷길');
     await tester.tap(find.text(S.baseNone));
     await tester.pumpAndSettle();
 

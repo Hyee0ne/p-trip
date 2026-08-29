@@ -224,6 +224,21 @@ class FixtureDiscoverRepository implements DiscoverRepository {
   @override
   Future<List<RouteLine>> routes() async => _routes;
 
+  /// 노선 선형(GeoJSON)이 아직 없어서 거리 계산을 못 한다 (M1 `build-routes.ts`).
+  /// 그전까지는 **데모 구간에서 실제로 만나는 국도만** 손으로 적어둔다 —
+  /// 7번(동해안 종단) · 38번(동해–제천) · 42번(동해–인천). 전부 실존 노선이다.
+  /// 거리는 지어내지 않고 null로 둔다. 구간 밖이면 빈 리스트.
+  @override
+  Future<List<NearbyRoute>> nearbyRoutes({required double lat, required double lng}) async {
+    final inDemoArea = lat >= 37.30 && lat <= 37.85 && lng >= 128.85 && lng <= 129.45;
+    if (!inDemoArea) return const [];
+    const ids = [7, 38, 42];
+    return [
+      for (final id in ids)
+        NearbyRoute(_routes.firstWhere((r) => r.id == id)),
+    ];
+  }
+
   @override
   Future<List<Course>> courses({int? routeId}) async =>
       _courses.where((c) => routeId == null || c.routeId == routeId).toList();
