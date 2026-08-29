@@ -99,6 +99,11 @@ sun_moon: locdate, grid_lat, grid_lng,
           civil_dawn/dusk, naut_dawn/dusk, astro_dawn/dusk
 
 -- 사용자
+-- ⚠ **로그인을 넣지 않는다** (2026-08-29 결정). 찜·여행기는 기기 안에 둔다.
+--   · 기획이 "로그인 없이 시작"을 전제한다 — 온보딩도 권한만 묻는다
+--   · 여행기는 본질적으로 그 기기의 기록이다. trip_photos가 기기 안 사진의 식별자만
+--     갖는 구조라, 서버에 여행기만 올라가면 사진 없는 반쪽이 된다
+--   · 아래 테이블과 RLS는 **그대로 둔다.** 계정이 생기는 날 로컬 값을 올려 동기화한다
 profiles: id(auth.uid), nickname
 saves: user_id, spot_id(nullable), course_id(nullable), route_id(nullable),
        kind('like'|'passed'), created_at

@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// 찜 · 스쳐간 발견 (TECH_SPEC §2 saves).
 ///
@@ -59,12 +62,48 @@ class SavesState {
       SavesState(liked: liked ?? this.liked, passed: passed ?? this.passed);
 }
 
-// TODO(M2): SharedPreferences 저장 → 로그인 시 Supabase saves 테이블과 동기화
+/// 찜·스쳐간 발견은 **기기 안에** 둔다.
+///
+/// ⚠ 로그인을 넣지 않기로 했다 (2026-08-29). 이유:
+///   - 기획이 "로그인 없이 시작"을 전제한다. 온보딩도 권한만 묻는다
+///   - 여행기는 본질적으로 그 기기의 기록이다 — `trip_photos`가 기기 안 사진의
+///     식별자만 갖는 구조라, 서버에 여행기만 올라가면 사진 없는 반쪽이 된다
+///   - 계정을 붙이는 건 MVP 다음이다. **DB 스키마와 RLS는 그대로 둔다** —
+///     나중에 계정이 생기면 그때 이 로컬 값을 올려 동기화하면 된다
 final savesProvider = NotifierProvider<SavesNotifier, SavesState>(SavesNotifier.new);
 
+const _kLiked = 'saves.liked';
+const _kPassed = 'saves.passed';
+
 class SavesNotifier extends Notifier<SavesState> {
+  SharedPreferences? _prefs;
+
   @override
-  SavesState build() => const SavesState();
+  SavesState build() {
+    // 저장소를 여는 동안에도 화면은 떠 있어야 한다. 비운 채로 시작하고 채워 넣는다.
+    unawaited(_restore());
+    return const SavesState();
+  }
+
+  Future<void> _restore() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      _prefs = p;
+      state = SavesState(
+        liked: (p.getStringList(_kLiked) ?? const []).toSet(),
+        passed: (p.getStringList(_kPassed) ?? const []).toSet(),
+      );
+    } catch (_) {
+      // 저장소를 못 열어도(테스트 환경 등) 앱은 돌아야 한다. 이번 실행에만 안 남을 뿐이다.
+    }
+  }
+
+  void _persist() {
+    final p = _prefs;
+    if (p == null) return;
+    p.setStringList(_kLiked, state.liked.toList());
+    p.setStringList(_kPassed, state.passed.toList());
+  }
 
   /// 하트 토글. 담았으면 true (토스트 표시 여부 판단용).
   bool toggleLike(SaveRef ref) {
@@ -72,6 +111,7 @@ class SavesNotifier extends Notifier<SavesState> {
     final added = next.add(ref.key);
     if (!added) next.remove(ref.key);
     state = state.copyWith(liked: next);
+    _persist();
     return added;
   }
 
@@ -80,8 +120,11 @@ class SavesNotifier extends Notifier<SavesState> {
     final k = SaveRef.spot(spotId).key;
     if (state.liked.contains(k)) return;
     state = state.copyWith(passed: {...state.passed, k});
+    _persist();
   }
 
-  void clearPassed(String spotId) =>
-      state = state.copyWith(passed: {...state.passed}..remove(SaveRef.spot(spotId).key));
+  void clearPassed(String spotId) {
+    state = state.copyWith(passed: {...state.passed}..remove(SaveRef.spot(spotId).key));
+    _persist();
+  }
 }
