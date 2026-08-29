@@ -215,13 +215,20 @@ class _RouteRail extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // ⚠ 51선 앞에서 넷을 자르면 2·3·4·5번이 나온다 — 아무 의미 없는 순서고,
+    //   정작 지금 탈 수 있는 길이 빠진다. **현재 위치 기준으로 고른다** (원칙 2).
+    //   위치를 모르면 그때만 번호순으로 떨어진다.
+    final nearby = ref.watch(nearbyRoutesProvider).value?.routes ?? const <NearbyRoute>[];
     final async = ref.watch(routesProvider);
     return SizedBox(
       height: 34,
       child: async.maybeWhen(
         orElse: () => const SizedBox.shrink(),
         data: (routes) {
-          final drivable = routes.where((r) => r.drivable).take(4).toList();
+          final near = [for (final n in nearby) n.route].where((r) => r.drivable).take(4).toList();
+          final drivable = near.isNotEmpty
+              ? near
+              : routes.where((r) => r.drivable).take(4).toList();
           return ListView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),

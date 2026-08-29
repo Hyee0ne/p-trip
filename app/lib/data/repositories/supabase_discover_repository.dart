@@ -183,15 +183,22 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
       for (final r in rows)
         () {
           final s = _spot(r);
+          // 타이틀은 **존재형 문구**다. ⚠ 거리 문구를 넣지 않는다 (SCREENS.md DR-02).
+          //   상황 칩이 이미 "국도에서 N분"을 말한다 — 타이틀에 또 쓰면 같은 말이 두 번이다.
+          final headline = switch (s.timeliness) {
+            Timeliness.marketDay => '오늘이 마침 ${s.name}이에요',
+            Timeliness.endingSoon => '${s.name}, 이번 주까지예요',
+            _ => s.name,
+          };
+          // 장날형은 다음 장 안내를 본문에 얹는다 (SCREENS.md DR-02 4번).
+          final note = s.timeliness == Timeliness.marketDay ? '' : s.timelinessNote;
           return Discovery(
             spot: s,
-            headline: s.timeliness == Timeliness.marketDay
-                ? '오늘이 마침 ${s.name}이에요'
-                : '${s.name}, 국도에서 ${s.detourMin}분',
+            headline: headline,
             situation: s.timelinessNote.isEmpty
                 ? '근처에 있어요 · 국도에서 ${s.detourMin}분'
                 : '${s.timelinessNote} · 국도에서 ${s.detourMin}분',
-            body: s.blurb,
+            body: note.isEmpty ? s.blurb : '$note. ${s.blurb}',
           );
         }(),
     ];
