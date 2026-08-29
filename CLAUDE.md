@@ -123,6 +123,19 @@ p-trip/
 - 시뮬레이터 위치는 `xcrun simctl location <sim> set 37.5245,129.1143`로 넣는다.
   권한 팝업은 `xcrun simctl privacy <sim> grant location com.ptrip.roadtrip2026`으로 미리 준다.
   이러면 FAKE_LOCATION 없이 **실제 geolocator 경로**를 확인할 수 있다.
+- **실기기 배포는 release로.** iOS 14+에서 debug 빌드는 Flutter 툴이 붙어 있어야만 뜬다
+  (홈 화면에서 열면 "debug mode Flutter apps can only be launched from Flutter tooling" 안내가 뜬다).
+  ```bash
+  flutter build ios --release $(dart-defines)
+  xcrun devicectl device install app --device <udid> "$PWD/build/ios/iphoneos/Runner.app"
+  xcrun devicectl device process launch --terminate-existing --device <udid> com.ptrip.roadtrip2026
+  ```
+  ⚠ `flutter install --use-application-binary`는 멀쩡히 있는 `.app`을 "does not exist"라고 거부한다.
+  ⚠ `flutter run -d <기기>`는 **`iproxy` 포트 포워딩이 깨져서 못 붙는다.**
+- **실기기 Dart 로그는 잡히지 않는다.** release 빌드는 `flutter logs`·`devicectl --console` 둘 다
+  아무것도 안 준다. 원인 좁히기는 **같은 코드를 시뮬레이터에서 돌리고**
+  `xcrun simctl spawn <sim> log stream --predicate 'processImagePath CONTAINS "Runner"'`로 본다.
+  시스템 프레임워크(CoreAudio·TextToSpeech·TCC) 동작이 그대로 찍혀서 Dart 로그보다 나을 때가 많다.
 - **화면 작업은 스크린샷으로 확인하기 전까지 완료가 아니다.**
   `flutter analyze`와 위젯 테스트는 레이아웃 깨짐을 전혀 못 잡는다.
   `xcrun simctl io <sim> screenshot`으로 눈으로 볼 것.
