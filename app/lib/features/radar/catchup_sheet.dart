@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/base_camp.dart';
 import '../../core/saves.dart';
+import '../../core/trip_log.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/spot_image.dart';
@@ -152,10 +154,17 @@ class _CatchupSheetState extends ConsumerState<CatchupSheet> {
                       ),
                     ),
                     onPressed: () {
+                      // 거점을 지킨 채 들른다 — 발견은 경유지로 간다.
+                      final p = HandoffSheet.visitParams(
+                        spot: HandoffPlace(spot.name, spot.lat, spot.lng),
+                        base: ref.read(baseCampProvider),
+                        driving: ref.read(tripLogProvider).active != null,
+                      );
                       HandoffSheet.show(
                         context,
                         mode: HandoffMode.visit,
-                        destination: HandoffPlace(spot.name, spot.lat, spot.lng),
+                        destination: p.destination,
+                        via: p.via,
                       );
                       _remove(d);
                     },

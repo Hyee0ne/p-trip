@@ -439,14 +439,18 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
                     _DiscoveryCard(
                       discovery: current,
                       onVisit: () {
+                        // 거점이 있으면 **거점을 목적지로 두고 이 발견을 경유지로** 넘긴다.
+                        // 그전엔 목적지를 발견으로 바꿔서 오늘 밤 잘 곳이 사라졌다.
+                        final p = HandoffSheet.visitParams(
+                          spot: HandoffPlace(current.spot.name, current.spot.lat, current.spot.lng),
+                          base: ref.read(baseCampProvider),
+                          driving: true,
+                        );
                         HandoffSheet.show(
                           context,
                           mode: HandoffMode.visit,
-                          destination: HandoffPlace(
-                            current.spot.name,
-                            current.spot.lat,
-                            current.spot.lng,
-                          ),
+                          destination: p.destination,
+                          via: p.via,
                         );
                         // 들르러 갔으니 잠깐 멈춘다. 정차가 DR-03 몰아보기의 조건이다.
                         ref.read(driveProvider.notifier).pause();

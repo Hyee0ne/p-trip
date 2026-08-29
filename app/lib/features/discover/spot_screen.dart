@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/saves.dart';
+import '../../core/base_camp.dart';
+import '../../core/trip_log.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/cards.dart';
@@ -97,7 +99,7 @@ class _Body extends ConsumerWidget {
           ],
         ),
         _floatingBar(context),
-        _bottomCta(context),
+        _bottomCta(context, ref),
       ],
     );
   }
@@ -315,7 +317,7 @@ class _Body extends ConsumerWidget {
     );
   }
 
-  Widget _bottomCta(BuildContext context) {
+  Widget _bottomCta(BuildContext context, WidgetRef ref) {
     return Positioned(
       left: 0,
       right: 0,
@@ -337,11 +339,21 @@ class _Body extends ConsumerWidget {
               backgroundColor: AppColors.routeBlue,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
             ),
-            onPressed: () => HandoffSheet.show(
-              context,
-              mode: HandoffMode.visit,
-              destination: HandoffPlace(spot.name, spot.lat, spot.lng),
-            ),
+            onPressed: () {
+              // 달리는 중이면 거점을 지키고 경유지로 넘긴다.
+              // 둘러보다 누른 거면 지킬 목적지가 없다 — 그냥 그 곳으로 간다.
+              final p = HandoffSheet.visitParams(
+                spot: HandoffPlace(spot.name, spot.lat, spot.lng),
+                base: ref.read(baseCampProvider),
+                driving: ref.read(tripLogProvider).active != null,
+              );
+              HandoffSheet.show(
+                context,
+                mode: HandoffMode.visit,
+                destination: p.destination,
+                via: p.via,
+              );
+            },
             icon: const Icon(Icons.near_me, size: 18),
             label: const Text(
               S.spotNavigate,

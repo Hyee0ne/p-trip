@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:kakao_flutter_sdk_navi/kakao_flutter_sdk_navi.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/base_camp.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 
@@ -54,6 +55,26 @@ class HandoffSheet extends StatelessWidget {
   /// '무료도로 우선' 안내 — 들르기에선 첫 1회만 (SCREENS.md §HND).
   final bool showFreeRoadTip;
 
+  /// 발견 한 곳에 들를 때 내비로 넘길 값.
+  ///
+  /// **달리는 중이고 거점이 있으면 거점을 목적지로 두고 발견을 경유지로 넘긴다.**
+  /// 그전에는 목적지를 발견으로 바꿔버려서 **오늘 밤 잘 곳이 사라졌다.**
+  ///
+  /// ⚠ 이건 경로 편집이 아니다. 돌고 있는 카카오내비 세션에 경유지를 꽂는 API는 없다 —
+  ///   내비가 새로 열려 현재 위치에서 다시 계산한다. 다만 거점을 잃지 않는다.
+  /// ⚠ 달리는 중이 아니면(둘러보다 누른 경우) 지킬 목적지가 없다. 그냥 그 곳으로 간다.
+  /// ⚠ 티맵은 경유지를 못 받는다 — 버튼 문구가 '목적지만'인 이유다.
+  static ({HandoffPlace destination, List<HandoffPlace> via}) visitParams({
+    required HandoffPlace spot,
+    required BaseCamp? base,
+    required bool driving,
+  }) {
+    if (!driving || base == null) return (destination: spot, via: const []);
+    final camp = HandoffPlace(base.name, base.lat, base.lng);
+    if (!camp.hasCoords) return (destination: spot, via: const []);
+    return (destination: camp, via: [spot]);
+  }
+
   static Future<void> show(
     BuildContext context, {
     required HandoffMode mode,
@@ -96,9 +117,17 @@ class HandoffSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpace.x5),
-          Text(mode == HandoffMode.depart ? S.handoffTitle : destinationName, style: AppType.h2),
+          // 들르기인데 경유가 있으면 **사용자가 누른 그 곳**이 제목이다. 목적지(거점)가 아니라.
+          Text(
+            mode == HandoffMode.depart
+                ? S.handoffTitle
+                : (viaNames.isEmpty ? destinationName : viaNames.first),
+            style: AppType.h2,
+          ),
           const SizedBox(height: AppSpace.x4),
-          if (mode == HandoffMode.depart) ...[
+          // ⚠ 거점을 지킨 채 들른다는 걸 눈으로 보여준다. 안 보여주면
+          //   목적지가 바뀐 줄 알고 불안해진다.
+          if (mode == HandoffMode.depart || viaNames.isNotEmpty) ...[
             _row('목적지', destinationName),
             if (viaNames.isNotEmpty) ...[
               const SizedBox(height: AppSpace.x2),
