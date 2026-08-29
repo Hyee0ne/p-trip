@@ -48,7 +48,7 @@ const CORRIDOR = [
   [129.0340, 37.6900], // 정동진
   [128.8960, 37.7550], // 강릉
 ];
-const CORRIDOR_KM = 10;
+const CORRIDOR_KM = Number(process.env.CORRIDOR_KM ?? 10);
 
 /** 점과 선분 사이 거리(km). 위도 37도 부근이라 평면 근사로 충분하다. */
 function distToCorridorKm(lat: number, lng: number): number {
@@ -215,26 +215,25 @@ async function main() {
   async function fill([id, item]: [string, Item]) {
     const type = TYPE_MAP[item.contenttypeid]!;
 
-    const [commonRows, introRows] = await Promise.all([
-      api('detailCommon2', `contentId=${id}`),
-      api('detailIntro2', `contentId=${id}&contentTypeId=${item.contenttypeid}`),
-    ]);
-    const common = commonRows[0] ?? {};
+    // ⚠ 목록 응답에 이미 사진(84%)·주소(99%)·전화가 들어 있다.
+    //   detailCommon2는 **개요 하나 때문에** 부르는 셈인데, 개요는 게이트 10점이라
+    //   있으나 없으나 통과 여부가 거의 안 갈린다. 일일 요청 제한이 빠듯하니 기본으로 안 부른다.
+    //   개요는 fetch:overview 단계에서 게이트를 통과한 스팟만 따로 채운다.
+    const introRows = await api('detailIntro2', `contentId=${id}&contentTypeId=${item.contenttypeid}`);
     const intro = introRows[0];
 
-    const addr = (common.addr1 || item.addr1 || '').trim() || null;
-    const tel = (common.tel || item.tel || '').trim() || null;
-    const image = (common.firstimage || item.firstimage || '').trim() || null;
-    const overview = clean(common.overview);
+    const addr = (item.addr1 || '').trim() || null;
+    const tel = (item.tel || '').trim() || null;
+    const image = (item.firstimage || '').trim() || null;
     const openHours = openHoursOf(intro);
 
     // 추가사진(10점)은 게이트를 가를 때만 확인한다. 일일 요청 제한을 아껴야 한다.
-    const base = trustScore({ image, photoCount: 0, tel, openHours, addr, overview });
+    const base = trustScore({ image, photoCount: 0, tel, openHours, addr, overview: null });
     const photoCount =
       base >= 50 && base < 60 ? (await api('detailImage2', `contentId=${id}&imageYN=Y`)).length : 0;
 
     // 자연관광지는 뷰포인트로 다룬다 — 일몰 타이밍 가중치(§3.1)가 걸리는 유형이다.
-    const cat1 = common.cat1 || item.cat1 || '';
+    const cat1 = item.cat1 || '';
     const finalType = type === 'attraction' && cat1 === 'A01' ? 'view' : type;
 
     const lat = Number(item.mapy);
@@ -252,10 +251,10 @@ async function main() {
       tel,
       image_url: image,
       photo_count: photoCount,
-      overview,
+      // ⚠ overview는 넣지 않는다. null로 upsert하면 이미 채운 개요를 지운다.
       open_hours: openHours,
       tags: [],
-      trust_score: trustScore({ image, photoCount, tel, openHours, addr, overview }),
+      trust_score: trustScore({ image, photoCount, tel, openHours, addr, overview: null }),
       // ⚠ exit_geom·exit_frac·detour_min은 노선 선형이 있어야 계산된다.
       //   build-routes가 geom을 채운 뒤 별도 단계에서 메운다.
       updated_at: new Date().toISOString(),
@@ -327,7 +326,8 @@ async function main() {
   console.log(`  유형: ${Object.entries(byType).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
   console.log(`  신뢰도 게이트(60) 통과 ${pass}건 (${Math.round((pass / spots.length) * 100)}%)`);
   console.log(`  전화 보유 ${spots.filter((s) => s.tel).length}건 · 사진 보유 ${spots.filter((s) => s.image_url).length}건`);
-  console.log('\n· exit_frac·detour_min은 아직 null이다 — 노선 선형이 들어와야 계산된다.');
+  console.log('\n· 개요는 아직 비어 있다 — `npm run fetch:overview`로 게이트 통과분만 채운다.');
+  console.log('· exit_frac·detour_min은 별도 단계에서 계산한다.');
 }
 
 main().catch((e) => {

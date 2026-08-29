@@ -12,7 +12,8 @@
     "fetch:markets": "tsx src/fetch-markets.ts",
     "fetch:sunset": "tsx src/fetch-sunset.ts",
     "fetch:datalab": "tsx src/fetch-datalab.ts",
-    "verify": "tsx src/verify.ts"
+    "verify": "tsx src/verify.ts",
+    "fetch:overview": "tsx src/fetch-overview.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.47.0",
