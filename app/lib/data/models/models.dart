@@ -331,6 +331,7 @@ class Trip {
     required this.stops,
     required this.photoCount,
     this.courseId = '',
+    this.routeKm = const {},
   });
 
   final String id;
@@ -343,6 +344,12 @@ class Trip {
   /// 이 여행이 출발할 때 고른 코스. 비어 있으면 '코스 없이 그냥 달렸다'는 뜻이다.
   /// ⚠ "계획에 없던 밥"을 세려면 **무엇이 계획이었는지**를 알아야 한다 (MY-02).
   final String courseId;
+
+  /// 맵매칭 결과 — 노선번호별로 실제 달린 km.
+  ///
+  /// ⚠ 비어 있으면 **아직 안 재본 여행**이다 (맵매칭 전에 기록된 것). 그때는
+  ///   `routeId`에 `distanceKm`를 통째로 얹는 예전 방식으로 센다 — 0으로 지우지 않는다.
+  final Map<int, int> routeKm;
   final String routeName;
   final String startName;
   final String endName;

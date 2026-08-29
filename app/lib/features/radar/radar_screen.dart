@@ -796,7 +796,18 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
           onPressed: () {
             // ⚠ 하드코딩된 'ep3'로 가고 있었다. 지금 막 끝낸 여행으로 간다.
             ref.read(driveProvider.notifier).stop();
-            final id = ref.read(tripLogProvider.notifier).end();
+            final log = ref.read(tripLogProvider.notifier);
+            final id = log.end();
+            // 51선 수집은 **지나온 점을 노선에 붙여** 센다 (맵매칭).
+            // ⚠ 화면을 붙잡지 않는다. 실패해도 여행기는 열린다 — 그때는 예전 방식으로 센다.
+            if (id != null) {
+              final pts = log.pointsOf(id);
+              ref
+                  .read(discoverRepositoryProvider)
+                  .matchRouteKm(pts)
+                  .then((byRoute) => log.setRouteKm(id, byRoute))
+                  .catchError((_) {});
+            }
             context.go(id == null ? '/my' : '/my/trip/$id');
           },
           child: const Text(

@@ -103,8 +103,19 @@ class _MyScreenState extends ConsumerState<MyScreen> {
 
   /// 국도 51선 수집 — 유한한 컬렉션이라 진행률이 보인다.
   Widget _collection(List<Trip> trips) {
-    final collected = trips.map((t) => t.routeId).toSet().toList()..sort();
-    final km = trips.fold<int>(0, (a, t) => a + t.distanceKm);
+    // 노선별로 합친다. 한 여행이 여러 국도를 지나면 각자에게 간다 (맵매칭).
+    // ⚠ 맵매칭 전에 기록된 여행은 routeKm이 비어 있다 — 그땐 예전 방식으로 센다.
+    //   0으로 지우면 이미 달린 길이 사라진다.
+    final byRoute = <int, int>{};
+    for (final t in trips) {
+      if (t.routeKm.isEmpty) {
+        byRoute[t.routeId] = (byRoute[t.routeId] ?? 0) + t.distanceKm;
+      } else {
+        t.routeKm.forEach((r, km) => byRoute[r] = (byRoute[r] ?? 0) + km);
+      }
+    }
+    final collected = byRoute.keys.toList()..sort();
+    final km = byRoute.values.fold<int>(0, (a, b) => a + b);
     // 아직 못 받았으면 기획 표기값으로 버틴다. 실측이 오면 그걸 쓴다.
     final totalKm = ref.watch(totalRoadKmProvider).value ?? 14000;
     final ratio = collected.length / 51;

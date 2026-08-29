@@ -192,6 +192,13 @@ class TripLogNotifier extends Notifier<TripLog> {
     return trip.id;
   }
 
+  /// 맵매칭 결과를 그 여행에 적는다. 비면 아무것도 안 한다 —
+  /// 재보니 국도가 없었다면 예전 방식(routeId 통째)을 그대로 두는 게 낫다.
+  void setRouteKm(String tripId, Map<int, int> byRoute) {
+    if (byRoute.isEmpty) return;
+    _replace(tripId, (t) => _copy(t, routeKm: byRoute));
+  }
+
   void _replace(String id, Trip Function(Trip) f) {
     state = TripLog(
       trips: [
@@ -212,6 +219,7 @@ class TripLogNotifier extends Notifier<TripLog> {
     String? endedAt,
     List<TripStop>? stops,
     int? photoCount,
+    Map<int, int>? routeKm,
   }) => Trip(
     id: t.id,
     episode: t.episode,
@@ -226,6 +234,7 @@ class TripLogNotifier extends Notifier<TripLog> {
     stops: stops ?? t.stops,
     photoCount: photoCount ?? t.photoCount,
     courseId: t.courseId,
+    routeKm: routeKm ?? t.routeKm,
   );
 
   Map<String, dynamic> _toJson(Trip t) => {
@@ -246,6 +255,7 @@ class TripLogNotifier extends Notifier<TripLog> {
     'endedAt': t.endedAt,
     'photoCount': t.photoCount,
     'courseId': t.courseId,
+    'routeKm': {for (final e in t.routeKm.entries) '${e.key}': e.value},
     'stops': [
       for (final s in t.stops)
         {
@@ -284,6 +294,10 @@ class TripLogNotifier extends Notifier<TripLog> {
     endedAt: (m['endedAt'] as String?) ?? '',
     photoCount: (m['photoCount'] as num?)?.toInt() ?? 0,
     courseId: (m['courseId'] as String?) ?? '',
+    routeKm: {
+      for (final e in (m['routeKm'] as Map<String, dynamic>? ?? const {}).entries)
+        if (int.tryParse(e.key) != null) int.parse(e.key): (e.value as num).toInt(),
+    },
     stops: [
       for (final s in (m['stops'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>())
         TripStop(

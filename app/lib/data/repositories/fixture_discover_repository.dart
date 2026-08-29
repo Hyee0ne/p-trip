@@ -256,6 +256,9 @@ class FixtureDiscoverRepository implements DiscoverRepository {
   Future<TodaySky?> todaySky({required double lat, required double lng}) async => null;
 
   @override
+  Future<Map<int, int>> matchRouteKm(List<TripPoint> points) async => const {};
+
+  @override
   Future<NightSky?> nightSkyOn({
     required double lat,
     required double lng,

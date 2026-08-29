@@ -39,6 +39,10 @@ abstract interface class DiscoverRepository {
   /// 오늘 이 자리의 해·달. 일몰 타이밍 가중치(§3.1)와 별 보기 좋은 밤(§3.8)이 쓴다.
   Future<TodaySky?> todaySky({required double lat, required double lng});
 
+  /// 지나온 점들을 노선에 붙여 **노선별 km**를 낸다 (51선 수집).
+  /// ⚠ 길안내가 아니다 — 지나온 뒤 어디였는지 셀 뿐이다 (원칙 1).
+  Future<Map<int, int>> matchRouteKm(List<TripPoint> points);
+
   /// 그날 밤의 사실 (MY-02 §3). 데이터가 없으면 null — 없는 밤을 지어내지 않는다.
   Future<NightSky?> nightSkyOn({required double lat, required double lng, required DateTime date});
 

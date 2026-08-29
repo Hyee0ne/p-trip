@@ -195,6 +195,25 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
   }
 
   @override
+  Future<Map<int, int>> matchRouteKm(List<TripPoint> points) async {
+    if (points.length < 2) return const {};
+    final rows =
+        await _db.rpc(
+              'match_route_km',
+              params: {
+                'p_points': [
+                  for (final p in points) [p.lat, p.lng],
+                ],
+              },
+            )
+            as List<dynamic>;
+    return {
+      for (final r in rows.cast<Map<String, dynamic>>())
+        (r['route_id'] as num).toInt(): ((r['km'] as num?) ?? 0).round(),
+    };
+  }
+
+  @override
   Future<NightSky?> nightSkyOn({
     required double lat,
     required double lng,
