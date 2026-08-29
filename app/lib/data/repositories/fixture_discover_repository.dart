@@ -246,6 +246,11 @@ class FixtureDiscoverRepository implements DiscoverRepository {
   @override
   Future<Course?> course(String id) async => _courses.where((c) => c.id == id).firstOrNull;
 
+  /// 픽스처에는 코스 선형이 없다. **좌표를 지어내지 않는다** —
+  /// 모의 주행은 실데이터(Supabase)가 붙어 있을 때만 돈다.
+  @override
+  Future<List<GeoPoint>> courseGeometry(String id) async => const [];
+
   @override
   Future<Spot?> spot(String id) async => _spots.where((s) => s.id == id).firstOrNull;
 

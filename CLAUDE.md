@@ -117,6 +117,8 @@ p-trip/
   `--dart-define=AUTO_CARD=false` (레이더 발견 카드 자동 노출 끄기),
   `--dart-define=SHEET_AT=expanded` (CO-07 바텀시트를 펼친 채 시작),
   `--dart-define=FAKE_LOCATION=37.5245,129.1143` (위치 고정. 있으면 geolocator를 아예 안 부른다).
+  `--dart-define=DRIVE_SCALE=10` (모의 주행 배속. 기본 20이면 데모 코스 65km가 약 3분),
+  `--dart-define=START_MODE=browse` (홈을 훑어보기로 시작).
   시연 리허설에도 쓴다.
 - 시뮬레이터 위치는 `xcrun simctl location <sim> set 37.5245,129.1143`로 넣는다.
   권한 팝업은 `xcrun simctl privacy <sim> grant location com.ptrip.roadtrip2026`으로 미리 준다.

@@ -44,6 +44,11 @@ final axisSpotsProvider = FutureProvider.family<List<Spot>, CurationAxis>(
   (ref, axis) => ref.watch(discoverRepositoryProvider).spots(axis: axis),
 );
 
+/// 코스 선형. 모의 주행이 이걸 따라 달린다.
+final courseGeometryProvider = FutureProvider.family<List<GeoPoint>, String>(
+  (ref, id) => ref.watch(discoverRepositoryProvider).courseGeometry(id),
+);
+
 final courseProvider = FutureProvider.family<Course?, String>(
   (ref, id) => ref.watch(discoverRepositoryProvider).course(id),
 );

@@ -117,6 +117,7 @@ class Spot {
     this.imageUrl,
     this.lat,
     this.lng,
+    this.exitFrac,
   });
 
   final String id;
@@ -150,6 +151,9 @@ class Spot {
   /// 좌표. **없으면 길안내로 넘길 수 없다** — 내비 앱은 이름만으로 못 간다.
   final double? lat;
   final double? lng;
+
+  /// 코스 선형 위 위치비 0~1. 진행률과 비교해 **앞에 있는 발견**을 고른다 (§3.1).
+  final double? exitFrac;
 
   /// 레이더 카드·푸시에 태울 수 있는가 (TECH_SPEC §3.1 3번).
   bool get passesTrustGate => trustScore >= 60;

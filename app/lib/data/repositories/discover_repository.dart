@@ -21,6 +21,10 @@ abstract interface class DiscoverRepository {
 
   Future<Course?> course(String id);
 
+  /// 코스 선형. 모의 주행이 이 선을 따라간다.
+  /// ⚠ 길안내용이 아니다 — "어디를 지나는가"이지 "어떻게 가는가"가 아니다 (원칙 1).
+  Future<List<GeoPoint>> courseGeometry(String id);
+
   Future<Spot?> spot(String id);
 
   /// 텍스트 검색 (SCREENS.md §SR).

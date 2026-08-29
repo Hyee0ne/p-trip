@@ -131,6 +131,14 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
     return rows.isEmpty ? null : await _course(rows.first);
   }
 
+  @override
+  Future<List<GeoPoint>> courseGeometry(String id) async {
+    final rows = await _db.rpc('course_geojson', params: {'p_id': id}) as List<dynamic>;
+    if (rows.isEmpty) return const [];
+    final paths = _geoJsonPaths((rows.first as Map<String, dynamic>)['geojson'] as String?);
+    return paths.isEmpty ? const [] : paths.first;
+  }
+
   // ── 큐레이션 덱 ─────────────────────────────────────────
   @override
   Future<List<CurationCard>> curationDeck() async {
@@ -262,6 +270,7 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
       imageUrl: image,
       lat: (r['lat'] as num?)?.toDouble(),
       lng: (r['lng'] as num?)?.toDouble(),
+      exitFrac: (r['exit_frac'] as num?)?.toDouble(),
     );
   }
 

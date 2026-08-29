@@ -39,6 +39,11 @@ class Env {
   /// START_AT·AUTO_CARD와 같은 용도 — 스크린샷과 시연 리허설.
   static const sheetExpanded = String.fromEnvironment('SHEET_AT') == 'expanded';
 
+  /// 모의 주행 배속. `--dart-define=DRIVE_SCALE=10` (기본 20 = 1초에 20초 주행).
+  /// 데모 코스 65km가 기본값으로 약 3분 걸린다. 리허설 속도를 여기서 맞춘다.
+  /// ⚠ Dart에 `double.fromEnvironment`는 없다. int로 받아 변환한다.
+  static const driveScale = int.fromEnvironment('DRIVE_SCALE', defaultValue: 20) * 1.0;
+
   /// 카카오 지도 키가 붙었는지. 없으면 CO-07은 지도 자리를 비워둔다.
   ///
   /// ⚠ 2026-08-29 네이티브 SDK(kakao_map_sdk)로 전환하면서 **네이티브 앱 키**를 본다.

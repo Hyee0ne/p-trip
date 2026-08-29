@@ -179,6 +179,9 @@ class _EmptyRepo implements DiscoverRepository {
   @override
   Future<NearbyResult> nearbyRoutes({required double lat, required double lng}) async =>
       const NearbyResult([], covered: true);
+
+  @override
+  Future<List<GeoPoint>> courseGeometry(String id) async => const [];
   @override
   Future<List<Course>> courses({int? routeId}) async => const [];
   @override

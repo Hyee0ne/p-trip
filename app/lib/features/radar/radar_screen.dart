@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/base_camp.dart';
+import '../../core/drive.dart';
 import '../../core/env.dart';
 import '../../core/saves.dart';
 import '../../core/strings.dart';
@@ -29,67 +30,95 @@ class RadarScreen extends ConsumerStatefulWidget {
 }
 
 class _RadarScreenState extends ConsumerState<RadarScreen> {
-  // TODO(M3): geolocator 위치 스트림으로 교체. 지금은 데모 모드(mock 주행)만.
-  Timer? _demo;
-  Timer? _firstCard;
   Timer? _nextCard;
-  int _queueIndex = 0;
   bool _cardVisible = false;
-  double _recordedKm = 34;
   bool _voiceOn = true;
+  bool _started = false;
+
+  /// 이미 내보낸 발견. 같은 카드를 두 번 띄우지 않는다.
+  final _shown = <String>{};
 
   /// 정차 시 몰아보기(DR-03)를 띄우기 위한 스쳐간 목록
   final _passed = <Discovery>[];
+
+  /// 지금 화면에 떠 있는 발견.
+  Discovery? _current;
+
+  /// 데모 코스(동해 바닷길). 실주행에서는 사용자가 고른 코스가 들어온다.
+  static const _demoCourseId = '7d0e6a2c-0000-4000-8000-000000000007';
+
+  /// 카드를 띄우는 구간 — 진출로까지 3~7분 (TECH_SPEC §3.1 5번).
+  /// 너무 이르면 잊어버리고, 너무 늦으면 상의할 시간이 없다.
+  static const _minAhead = 3.0;
+  static const _maxAhead = 7.0;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     // ⚠ 탭 셸이 IndexedStack이라 이 화면은 다른 탭에 있어도 살아 있다.
-    //   TickerMode를 보고 실제로 보일 때만 타이머를 돌린다.
-    //   안 그러면 발견 탭에 있는 동안에도 GPS 로깅·폴링이 도는 셈이 된다.
+    //   TickerMode를 보고 실제로 보일 때만 주행을 돌린다.
+    //   안 그러면 발견 탭에 있는 동안에도 GPS 로깅이 도는 셈이 된다.
     _setRunning(TickerMode.valuesOf(context).enabled);
   }
 
   void _setRunning(bool run) {
-    if (run == (_demo != null)) return;
     if (!run) {
-      _demo?.cancel();
-      _demo = null;
-      _firstCard?.cancel();
-      _firstCard = null;
+      ref.read(driveProvider.notifier).stop();
       return;
     }
-    // 데모 모드: 8초마다 다음 발견이 다가온다
-    _demo = Timer.periodic(const Duration(seconds: 8), (_) {
-      if (!mounted) return;
-      setState(() {
-        _recordedKm += 6;
-        if (!_cardVisible) _cardVisible = true;
-      });
+    if (_started) return;
+    _started = true;
+    // ⚠ 모의 주행은 **실제 코스 선형**을 따라간다. 좌표를 지어내지 않는다.
+    //   실주행으로 바꿀 땐 DriveNotifier만 geolocator 스트림으로 갈아끼우면 된다.
+    ref.read(courseGeometryProvider(_demoCourseId).future).then((path) {
+      if (!mounted || path.length < 2) return;
+      ref.read(driveProvider.notifier).start(path);
     });
-    if (!Env.autoCard) return;
-    if (!_cardVisible) {
-      // ⚠ Future.delayed는 취소가 안 돼 화면이 사라진 뒤에도 남는다. Timer로 잡아둔다.
-      _firstCard?.cancel();
-      // 레이더를 먼저 보여준 뒤 발견이 다가온다. 바로 덮으면 레이더를 못 본다.
-      _firstCard = Timer(const Duration(milliseconds: 4200), () {
-        if (mounted) setState(() => _cardVisible = true);
-      });
-    }
   }
 
   @override
   void dispose() {
-    _demo?.cancel();
-    _firstCard?.cancel();
     _nextCard?.cancel();
     super.dispose();
   }
 
+  /// 진행률이 바뀔 때마다 **앞에 있는 발견**을 고른다.
+  /// 시간으로 띄우지 않는다 — 어디를 지나고 있느냐가 기준이다.
+  void _pickAhead(DriveState drive, List<Discovery> queue) {
+    if (_cardVisible || _current != null || queue.isEmpty || !drive.running) return;
+    if (!Env.autoCard) return;
+    // 레이더를 먼저 보여준 뒤 발견이 다가온다. 바로 덮으면 레이더를 못 본다 (SCREENS DR-01).
+    if (drive.elapsedSec < 4) return;
+
+    for (final d in queue) {
+      final f = d.spot.exitFrac;
+      if (f == null || _shown.contains(d.spot.id)) continue;
+      final min = drive.minutesTo(f);
+      if (min < _minAhead || min > _maxAhead) continue;
+      _shown.add(d.spot.id);
+      _current = d;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _cardVisible = true);
+      });
+      return;
+    }
+  }
+
+  /// 진행률 기준으로 **앞에 있는** 발견만 추린다. 이미 지나친 건 레이더에서 뺀다.
+  List<Spot> _aheadSpots(List<Discovery> queue) {
+    final frac = ref.read(driveProvider).frac;
+    final ahead = [
+      for (final d in queue)
+        if ((d.spot.exitFrac ?? 0) > frac) d.spot,
+    ];
+    // 앞에 아무것도 없으면(도착) 마지막 몇 개를 남겨 화면이 비지 않게 한다.
+    final pick = ahead.isEmpty ? [for (final d in queue) d.spot].reversed.toList() : ahead;
+    return pick.take(8).toList();
+  }
+
   void _advance({required bool saved}) {
-    final queue = ref.read(radarQueueProvider).value ?? const [];
-    if (queue.isEmpty) return;
-    final current = queue[_queueIndex % queue.length];
+    final current = _current;
+    if (current == null) return;
 
     if (!saved) {
       // ✕ / 무시 → 스쳐간 발견으로 조용히 적립 (재촉 금지 원칙)
@@ -98,19 +127,19 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
       showAppToast(context, S.toastPassed);
     }
     setState(() {
-      _queueIndex++;
       _cardVisible = false;
+      _current = null;
     });
+    // 카드가 사라지고 바로 다음 걸 띄우지 않는다. 다음 발견이 앞에 올 때까지 기다린다.
     _nextCard?.cancel();
-    _nextCard = Timer(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _cardVisible = true);
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     final queueAsync = ref.watch(radarQueueProvider);
     final base = ref.watch(baseCampProvider);
+    final drive = ref.watch(driveProvider);
+    _pickAhead(drive, queueAsync.value ?? const []);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       // 어두운 배경엔 밝은 상태바 (pro-rules: 다크 대비)
@@ -122,7 +151,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
           child: queueAsync.maybeWhen(
             orElse: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
             data: (queue) {
-              final current = queue.isEmpty ? null : queue[_queueIndex % queue.length];
+              final current = _current;
               return Stack(
                 children: [
                   ListView(
@@ -249,7 +278,10 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
           children: [
             Padding(
               padding: const EdgeInsets.all(4),
-              child: RadarView(blips: queue.map((d) => d.spot).toList()),
+              // ⚠ 30개를 다 찍으면 라벨이 서로 덮여 아무것도 못 읽는다.
+              //   운전 중 화면이다 — **지금 앞에 있는 것 여덟 개**만 남긴다.
+              //   레이더는 목록이 아니라 "주변을 살피는 중"이라는 시각화다.
+              child: RadarView(blips: _aheadSpots(queue)),
             ),
             // 기록 칩 — 붉은 점
             Positioned(
@@ -267,7 +299,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    '7번 국도 ${_recordedKm.toStringAsFixed(0)}km 기록 중',
+                    // ⚠ 숫자를 지어내지 않는다. 모의 주행이든 실주행이든 실제 누적 거리다.
+                    '7번 국도 ${ref.watch(driveProvider).distanceKm.toStringAsFixed(0)}km 기록 중',
                     style: const TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,
@@ -277,16 +310,18 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
                 ],
               ),
             ),
-            const Positioned(
+            Positioned(
               top: 12,
               right: 14,
               child: Row(
                 children: [
-                  Icon(Icons.cabin_outlined, size: 12, color: Color(0xFFB79BE0)),
-                  SizedBox(width: 5),
+                  const Icon(Icons.cabin_outlined, size: 12, color: Color(0xFFB79BE0)),
+                  const SizedBox(width: 5),
                   Text(
-                    '거점 18km',
-                    style: TextStyle(
+                    // ⚠ 거점까지 거리는 아직 계산하지 않는다. 18km는 지어낸 값이었다.
+                    //   코스 진행률로 남은 거리는 알 수 있으니 그걸 말한다.
+                    '남은 ${(ref.watch(driveProvider).courseKm - ref.watch(driveProvider).distanceKm).toStringAsFixed(0)}km',
+                    style: const TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,
                       color: Color(0xFFB79BE0),
