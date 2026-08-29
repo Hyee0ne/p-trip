@@ -113,6 +113,10 @@ class DriveNotifier extends Notifier<DriveState> {
   double _scale = 20;
   double _kmh = 60;
 
+  /// 실주행인가(true) 모의 주행인가. 앱을 내렸다 돌아왔을 때 **같은 방식으로** 잇는다.
+  bool _live = false;
+  bool _wasBackground = false;
+
   @override
   DriveState build() {
     ref.onDispose(() {
@@ -128,6 +132,7 @@ class DriveNotifier extends Notifier<DriveState> {
     if (path.length < 2) return;
 
     _path = path;
+    _live = false;
     _kmh = kmh;
     _scale = scale ?? Env.driveScale;
     _cum = [0];
@@ -168,6 +173,8 @@ class DriveNotifier extends Notifier<DriveState> {
     _sub?.cancel();
 
     _path = course;
+    _live = true;
+    _wasBackground = background;
     _cum = [0];
     for (var i = 1; i < course.length; i++) {
       _cum.add(_cum[i - 1] + _distKm(course[i - 1], course[i]));
@@ -282,9 +289,24 @@ class DriveNotifier extends Notifier<DriveState> {
   }
 
   /// 다시 달린다. 멈춰 있던 시간은 잊는다.
+  ///
+  /// ⚠ 진행률·거리를 **그대로 이어받는다.** 앱을 내렸다 돌아왔다고 여행이 처음으로
+  ///   돌아가면 안 된다 — 달린 만큼은 달린 것이다.
   void resume() {
     if (state.running || _path.length < 2) return;
     _tick?.cancel();
+    if (_live) {
+      state = state.copyWith(running: true, stoppedSec: 0);
+      _sub?.cancel();
+      try {
+        _sub = Geolocator.getPositionStream(
+          locationSettings: _settings(_wasBackground),
+        ).listen(_onFix);
+      } catch (_) {
+        state = state.copyWith(running: false, needsLocation: true);
+      }
+      return;
+    }
     state = state.copyWith(running: true, speedKmh: _kmh, stoppedSec: 0);
     const dt = Duration(milliseconds: 250);
     _tick = Timer.periodic(dt, (_) => _step(dt.inMilliseconds / 1000.0));

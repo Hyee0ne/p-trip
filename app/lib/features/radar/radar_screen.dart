@@ -99,10 +99,22 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
     final on = ref.read(backgroundAlertsProvider);
-    final away = s == AppLifecycleState.paused || s == AppLifecycleState.inactive;
-    // ⚠ 알림을 안 켠 사람은 뒤에서 위치를 보지 않는다. 켠 사람만 계속 돈다.
-    if (away && !on) ref.read(driveProvider.notifier).stop();
-    _background = away && on;
+    // ⚠ `inactive`를 내려간 걸로 보면 안 된다. 알림 창을 내리거나 앱 전환기를 열 때도,
+    //   권한 팝업이 뜰 때도 오는 상태다 — 그때마다 주행을 끊으면 레이더가 멋대로 죽는다.
+    final away = s == AppLifecycleState.paused || s == AppLifecycleState.hidden;
+
+    if (away) {
+      // 알림을 안 켠 사람은 뒤에서 위치를 보지 않는다. 켠 사람만 계속 돈다.
+      if (!on) ref.read(driveProvider.notifier).stop();
+      _background = on;
+      return;
+    }
+    if (s != AppLifecycleState.resumed) return;
+
+    _background = false;
+    // ⚠ 돌아왔으면 **다시 달린다.** 이게 없으면 앱을 한 번 내린 순간 그 세션 내내
+    //   레이더가 죽어 있다 — _started가 true라 시작 경로도 막혀 있다.
+    ref.read(driveProvider.notifier).resume();
   }
 
   void _setRunning(bool run) {
