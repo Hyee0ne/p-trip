@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
@@ -38,8 +39,9 @@ class Voice {
       await t.awaitSpeakCompletion(true);
       _tts = t;
       return t;
-    } catch (_) {
+    } catch (e) {
       // TTS가 없는 기기·테스트 환경. 소리 없이 조용히 넘어간다.
+      debugPrint('[voice] engine failed: $e');
       _failed = true;
       return null;
     }
@@ -50,9 +52,15 @@ class Voice {
     if (t == null || text.trim().isEmpty) return;
     try {
       await t.stop();
+      // ⚠ **매번 세션을 켠다.** flutter_tts는 카테고리만 잡고 `setActive`를 안 부른다 —
+      //   시뮬레이터는 그래도 소리가 나지만 **실기기는 조용하다.** 여기가 그 차이였다.
+      //   낭독이 끝나면 플러그인이 알아서 notifyOthersOnDeactivation으로 내린다
+      //   (autoStopSharedSession 기본 true) — 그래서 내비 볼륨이 도로 올라온다.
+      await t.setSharedInstance(true);
       await t.speak(text);
-    } catch (_) {
+    } catch (e) {
       // 낭독 실패가 화면을 막지 않는다.
+      debugPrint('[voice] speak failed: $e');
     }
   }
 
