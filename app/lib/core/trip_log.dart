@@ -45,8 +45,16 @@ class TripLogNotifier extends Notifier<TripLog> {
   /// 복원 전에 사용자가 먼저 손댔는가. 그러면 복원이 덮어쓰면 안 된다.
   bool _dirty = false;
 
-  /// 경로 로그. 여행기 화면이 쓰지 않아 상태에는 안 올리고 저장만 한다.
-  final _points = <String, List<List<double>>>{};
+  /// 여행별 경로. ⚠ 상태에는 안 올린다 — 점 하나 찍을 때마다 화면을 다시 그릴 이유가 없다.
+  ///   대신 **저장은 한다.** 사진 매칭(MY-02)과 맵매칭이 이걸 재료로 쓴다.
+  final _points = <String, List<TripPoint>>{};
+
+  /// 한 여행이 남길 수 있는 점의 상한. 넘으면 더 안 쌓는다.
+  /// ⚠ 폭주 방어용이다 — 정상 주행(0.5km/2분 간격)이면 하루를 달려도 몇백 점이다.
+  static const _maxPoints = 5000;
+
+  /// 그 여행이 지나온 길. 없으면 빈 목록 — null을 돌려주지 않는다.
+  List<TripPoint> pointsOf(String tripId) => List.unmodifiable(_points[tripId] ?? const []);
 
   @override
   TripLog build() {
@@ -65,12 +73,16 @@ class TripLogNotifier extends Notifier<TripLog> {
       // ⚠ 앱이 죽으면 달리던 여행은 activeId를 잃고 '끝난 여행'이 된다.
       //   아무것도 안 남긴 주행(0km·들른 곳 0)까지 여행기로 세면 유령 EP가 쌓인다.
       //   뭐라도 남긴 여행은 끝맺음이 없어도 살린다 — 달린 기록을 우리가 지울 수는 없다.
-      state = TripLog(
-        trips: [
-          for (final m in list)
-            if (_worthKeeping(_fromJson(m))) _fromJson(m),
-        ],
-      );
+      // ⚠ 한 번씩만 푼다. _fromJson은 경로까지 메모리에 올리는 부작용이 있어
+      //   두 번 부르면 버릴 여행의 경로까지 싣게 된다.
+      final trips = <Trip>[];
+      for (final m in list) {
+        final t = _tripFromJson(m);
+        if (!_worthKeeping(t)) continue;
+        trips.add(t);
+        _points[t.id] = _pointsFromJson(m);
+      }
+      state = TripLog(trips: trips);
     } catch (_) {
       // 저장소를 못 열어도 앱은 돌아야 한다. 이번 실행에만 안 남는다.
     }
@@ -120,14 +132,23 @@ class TripLogNotifier extends Notifier<TripLog> {
     return id;
   }
 
-  /// GPS 로그. ⚠ 상태를 갈지 않는다 — 5초마다 화면을 다시 그릴 이유가 없다.
+  /// GPS 로그. ⚠ 상태를 갈지 않는다 — 점 하나마다 화면을 다시 그릴 이유가 없다.
   void logPoint(double lat, double lng) {
     final id = state.activeId;
     if (id == null) return;
-    (_points[id] ??= []).add([
-      double.parse(lat.toStringAsFixed(5)),
-      double.parse(lng.toStringAsFixed(5)),
-    ]);
+    final list = _points[id] ??= [];
+    if (list.length >= _maxPoints) return;
+    // 소수점 5자리 ≈ 1m. 그보다 정밀할 이유가 없고 저장만 커진다.
+    list.add(
+      TripPoint(
+        double.parse(lat.toStringAsFixed(5)),
+        double.parse(lng.toStringAsFixed(5)),
+        DateTime.now(),
+      ),
+    );
+    // ⚠ 점 하나마다 전체를 다시 쓰지 않는다. 10점(약 5km)마다 — 앱이 죽어도
+    //   잃는 건 마지막 몇 km고, end()에서 어차피 한 번 더 쓴다.
+    if (list.length % 10 == 0) unawaited(_persist());
   }
 
   /// 들른 곳·스쳐간 곳·허탕. 같은 스팟을 두 번 담지 않는다.
@@ -202,7 +223,12 @@ class TripLogNotifier extends Notifier<TripLog> {
     photoCount: photoCount ?? t.photoCount,
   );
 
-  static Map<String, dynamic> _toJson(Trip t) => {
+  Map<String, dynamic> _toJson(Trip t) => {
+    // [위도, 경도, epoch초]. 키 이름을 붙이면 점 하나당 30바이트가 더 든다.
+    'points': [
+      for (final p in _points[t.id] ?? const <TripPoint>[])
+        [p.lat, p.lng, p.at.millisecondsSinceEpoch ~/ 1000],
+    ],
     'id': t.id,
     'episode': t.episode,
     'date': t.date,
@@ -228,7 +254,16 @@ class TripLogNotifier extends Notifier<TripLog> {
     ],
   };
 
-  static Trip _fromJson(Map<String, dynamic> m) => Trip(
+  static List<TripPoint> _pointsFromJson(Map<String, dynamic> m) => [
+    for (final p in (m['points'] as List<dynamic>? ?? const []).cast<List<dynamic>>())
+      TripPoint(
+        (p[0] as num).toDouble(),
+        (p[1] as num).toDouble(),
+        DateTime.fromMillisecondsSinceEpoch((p[2] as num).toInt() * 1000),
+      ),
+  ];
+
+  static Trip _tripFromJson(Map<String, dynamic> m) => Trip(
     id: m['id'] as String,
     episode: (m['episode'] as num?)?.toInt() ?? 1,
     date: (m['date'] as String?) ?? '',

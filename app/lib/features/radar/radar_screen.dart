@@ -259,6 +259,9 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
   /// ⚠ 매 프레임 쓰지 않는다 — 0.5km마다 한 점이면 여행기를 그리기에 충분하다.
   double _lastLoggedKm = -1;
 
+  /// 마지막으로 점을 찍은 **실시간**. 정차 구간을 경로에 남기는 기준이다.
+  DateTime _lastLoggedAt = DateTime.now();
+
   /// 몰아보기를 이미 띄웠는지. 한 번 멈출 때 한 번만 띄운다.
   bool _catchupShown = false;
 
@@ -304,8 +307,15 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     if (!drive.running || !drive.hasFix) return;
     final log = ref.read(tripLogProvider.notifier);
     log.updateDistance(drive.distanceKm);
-    if (drive.distanceKm - _lastLoggedKm < 0.5) return;
+    // ⚠ 거리만으로 찍으면 **멈춰 있는 동안이 경로에서 통째로 사라진다.**
+    //   사진은 대개 멈춰서 찍는다 — 정차 구간이 없으면 사진을 시각으로 꽂을 수가 없다.
+    //   그래서 0.5km마다 **또는** 2분마다 (실시간 기준 — 사진 시각도 실시간이다).
+    final now = DateTime.now();
+    final movedEnough = drive.distanceKm - _lastLoggedKm >= 0.5;
+    final waitedEnough = now.difference(_lastLoggedAt).inSeconds >= 120;
+    if (!movedEnough && !waitedEnough) return;
     _lastLoggedKm = drive.distanceKm;
+    _lastLoggedAt = now;
     log.logPoint(drive.lat!, drive.lng!);
   }
 

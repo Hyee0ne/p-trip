@@ -134,4 +134,53 @@ void main() {
     expect(c.read(tripLogProvider).finished.first.distanceKm, 12);
     c.dispose();
   });
+
+  test('지나온 경로가 시각과 함께 남는다', () async {
+    SharedPreferences.setMockInitialValues({});
+    var c = ProviderContainer();
+    final n = c.read(tripLogProvider.notifier);
+    final id = n.start(routeId: 7, routeName: '동해 바닷길', startName: '삼척', endName: '강릉');
+    n.updateDistance(12);
+    n.logPoint(37.4500, 129.1650);
+    n.logPoint(37.5000, 129.1400);
+    n.end();
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    c.dispose();
+
+    // 앱을 껐다 켠다.
+    c = ProviderContainer();
+    c.read(tripLogProvider);
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    final pts = c.read(tripLogProvider.notifier).pointsOf(id);
+
+    expect(pts.length, 2, reason: '경로가 저장돼야 사진 매칭·맵매칭을 할 수 있다');
+    expect(pts.first.lat, closeTo(37.45, 0.00001));
+    expect(pts.first.lng, closeTo(129.165, 0.00001));
+    // ⚠ 시각이 좌표만큼 중요하다 — 사진을 경로에 꽂는 기준이다.
+    expect(
+      pts.first.at.difference(DateTime.now()).abs() < const Duration(minutes: 1),
+      isTrue,
+      reason: '촬영 시각과 맞춰야 하므로 실제 시각이 남아야 한다',
+    );
+    expect(pts.last.at.isBefore(pts.first.at), isFalse, reason: '시간 순서대로');
+    c.dispose();
+  });
+
+  test('버려지는 여행의 경로는 메모리에 싣지 않는다', () async {
+    SharedPreferences.setMockInitialValues({});
+    var c = ProviderContainer();
+    final n = c.read(tripLogProvider.notifier);
+    // 0km·0곳 — 강제 종료된 빈 주행
+    final id = n.start(routeId: 7, routeName: '동해 바닷길', startName: '삼척', endName: '강릉');
+    n.logPoint(37.45, 129.165);
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    c.dispose();
+
+    c = ProviderContainer();
+    c.read(tripLogProvider);
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+    expect(c.read(tripLogProvider).finished, isEmpty);
+    expect(c.read(tripLogProvider.notifier).pointsOf(id), isEmpty);
+    c.dispose();
+  });
 }

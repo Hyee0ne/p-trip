@@ -261,6 +261,16 @@ class TripStop {
   final int? stayMin;
 }
 
+/// 주행 중 찍은 점 하나. **시각이 좌표만큼 중요하다** —
+/// 사진을 경로에 꽂을 때(MY-02) 기준이 되는 게 촬영 시각이다.
+class TripPoint {
+  const TripPoint(this.lat, this.lng, this.at);
+
+  final double lat;
+  final double lng;
+  final DateTime at;
+}
+
 class Trip {
   const Trip({
     required this.id,

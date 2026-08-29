@@ -33,11 +33,7 @@ void main() {
     // 돌아옴
     n.resume();
     expect(c.read(driveProvider).running, isTrue, reason: '돌아오면 다시 달려야 한다');
-    expect(
-      c.read(driveProvider).distanceKm,
-      ran,
-      reason: '달린 만큼은 달린 것이다 — 처음으로 되감으면 안 된다',
-    );
+    expect(c.read(driveProvider).distanceKm, ran, reason: '달린 만큼은 달린 것이다 — 처음으로 되감으면 안 된다');
     n.stop();
   });
 
