@@ -73,6 +73,44 @@ class RouteLine {
 ///
 /// 일몰은 §3.1 타이밍 가중치(뷰포인트 ×2)에, 박명·월출·월몰은 §3.8 별 보기 좋은 밤에 쓴다.
 /// ⚠ 모르는 값은 null이다. 없는 시각을 지어내지 않는다.
+/// 그날 밤의 사실 (SCREENS.md MY-02 §3, TECH_SPEC §3.8).
+///
+/// ⚠ **단정할 수 있는 것만 담는다.** "달이 없었다"는 계산된 사실이고
+///   "은하수가 보였다"는 구름을 모르니 말할 수 없다.
+/// ⚠ 달이 **떠 있던** 밤은 문장을 만들지 않는다 — 데이터의 moonset은 그날 아침에 진
+///   달이라 '몇 시에 졌다'를 쓸 수가 없다. 틀린 문장보다 없는 줄이 낫다.
+class NightSky {
+  const NightSky({this.moonless, this.eventTitle});
+
+  /// 저녁 천문박명 직후 달이 하늘에 없었는가. 모르면 null.
+  final bool? moonless;
+
+  /// 그날의 천문현상 (유성우·월식 등). 없으면 null.
+  final String? eventTitle;
+
+  /// 여행기에 실을 한 줄. 할 말이 없으면 null — 줄을 그리지 않는다.
+  String? get line {
+    final e = eventTitle;
+    if (e != null && e.isNotEmpty) {
+      // 유성우만 '쏟아졌다'가 어울린다. 나머지는 담담하게.
+      final verb = e.contains('유성우') ? '쏟아졌습니다' : '있었습니다';
+      return '그날 밤엔 $e${_subjectJosa(e)} $verb.';
+    }
+    if (moonless == true) return '그날 밤, 달은 없었습니다.';
+    return null;
+  }
+
+  /// 주격 조사. 받침이 있으면 '이', 없으면 '가'.
+  /// ⚠ '이(가)'로 얼버무리지 않는다 — 앉아서 읽는 화면이라 문장이 문장다워야 한다.
+  static String _subjectJosa(String word) {
+    if (word.isEmpty) return '가';
+    final c = word.codeUnitAt(word.length - 1);
+    // 한글 음절 영역이 아니면(숫자·영문) 판단하지 않고 '이'로 둔다.
+    if (c < 0xAC00 || c > 0xD7A3) return '이';
+    return (c - 0xAC00) % 28 == 0 ? '가' : '이';
+  }
+}
+
 class TodaySky {
   const TodaySky({this.sunset, this.astroDusk, this.moonrise, this.moonset});
 

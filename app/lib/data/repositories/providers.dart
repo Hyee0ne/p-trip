@@ -89,6 +89,13 @@ final baseCandidatesProvider = FutureProvider<List<Spot>>((ref) async {
 });
 
 /// 오늘 이 자리의 해·달. 격자 단위라 0.1도마다 한 번만 부른다.
+/// 그날 밤 하늘 (MY-02 §3). 여행기 하나당 한 번만 묻는다.
+final nightSkyProvider =
+    FutureProvider.family<NightSky?, ({double lat, double lng, DateTime date})>(
+      (ref, p) =>
+          ref.watch(discoverRepositoryProvider).nightSkyOn(lat: p.lat, lng: p.lng, date: p.date),
+    );
+
 final todaySkyProvider = FutureProvider.family<TodaySky?, ({double lat, double lng})>(
   (ref, p) => ref.watch(discoverRepositoryProvider).todaySky(lat: p.lat, lng: p.lng),
 );

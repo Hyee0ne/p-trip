@@ -256,6 +256,13 @@ class FixtureDiscoverRepository implements DiscoverRepository {
   Future<TodaySky?> todaySky({required double lat, required double lng}) async => null;
 
   @override
+  Future<NightSky?> nightSkyOn({
+    required double lat,
+    required double lng,
+    required DateTime date,
+  }) async => null;
+
+  @override
   Future<List<Spot>> discoverAhead({
     required double lat,
     required double lng,

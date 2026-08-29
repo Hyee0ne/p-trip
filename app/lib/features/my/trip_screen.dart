@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 import '../../core/strings.dart';
+import '../../core/trip_log.dart';
 import '../../core/trip_photos.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/app_toast.dart';
@@ -44,6 +45,15 @@ class _Body extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final photos = ref.watch(tripPhotosProvider(trip.id)).value;
+    // 그날 밤 하늘 (SCREENS.md MY-02 §3). 좌표는 그 여행이 지나온 첫 점.
+    final path = ref.watch(tripLogProvider.notifier).pointsOf(trip.id);
+    final sky = path.isEmpty
+        ? null
+        : ref
+              .watch(
+                nightSkyProvider((lat: path.first.lat, lng: path.first.lng, date: path.first.at)),
+              )
+              .value;
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.only(bottom: 32),
@@ -73,6 +83,8 @@ class _Body extends ConsumerWidget {
             const SizedBox(height: AppSpace.x3),
           ],
           _footer(),
+          // ⚠ 없으면 줄을 그리지 않는다. 밤하늘은 있으면 얹는 것이지 채우는 칸이 아니다.
+          if (sky?.line != null) _nightSky(sky!.line!),
           const SizedBox(height: AppSpace.x6),
           _actions(context),
         ],
@@ -313,6 +325,31 @@ class _Body extends ConsumerWidget {
       ),
     );
   }
+
+  /// 그날 밤의 사실 한 줄. **점수도 등급도 아니다** (TECH_SPEC §3.8).
+  ///
+  /// 좌표가 없는 전국 공통 값이지만 여행기에서는 그게 약점이 아니다 —
+  /// 그날의 사실이면 충분하다.
+  Widget _nightSky(String line) => Padding(
+    padding: const EdgeInsets.fromLTRB(22, AppSpace.x6, 22, 0),
+    child: Row(
+      children: [
+        const Icon(Icons.nightlight_outlined, size: 15, color: AppColors.ink3),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Text(
+            line,
+            style: const TextStyle(
+              fontSize: 14.5,
+              height: 1.6,
+              color: AppColors.ink2,
+              letterSpacing: -0.2,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _footer() {
     return Padding(

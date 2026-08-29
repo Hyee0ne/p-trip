@@ -39,6 +39,9 @@ abstract interface class DiscoverRepository {
   /// 오늘 이 자리의 해·달. 일몰 타이밍 가중치(§3.1)와 별 보기 좋은 밤(§3.8)이 쓴다.
   Future<TodaySky?> todaySky({required double lat, required double lng});
 
+  /// 그날 밤의 사실 (MY-02 §3). 데이터가 없으면 null — 없는 밤을 지어내지 않는다.
+  Future<NightSky?> nightSkyOn({required double lat, required double lng, required DateTime date});
+
   /// DR-05 동승자 모드 — 진행 방향 앞쪽을 넓게 훑는다.
   /// ⚠ **신뢰도 게이트를 걸지 않는다.** 얕은 데이터는 알림엔 안 태우되 브라우징엔 보여준다.
   /// ⚠ 경로가 아니라 **현재 위치+방향** 기준이다 (원칙 2).
