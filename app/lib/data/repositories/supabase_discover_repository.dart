@@ -194,6 +194,30 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
     );
   }
 
+  @override
+  Future<List<Spot>> discoverAhead({
+    required double lat,
+    required double lng,
+    double? headingDeg,
+    double km = 20,
+  }) async {
+    final rows =
+        await _db.rpc(
+              'discover_ahead',
+              params: {'p_lat': lat, 'p_lng': lng, 'p_heading': headingDeg, 'p_km': km},
+            )
+            as List<dynamic>;
+    if (rows.isEmpty) return const [];
+    final order = [for (final r in rows) (r as Map<String, dynamic>)['id'] as String];
+    final spots = await _db.from('spot_cards').select().inFilter('id', order);
+    final byId = {for (final s in spots) s['id'] as String: _spot(s)};
+    // RPC가 준 순서(가까운 순)를 지킨다.
+    return [
+      for (final id in order)
+        if (byId[id] != null) byId[id]!,
+    ];
+  }
+
   // ── 레이더 ──────────────────────────────────────────────
   @override
   Future<List<Discovery>> radarQueue() async {
@@ -270,7 +294,7 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
       routeId: (r['route_id'] as num?)?.toInt() ?? 0,
       detourMin: (r['detour_min'] as num?)?.toInt() ?? 0,
       trustScore: (r['trust_score'] as num?)?.toInt() ?? 0,
-      blurb: _oneLine(r['blurb'] as String?),
+      blurb: _oneLine(r['blurb'] as String?, name: r['name'] as String?),
       timeliness: timeliness,
       timelinessNote: note,
       openHours: r['open_hours'] as String?,
@@ -327,8 +351,12 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
   /// 개요를 카드 한 줄로 줄인다.
   /// ⚠ 글자 수로 그냥 자르면 "동해는 원"처럼 문장이 중간에 끊긴다.
   ///   문장 끝('다.'·'.'·'!')을 찾아 거기서 자르고, 못 찾으면 어절 경계에서 자른다.
-  static String _oneLine(String? raw, {int max = 70}) {
+  static String _oneLine(String? raw, {String? name, int max = 70}) {
     final t = (raw ?? '').trim();
+    // ⚠ 개요가 이름만 적혀 있는 스팟이 많다. 그대로 두면 카드에 같은 말이 두 번 나온다.
+    if (name != null && (t == name.trim() || t.replaceAll(' ', '') == name.replaceAll(' ', ''))) {
+      return '';
+    }
     if (t.isEmpty || t.length <= max) return t;
     final head = t.substring(0, max);
     final stop = RegExp(r'[.!?]').allMatches(head).lastOrNull;

@@ -93,6 +93,14 @@ final todaySkyProvider = FutureProvider.family<TodaySky?, ({double lat, double l
   (ref, p) => ref.watch(discoverRepositoryProvider).todaySky(lat: p.lat, lng: p.lng),
 );
 
+/// DR-05 동승자 모드 — 앞쪽을 넓게. 게이트 미적용.
+final aheadProvider =
+    FutureProvider.family<List<Spot>, ({double lat, double lng, double? heading, double km})>(
+      (ref, p) => ref
+          .watch(discoverRepositoryProvider)
+          .discoverAhead(lat: p.lat, lng: p.lng, headingDeg: p.heading, km: p.km),
+    );
+
 final radarQueueProvider = FutureProvider<List<Discovery>>(
   (ref) => ref.watch(discoverRepositoryProvider).radarQueue(),
 );

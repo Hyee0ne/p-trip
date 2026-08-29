@@ -138,6 +138,17 @@ class S {
   static const catchupGo = '지금 가기';
   static const catchupKeep = '계속 찜';
   static const catchupDrop = '지우기';
+
+  // ── DR-05 동승자 모드 ──
+  /// ⚠ 운전자에게 소리·푸시로 알리지 않는다. 동승자가 정한 걸 운전자가 볼 뿐이다.
+  static const passengerTitle = '동승자 모드';
+  static const passengerIntro = '앞쪽에 뭐가 있는지 대신 봐주세요';
+  static const passengerBack = '레이더로';
+  static const passengerPick = '다음 정차지 후보';
+  static const passengerSkip = '넘기기';
+  static const passengerPicked = '다음 정차지 후보에 담았어요';
+  static const passengerQuiet = '이 앞은 잠시 조용해요';
+  static const passengerWider = '더 멀리 보기';
   static String radarRecording(String route, num km) => '\$route \${km}km 기록 중';
   static String baseChipSet(String name) => '오늘 밤 $name — 낮은 마음껏 새어나가세요';
   static const baseChipNone = '오늘 밤 거점 없음 — 그래도 레이더는 돌아가요';

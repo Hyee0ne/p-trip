@@ -186,6 +186,14 @@ class _EmptyRepo implements DiscoverRepository {
   /// 픽스처엔 해·달 자료가 없다. 없는 시각을 지어내지 않는다.
   @override
   Future<TodaySky?> todaySky({required double lat, required double lng}) async => null;
+
+  @override
+  Future<List<Spot>> discoverAhead({
+    required double lat,
+    required double lng,
+    double? headingDeg,
+    double km = 20,
+  }) async => const [];
   @override
   Future<List<Course>> courses({int? routeId}) async => const [];
   @override

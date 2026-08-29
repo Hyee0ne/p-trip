@@ -39,6 +39,16 @@ abstract interface class DiscoverRepository {
   /// 오늘 이 자리의 해·달. 일몰 타이밍 가중치(§3.1)와 별 보기 좋은 밤(§3.8)이 쓴다.
   Future<TodaySky?> todaySky({required double lat, required double lng});
 
+  /// DR-05 동승자 모드 — 진행 방향 앞쪽을 넓게 훑는다.
+  /// ⚠ **신뢰도 게이트를 걸지 않는다.** 얕은 데이터는 알림엔 안 태우되 브라우징엔 보여준다.
+  /// ⚠ 경로가 아니라 **현재 위치+방향** 기준이다 (원칙 2).
+  Future<List<Spot>> discoverAhead({
+    required double lat,
+    required double lng,
+    double? headingDeg,
+    double km = 20,
+  });
+
   /// 레이더 발견 큐 — 데모 모드에서 순서대로 흘러나온다.
   Future<List<Discovery>> radarQueue();
 
