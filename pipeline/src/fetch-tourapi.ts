@@ -224,7 +224,9 @@ async function main() {
 
     const addr = (item.addr1 || '').trim() || null;
     const tel = (item.tel || '').trim() || null;
-    const image = (item.firstimage || '').trim() || null;
+    // ⚠ TourAPI는 http://로 준다. iOS ATS가 평문 HTTP를 막아 사진이 안 뜬다.
+    //   같은 호스트가 https로도 주므로 적재할 때 올려둔다.
+    const image = ((item.firstimage || '').trim() || null)?.replace(/^http:\/\//, 'https://') ?? null;
     const openHours = openHoursOf(intro);
 
     // 추가사진(10점)은 게이트를 가를 때만 확인한다. 일일 요청 제한을 아껴야 한다.

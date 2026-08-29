@@ -110,13 +110,17 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
       ),
       body: LayoutBuilder(
         builder: (context, box) {
-          final routes = routesAsync.value ?? const <RouteLine>[];
+          // ⚠ 지도에 넘길 건 **선형이 실린 근처 노선**이다.
+          //   51선 목록(routesProvider)에는 선형이 없다 — 전국 선형은 수 MB라 안 싣는다.
+          final onMap = [
+            for (final n in nearbyAsync.value?.routes ?? const <NearbyRoute>[]) n.route,
+          ];
           return Stack(
             children: [
               Positioned.fill(
                 child: RouteMapPanel(
                   fix: fixAsync.value,
-                  routes: routes,
+                  routes: onMap,
                   bottomInset: _extent * box.maxHeight,
                 ),
               ),

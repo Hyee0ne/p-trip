@@ -1,14 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/env.dart';
 import '../../core/location.dart';
 import '../models/models.dart';
 import 'discover_repository.dart';
 import 'fixture_discover_repository.dart';
+import 'supabase_discover_repository.dart';
 
-/// M1 이후 여기 한 줄만 `SupabaseDiscoverRepository()`로 바꾸면 된다.
-/// 화면은 [DiscoverRepository] 인터페이스만 보므로 손대지 않는다.
+/// 실데이터 리포지토리. 키가 없으면 픽스처로 떨어진다.
+///
+/// ⚠ 픽스처는 지운 게 아니라 **폴백으로 남긴다.** 위젯 테스트가 키 없이 돌아야 하고,
+///   네트워크 없는 데서 화면을 확인할 일도 있다.
+/// 화면은 [DiscoverRepository] 인터페이스만 보므로 어느 쪽이든 손대지 않는다.
 final discoverRepositoryProvider = Provider<DiscoverRepository>(
-  (ref) => const FixtureDiscoverRepository(),
+  (ref) =>
+      Env.isConfigured ? const SupabaseDiscoverRepository() : const FixtureDiscoverRepository(),
 );
 
 /// CO-07 — 현 위치에서 탈 수 있는 노선. 위치가 없으면 빈 리스트.

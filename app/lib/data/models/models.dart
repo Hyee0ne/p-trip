@@ -41,7 +41,7 @@ class RouteLine {
     required this.axis,
     required this.drivable,
     required this.fromTo,
-    this.path = const [],
+    this.paths = const [],
   });
 
   /// 노선 번호. 7, 44, 46…
@@ -59,9 +59,10 @@ class RouteLine {
   /// '부산–고성'
   final String fromTo;
 
-  /// 지도용 노선 선형. M1 `build-routes.ts`가 채운다.
+  /// 지도용 노선 선형. **갈래가 여럿이다** — 국도는 도심통과·우회로 실제로 끊겨 있고
+  /// DB도 MultiLineString으로 담는다. 한 갈래로 억지로 이으면 노선 대부분을 버리게 된다.
   /// 비어 있으면 지도에 그리지 않는다 — 없는 선을 그리지 않는다.
-  final List<GeoPoint> path;
+  final List<List<GeoPoint>> paths;
 }
 
 /// 현 위치 조회 결과.
@@ -109,6 +110,7 @@ class Spot {
     this.addr,
     this.hasPhoto = false,
     this.parking,
+    this.imageUrl,
   });
 
   final String id;
@@ -135,6 +137,9 @@ class Spot {
   final String? addr;
   final bool hasPhoto;
   final String? parking;
+
+  /// TourAPI 대표사진 URL. 없으면 유형 그라데이션이 자리를 지킨다.
+  final String? imageUrl;
 
   /// 레이더 카드·푸시에 태울 수 있는가 (TECH_SPEC §3.1 3번).
   bool get passesTrustGate => trustScore >= 60;
@@ -311,6 +316,9 @@ sealed class CurationCard {
   /// 사진이 없을 때 쓸 유형색.
   final SpotType type;
 
+  /// 원격 사진 URL. 없으면 [imageKey] 에셋을, 그것도 없으면 유형 그라데이션을 쓴다.
+  String? get imageUrl => null;
+
   /// 카드 전체를 탭했을 때 가는 곳 (자세히).
   String get detailRoute;
 
@@ -337,6 +345,8 @@ class SpotCurationCard extends CurationCard {
   @override
   String get imageKey => spot.id;
   @override
+  String? get imageUrl => spot.imageUrl;
+  @override
   SpotType get type => spot.type;
   @override
   int get routeId => spot.routeId;
@@ -348,6 +358,7 @@ class CourseCurationCard extends CurationCard {
   const CourseCurationCard({
     required this.course,
     required this.coverKey,
+    this.coverUrl,
     required super.kicker,
     required super.body,
     required super.meta,
@@ -364,6 +375,12 @@ class CourseCurationCard extends CurationCard {
 
   /// 표지로 쓸 스팟 사진 키.
   final String coverKey;
+
+  /// 표지 원격 사진. 코스 위 첫 스팟의 사진을 쓴다.
+  final String? coverUrl;
+
+  @override
+  String? get imageUrl => coverUrl;
 
   @override
   String get title => course.title;

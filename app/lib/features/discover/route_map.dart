@@ -142,13 +142,18 @@ class _RouteMapPanelState extends State<RouteMapPanel> {
     if (c == null) return;
     final style = RouteStyle(AppColors.routeBlue, 6, strokeColor: Colors.white, strokeWidth: 1);
     for (final r in widget.routes) {
-      if (r.path.isEmpty || _drawn.contains(r.id)) continue;
+      if (r.paths.isEmpty || _drawn.contains(r.id)) continue;
       _drawn.add(r.id);
-      await c.routeLayer.addRoute(
-        [for (final p in r.path) LatLng(p.lat, p.lng)],
-        style,
-        id: 'route-${r.id}',
-      );
+      // 갈래마다 따로 그린다. 국도는 끊겨 있어서 한 줄로 이으면 없는 길이 생긴다.
+      for (var i = 0; i < r.paths.length; i++) {
+        final chain = r.paths[i];
+        if (chain.length < 2) continue;
+        await c.routeLayer.addRoute(
+          [for (final p in chain) LatLng(p.lat, p.lng)],
+          style,
+          id: 'route-${r.id}-$i',
+        );
+      }
     }
   }
 }

@@ -3,16 +3,21 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kakao_map_sdk/kakao_map_sdk.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/env.dart';
 import 'core/router.dart';
 import 'core/strings.dart';
 import 'core/theme.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // TODO(M0): Supabase.initialize — 키는 --dart-define으로 주입 (.env.example 참조)
+  // Supabase — 키가 없으면 초기화하지 않는다. 그 경우 앱은 픽스처로 돈다
+  // (위젯 테스트가 키 없이 돌아야 해서 이 분기가 필요하다).
+  if (Env.isConfigured) {
+    await Supabase.initialize(url: Env.supabaseUrl, publishableKey: Env.supabaseAnonKey);
+  }
 
   // 카카오 지도(네이티브 앱 키). 없으면 초기화하지 않는다 —
   // CO-07은 키가 없으면 지도 자리를 비워둔다 (route_map.dart).

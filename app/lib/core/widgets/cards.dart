@@ -55,6 +55,7 @@ class SpotGridCard extends StatelessWidget {
               SpotImage(
                 type: spot.type,
                 spotId: spot.id,
+                imageUrl: spot.imageUrl,
                 height: 118,
                 width: double.infinity,
                 radius: 16,
@@ -112,7 +113,14 @@ class SpotListRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 11),
         child: Row(
           children: [
-            SpotImage(type: spot.type, spotId: spot.id, width: 60, height: 60, radius: 13),
+            SpotImage(
+              type: spot.type,
+              spotId: spot.id,
+              imageUrl: spot.imageUrl,
+              width: 60,
+              height: 60,
+              radius: 13,
+            ),
             const SizedBox(width: 13),
             Expanded(
               child: Column(
@@ -190,7 +198,7 @@ class FullBleedSpotCard extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          SpotImage(type: spot.type, spotId: spot.id, radius: 0),
+          SpotImage(type: spot.type, spotId: spot.id, imageUrl: spot.imageUrl, radius: 0),
           // 아래에서 위로 어두워지는 스크림 — 글자 대비 확보 (4.5:1)
           const DecoratedBox(
             decoration: BoxDecoration(

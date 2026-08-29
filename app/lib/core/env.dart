@@ -11,6 +11,7 @@ class Env {
   static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
   static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
   static const kakaoNativeAppKey = String.fromEnvironment('KAKAO_NATIVE_APP_KEY');
+
   /// ⚠ 더 이상 쓰지 않는다. 지도는 네이티브 SDK로 전환했다 (2026-08-29).
   ///   웹 지도를 다시 붙일 일이 생기면 그때 되살린다.
   static const kakaoJsAppKey = String.fromEnvironment('KAKAO_JS_APP_KEY');

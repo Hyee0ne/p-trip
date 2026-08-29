@@ -203,7 +203,7 @@ class _Card extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            SpotImage(type: card.type, spotId: card.imageKey, radius: 0),
+            SpotImage(type: card.type, spotId: card.imageKey, imageUrl: card.imageUrl, radius: 0),
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(

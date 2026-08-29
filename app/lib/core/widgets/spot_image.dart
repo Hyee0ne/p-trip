@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../data/models/models.dart';
+import '../theme.dart';
 
 /// 스팟 사진 자리.
 ///
 /// M1 전까지는 유형색 그라데이션으로 그린다. 사진이 없다고 화면을 숨기지 않는다
 /// (SCREENS.md CO-03: "사진 없다고 화면을 숨기지 않는다").
-/// M1 이후 [imageUrl]이 들어오면 이 위젯이 실제 이미지로 대체한다.
+/// [imageUrl]이 있으면 원격 사진을, 없으면 `assets/images/<spotId>.jpg`를 쓴다.
+/// 둘 다 없거나 실패하면 그라데이션이 그대로 남는다.
 class SpotImage extends StatelessWidget {
   const SpotImage({
     super.key,
@@ -86,8 +88,21 @@ class SpotImage extends StatelessWidget {
                 ),
               ),
             ),
-            // 사진 — 없으면 조용히 그라데이션만 남는다
-            if (spotId != null)
+            // 사진 — 없거나 못 받으면 조용히 그라데이션만 남는다.
+            // 실데이터(TourAPI)는 원격 URL이고, 픽스처·시연용은 번들 에셋이다.
+            if (imageUrl != null && imageUrl!.isNotEmpty)
+              Image.network(
+                imageUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                // 로딩 중에도 그라데이션이 자리를 지키므로 스피너를 얹지 않는다.
+                frameBuilder: (_, child, frame, wasSync) => AnimatedOpacity(
+                  opacity: frame == null && !wasSync ? 0 : 1,
+                  duration: AppMotion.base,
+                  child: child,
+                ),
+              )
+            else if (spotId != null)
               Image.asset(
                 'assets/images/$spotId.jpg',
                 fit: BoxFit.cover,

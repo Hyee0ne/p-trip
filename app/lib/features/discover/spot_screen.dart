@@ -102,6 +102,7 @@ class _Body extends ConsumerWidget {
     return SpotImage(
       type: spot.type,
       spotId: spot.id,
+      imageUrl: spot.imageUrl,
       height: 250,
       width: double.infinity,
       radius: 0,
