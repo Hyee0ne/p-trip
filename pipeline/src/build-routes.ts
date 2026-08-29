@@ -52,12 +52,21 @@ function projectionOf(dir: string, base: string): string {
   return readFileSync(prj, 'utf8').trim();
 }
 
-/** 노선번호 후보 필드. 데이터셋마다 이름이 달라서 여러 개를 본다. */
+/**
+ * 노선번호.
+ * ⚠ '일련번호' 같은 필드가 먼저 걸리면 엉뚱한 번호가 들어간다. **정확한 이름을 먼저 본다.**
+ */
 function routeNumberOf(props: Record<string, unknown>): number | null {
+  const exact = props['노선번호'] ?? props['ROUTE_NO'] ?? props['route_no'];
+  const pick = (v: unknown) => {
+    const n = Number(String(v ?? '').replace(/[^0-9]/g, ''));
+    return Number.isInteger(n) && n > 0 && n < 1000 ? n : null;
+  };
+  if (exact !== undefined) return pick(exact);
   for (const [k, v] of Object.entries(props)) {
-    if (!/route|노선|rte|번호|no/i.test(k)) continue;
-    const n = Number(String(v).replace(/[^0-9]/g, ''));
-    if (Number.isInteger(n) && n > 0 && n < 1000) return n;
+    if (!/^(route|rte)/i.test(k)) continue;
+    const n = pick(v);
+    if (n !== null) return n;
   }
   return null;
 }
@@ -69,43 +78,42 @@ function inDemoBox(coords: number[][]): boolean {
   );
 }
 
-/** 같은 노선의 조각들을 이어 붙인다. 도로중심선은 상·하행과 구간이 잘게 쪼개져 있다. */
-function mergeParts(parts: number[][][]): number[][] {
-  if (parts.length === 0) return [];
+/**
+ * 이어지는 조각끼리 붙여 **여러 갈래**로 돌려준다.
+ * ⚠ 하나로 합치려 들면 안 된다. 국도는 도심 통과·우회·미개통으로 실제로 끊겨 있어서,
+ *   한 갈래만 남기면 노선 대부분을 버리게 된다.
+ */
+function mergeParts(parts: number[][][]): number[][][] {
   const remaining = [...parts];
-  const merged = remaining.shift()!;
+  const chains: number[][][] = [];
   const near = (a: number[], b: number[]) =>
     Math.abs(a[0] - b[0]) < 0.002 && Math.abs(a[1] - b[1]) < 0.002; // 약 200m
 
-  let joined = true;
-  while (joined && remaining.length) {
-    joined = false;
-    for (let i = 0; i < remaining.length; i++) {
-      const p = remaining[i];
-      if (near(merged[merged.length - 1], p[0])) {
-        merged.push(...p.slice(1));
-      } else if (near(merged[merged.length - 1], p[p.length - 1])) {
-        merged.push(...[...p].reverse().slice(1));
-      } else if (near(merged[0], p[p.length - 1])) {
-        merged.unshift(...p.slice(0, -1));
-      } else if (near(merged[0], p[0])) {
-        merged.unshift(...[...p].reverse().slice(0, -1));
-      } else {
-        continue;
+  while (remaining.length) {
+    const chain = remaining.shift()!;
+    let joined = true;
+    while (joined && remaining.length) {
+      joined = false;
+      for (let i = 0; i < remaining.length; i++) {
+        const p = remaining[i];
+        if (near(chain[chain.length - 1], p[0])) chain.push(...p.slice(1));
+        else if (near(chain[chain.length - 1], p[p.length - 1]))
+          chain.push(...[...p].reverse().slice(1));
+        else if (near(chain[0], p[p.length - 1])) chain.unshift(...p.slice(0, -1));
+        else if (near(chain[0], p[0])) chain.unshift(...[...p].reverse().slice(0, -1));
+        else continue;
+        remaining.splice(i, 1);
+        joined = true;
+        break;
       }
-      remaining.splice(i, 1);
-      joined = true;
-      break;
     }
+    if (chain.length >= 2) chains.push(chain);
   }
-  if (remaining.length) {
-    console.log(`  ⚠ 이어 붙이지 못한 조각 ${remaining.length}개 — 노선이 끊겨 있을 수 있다`);
-  }
-  return merged;
+  return chains;
 }
 
-/** 점을 솎아낸다. 지도에 그리는 용도라 1m 단위가 필요 없다. */
-function simplify(coords: number[][], tolerance = 0.0002): number[][] {
+/** 점을 솎아낸다. 지도에 그리는 용도라 1m 단위가 필요 없다. 0.0005도 ≈ 50m. */
+function simplify(coords: number[][], tolerance = 0.0005): number[][] {
   if (coords.length < 3) return coords;
   const out = [coords[0]];
   for (const c of coords.slice(1, -1)) {
@@ -134,16 +142,35 @@ async function loadGeometry() {
   const toWgs84 = proj4(wkt, 'EPSG:4326');
   console.log(`\n원본 좌표계: ${wkt.slice(0, 60)}…`);
 
-  // 노선번호별로 조각을 모은다.
+  // ⚠ .dbf 인코딩을 안 주면 한글 필드명이 깨져서 '노선번호'를 못 찾는다. .cpg가 알려준다.
+  const cpg = existsSync(join(SHP_DIR, `${base}.cpg`))
+    ? readFileSync(join(SHP_DIR, `${base}.cpg`), 'utf8').trim().toLowerCase()
+    : 'utf-8';
+  console.log(`속성 인코딩: ${cpg}`);
+
+  // 노선번호별로 조각을 모은다. **전국을 다 넣는다** —
+  // exit_frac·detour_min 계산이 전국 노선을 필요로 하고, 앱은 가까운 노선만 골라 받는다.
   const byRoute = new Map<number, number[][][]>();
-  const source = await openShapefile(join(SHP_DIR, `${base}.shp`), join(SHP_DIR, `${base}.dbf`));
+  const kmByRoute = new Map<number, number>();
+  const source = await openShapefile(
+    join(SHP_DIR, `${base}.shp`),
+    join(SHP_DIR, `${base}.dbf`),
+    { encoding: cpg },
+  );
   let total = 0;
+  let inDemo = 0;
 
   for (let r = await source.read(); !r.done; r = await source.read()) {
     const f = r.value as { properties: Record<string, unknown>; geometry: unknown };
     total++;
     const no = routeNumberOf(f.properties);
     if (no === null) continue;
+
+    // 상·하행이 나란히 두 줄로 들어 있다. 상행만 쓴다 — 안 그러면 선이 겹쳐 보이고 길이가 두 배가 된다.
+    if (String(f.properties['상하행'] ?? '1') !== '1') continue;
+
+    const len = Number(f.properties['영역길이'] ?? 0);
+    if (Number.isFinite(len)) kmByRoute.set(no, (kmByRoute.get(no) ?? 0) + len / 1000);
 
     const g = f.geometry as { type: string; coordinates: number[][] | number[][][] } | null;
     if (!g) continue;
@@ -156,33 +183,48 @@ async function loadGeometry() {
 
     for (const line of lines) {
       const wgs = line.map((c) => toWgs84.forward([c[0], c[1]]));
-      if (!inDemoBox(wgs)) continue; // 데모 구간만. 전국은 시드 용량이 커진다
+      if (inDemoBox(wgs)) inDemo++;
       if (!byRoute.has(no)) byRoute.set(no, []);
       byRoute.get(no)!.push(wgs);
     }
   }
-  console.log(`  피처 ${total.toLocaleString()}개 중 데모 구간에 걸친 노선 ${byRoute.size}개`);
+  console.log(`  피처 ${total.toLocaleString()}개 → 노선 ${byRoute.size}개 (데모 구간에 걸친 조각 ${inDemo}개)`);
 
   const db = supabase();
+  let okCount = 0;
+  let points = 0;
   for (const [no, parts] of [...byRoute].sort((a, b) => a[0] - b[0])) {
-    const merged = simplify(mergeParts(parts));
-    if (merged.length < 2) continue;
-    const geojson = { type: 'LineString', coordinates: merged };
+    const chains = mergeParts(parts).map((c) => simplify(c)).filter((c) => c.length >= 2);
+    if (!chains.length) continue;
+    const km = kmByRoute.get(no);
     const { error } = await db
       .from('routes')
-      .update({ geom: `SRID=4326;${toWkt(merged)}` })
+      .update({
+        geom: `SRID=4326;${toWkt(chains)}`,
+        ...(km ? { total_km: Math.round(km) } : {}),
+      })
       .eq('id', no);
     if (error) {
       console.log(`  ✗ ${no}번: ${error.message}`);
       continue;
     }
-    console.log(`  ✓ ${no}번 국도 — 조각 ${parts.length}개 → 점 ${merged.length}개`);
-    void geojson;
+    const n = chains.reduce((a, c) => a + c.length, 0);
+    okCount++;
+    points += n;
+    console.log(
+      `  ✓ ${String(no).padStart(2)}번 — 갈래 ${String(chains.length).padStart(2)}개 · 점 ${String(n).padStart(5)}개` +
+        (km ? ` · ${Math.round(km)}km` : ''),
+    );
   }
+  console.log(`\n노선 ${okCount}개 · 점 ${points.toLocaleString()}개 적재`);
 }
 
-function toWkt(coords: number[][]): string {
-  return `LINESTRING(${coords.map(([x, y]) => `${x.toFixed(6)} ${y.toFixed(6)}`).join(',')})`;
+/** 끊긴 국도를 그대로 담는다 — 한 갈래로 억지로 잇지 않는다. */
+function toWkt(chains: number[][][]): string {
+  const parts = chains.map(
+    (c) => `(${c.map(([x, y]) => `${x.toFixed(6)} ${y.toFixed(6)}`).join(',')})`,
+  );
+  return `MULTILINESTRING(${parts.join(',')})`;
 }
 
 async function main() {
