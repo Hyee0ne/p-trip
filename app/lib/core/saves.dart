@@ -78,10 +78,14 @@ const _kPassed = 'saves.passed';
 class SavesNotifier extends Notifier<SavesState> {
   SharedPreferences? _prefs;
 
+  /// ⚠ 저장소가 열리기 전에 찜하면 그 찜이 사라진다. 손잡이를 잡아둔다.
+  Future<void>? _ready;
+  bool _dirty = false;
+
   @override
   SavesState build() {
     // 저장소를 여는 동안에도 화면은 떠 있어야 한다. 비운 채로 시작하고 채워 넣는다.
-    unawaited(_restore());
+    _ready = _restore();
     return const SavesState();
   }
 
@@ -89,6 +93,8 @@ class SavesNotifier extends Notifier<SavesState> {
     try {
       final p = await SharedPreferences.getInstance();
       _prefs = p;
+      // 그새 사용자가 찜했으면 복원이 그걸 덮으면 안 된다.
+      if (_dirty) return;
       state = SavesState(
         liked: (p.getStringList(_kLiked) ?? const []).toSet(),
         passed: (p.getStringList(_kPassed) ?? const []).toSet(),
@@ -98,11 +104,12 @@ class SavesNotifier extends Notifier<SavesState> {
     }
   }
 
-  void _persist() {
-    final p = _prefs;
-    if (p == null) return;
-    p.setStringList(_kLiked, state.liked.toList());
-    p.setStringList(_kPassed, state.passed.toList());
+  Future<void> _persist() async {
+    _dirty = true;
+    await _ready;
+    final p = _prefs ??= await SharedPreferences.getInstance();
+    await p.setStringList(_kLiked, state.liked.toList());
+    await p.setStringList(_kPassed, state.passed.toList());
   }
 
   /// 하트 토글. 담았으면 true (토스트 표시 여부 판단용).
@@ -111,7 +118,7 @@ class SavesNotifier extends Notifier<SavesState> {
     final added = next.add(ref.key);
     if (!added) next.remove(ref.key);
     state = state.copyWith(liked: next);
-    _persist();
+    unawaited(_persist());
     return added;
   }
 
@@ -120,11 +127,11 @@ class SavesNotifier extends Notifier<SavesState> {
     final k = SaveRef.spot(spotId).key;
     if (state.liked.contains(k)) return;
     state = state.copyWith(passed: {...state.passed, k});
-    _persist();
+    unawaited(_persist());
   }
 
   void clearPassed(String spotId) {
     state = state.copyWith(passed: {...state.passed}..remove(SaveRef.spot(spotId).key));
-    _persist();
+    unawaited(_persist());
   }
 }

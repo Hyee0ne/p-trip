@@ -39,8 +39,7 @@ abstract interface class DiscoverRepository {
   /// 레이더 발견 큐 — 데모 모드에서 순서대로 흘러나온다.
   Future<List<Discovery>> radarQueue();
 
-  /// 여행기 목록 (최신순).
-  Future<List<Trip>> trips();
-
-  Future<Trip?> trip(String id);
+  // ⚠ 여행기는 여기 없다. **기기 안에** 둔다 (core/trip_log.dart, CLAUDE.md 원칙 5).
+  //   로그인을 넣지 않기로 했고, 사진도 기기 안 식별자로만 갖는다.
+  //   서버 trips 테이블과 RLS는 남겨뒀다 — 계정이 생기는 날 올려 동기화한다.
 }

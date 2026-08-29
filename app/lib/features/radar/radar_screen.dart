@@ -11,6 +11,7 @@ import '../../core/env.dart';
 import '../../core/saves.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
+import '../../core/trip_log.dart';
 import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/route_badge.dart';
 import '../../core/widgets/spot_image.dart';
@@ -73,6 +74,10 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     ref.read(courseGeometryProvider(_demoCourseId).future).then((path) {
       if (!mounted || path.length < 2) return;
       ref.read(driveProvider.notifier).start(path);
+      // 달리기 시작 = 여행 시작. 기기 안에 기록이 쌓인다 (core/trip_log.dart).
+      ref
+          .read(tripLogProvider.notifier)
+          .start(routeId: 7, routeName: '동해 바닷길', startName: '삼척', endName: '강릉');
     });
   }
 
@@ -104,6 +109,19 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     }
   }
 
+  /// GPS 로그와 주행 거리를 여행 기록에 남긴다.
+  /// ⚠ 매 프레임 쓰지 않는다 — 0.5km마다 한 점이면 여행기를 그리기에 충분하다.
+  double _lastLoggedKm = -1;
+
+  void _record(DriveState drive) {
+    if (!drive.running || !drive.hasFix) return;
+    final log = ref.read(tripLogProvider.notifier);
+    log.updateDistance(drive.distanceKm);
+    if (drive.distanceKm - _lastLoggedKm < 0.5) return;
+    _lastLoggedKm = drive.distanceKm;
+    log.logPoint(drive.lat!, drive.lng!);
+  }
+
   /// 진행률 기준으로 **앞에 있는** 발견만 추린다. 이미 지나친 건 레이더에서 뺀다.
   List<Spot> _aheadSpots(List<Discovery> queue) {
     final frac = ref.read(driveProvider).frac;
@@ -120,9 +138,13 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     final current = _current;
     if (current == null) return;
 
-    if (!saved) {
+    final log = ref.read(tripLogProvider.notifier);
+    if (saved) {
+      log.addStop(current.spot, StopKind.visited);
+    } else {
       // ✕ / 무시 → 스쳐간 발견으로 조용히 적립 (재촉 금지 원칙)
       ref.read(savesProvider.notifier).markPassed(current.spot.id);
+      log.addStop(current.spot, StopKind.passed);
       _passed.add(current);
       showAppToast(context, S.toastPassed);
     }
@@ -139,6 +161,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     final queueAsync = ref.watch(radarQueueProvider);
     final base = ref.watch(baseCampProvider);
     final drive = ref.watch(driveProvider);
+    _record(drive);
     _pickAhead(drive, queueAsync.value ?? const []);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -385,7 +408,12 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
             side: const BorderSide(color: AppColors.darkLine),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
           ),
-          onPressed: () => context.go('/my/trip/ep3'),
+          onPressed: () {
+            // ⚠ 하드코딩된 'ep3'로 가고 있었다. 지금 막 끝낸 여행으로 간다.
+            ref.read(driveProvider.notifier).stop();
+            final id = ref.read(tripLogProvider.notifier).end();
+            context.go(id == null ? '/my' : '/my/trip/$id');
+          },
           child: const Text(
             S.radarFinish,
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),

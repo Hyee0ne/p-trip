@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/env.dart';
 import '../../core/location.dart';
+import '../../core/trip_log.dart';
 import '../models/models.dart';
 import 'discover_repository.dart';
 import 'fixture_discover_repository.dart';
@@ -91,12 +92,14 @@ final radarQueueProvider = FutureProvider<List<Discovery>>(
   (ref) => ref.watch(discoverRepositoryProvider).radarQueue(),
 );
 
+/// 여행기는 **기기 안**에서 온다 (core/trip_log.dart). 서버가 아니다.
+/// 화면은 이 provider만 보므로 출처가 바뀌어도 손대지 않는다.
 final tripsProvider = FutureProvider<List<Trip>>(
-  (ref) => ref.watch(discoverRepositoryProvider).trips(),
+  (ref) async => ref.watch(tripLogProvider).finished,
 );
 
 final tripProvider = FutureProvider.family<Trip?, String>(
-  (ref, id) => ref.watch(discoverRepositoryProvider).trip(id),
+  (ref, id) async => ref.watch(tripLogProvider).trips.where((t) => t.id == id).firstOrNull,
 );
 
 /// 찜·스쳐간 발견 목록 (MY-01).

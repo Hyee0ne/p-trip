@@ -197,8 +197,4 @@ class _EmptyRepo implements DiscoverRepository {
   Future<List<CurationCard>> curationDeck() async => const [];
   @override
   Future<List<Discovery>> radarQueue() async => const [];
-  @override
-  Future<List<Trip>> trips() async => const [];
-  @override
-  Future<Trip?> trip(String id) async => null;
 }

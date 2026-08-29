@@ -212,15 +212,6 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
     ];
   }
 
-  // ── 여행기 ──────────────────────────────────────────────
-  // ⚠ 아직 로그인이 없다. trips·saves는 RLS로 본인 것만 보이는데 auth.uid()가 없어
-  //   무조건 비어 있다. 익명 로그인을 붙이기 전까지는 빈 목록이 정직한 답이다.
-  @override
-  Future<List<Trip>> trips() async => const [];
-
-  @override
-  Future<Trip?> trip(String id) async => null;
-
   // ── 매핑 ────────────────────────────────────────────────
   RouteLine _route(Map<String, dynamic> r, {List<List<GeoPoint>> paths = const []}) => RouteLine(
     id: r['id'] as int,

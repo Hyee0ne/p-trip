@@ -1,0 +1,250 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../data/models/models.dart';
+
+/// 여행 기록 — **기기 안에** 남긴다.
+///
+/// ⚠ 로그인을 넣지 않기로 했다 (CLAUDE.md 원칙 5). 서버의 trips·trip_points 테이블과
+///   RLS는 그대로 두고, 계정이 생기는 날 이 로컬 값을 올려 동기화한다.
+/// ⚠ 여행기는 본질적으로 그 기기의 기록이다 — 사진도 기기 안 식별자로만 갖는다.
+///
+/// 저장 형식은 JSON 한 덩어리다. 여행 수가 수십 건 수준이라 DB를 들일 이유가 없다.
+class TripLog {
+  const TripLog({this.trips = const [], this.activeId});
+
+  final List<Trip> trips;
+
+  /// 지금 달리는 중인 여행. 없으면 null.
+  final String? activeId;
+
+  Trip? get active => activeId == null ? null : trips.where((t) => t.id == activeId).firstOrNull;
+
+  /// 끝난 여행만, 최신순. 마이 탭이 이걸 본다.
+  List<Trip> get finished => [
+    for (final t in trips)
+      if (t.id != activeId) t,
+  ].reversed.toList();
+}
+
+const _kTrips = 'trips.v1';
+
+final tripLogProvider = NotifierProvider<TripLogNotifier, TripLog>(TripLogNotifier.new);
+
+class TripLogNotifier extends Notifier<TripLog> {
+  SharedPreferences? _prefs;
+
+  /// 저장소가 열릴 때까지 기다리는 손잡이.
+  /// ⚠ 이게 없으면 **앱을 켜자마자 출발한 여행이 안 남는다** — 저장소가 아직 안 열려서
+  ///   쓰기가 조용히 버려진다. 테스트가 이걸 잡았다.
+  Future<void>? _ready;
+
+  /// 복원 전에 사용자가 먼저 손댔는가. 그러면 복원이 덮어쓰면 안 된다.
+  bool _dirty = false;
+
+  /// 경로 로그. 여행기 화면이 쓰지 않아 상태에는 안 올리고 저장만 한다.
+  final _points = <String, List<List<double>>>{};
+
+  @override
+  TripLog build() {
+    _ready = _restore();
+    return const TripLog();
+  }
+
+  Future<void> _restore() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      _prefs = p;
+      final raw = p.getString(_kTrips);
+      // 그새 사용자가 출발했으면 복원이 그걸 덮으면 안 된다.
+      if (raw == null || _dirty) return;
+      final list = (jsonDecode(raw) as List<dynamic>).cast<Map<String, dynamic>>();
+      state = TripLog(trips: [for (final m in list) _fromJson(m)]);
+    } catch (_) {
+      // 저장소를 못 열어도 앱은 돌아야 한다. 이번 실행에만 안 남는다.
+    }
+  }
+
+  /// ⚠ 저장소가 아직 안 열렸으면 **기다렸다가** 쓴다. 그냥 넘기면 기록이 사라진다.
+  Future<void> _persist() async {
+    _dirty = true;
+    await _ready;
+    final p = _prefs ??= await SharedPreferences.getInstance();
+    await p.setString(_kTrips, jsonEncode([for (final t in state.trips) _toJson(t)]));
+  }
+
+  /// 출발. 이미 달리는 중이면 새로 만들지 않는다 — 여행이 둘일 수는 없다.
+  String start({
+    required int routeId,
+    required String routeName,
+    required String startName,
+    required String endName,
+  }) {
+    final existing = state.activeId;
+    if (existing != null) return existing;
+
+    final now = DateTime.now();
+    final id = 'trip-${now.millisecondsSinceEpoch}';
+    final trip = Trip(
+      id: id,
+      episode: state.trips.length + 1,
+      date: '${now.year}.${_pad(now.month)}.${_pad(now.day)}',
+      routeId: routeId,
+      routeName: routeName,
+      startName: startName,
+      endName: endName,
+      distanceKm: 0,
+      startedAt: '${_pad(now.hour)}:${_pad(now.minute)}',
+      endedAt: '',
+      stops: const [],
+      photoCount: 0,
+    );
+    _points[id] = [];
+    state = TripLog(trips: [...state.trips, trip], activeId: id);
+    unawaited(_persist());
+    return id;
+  }
+
+  /// GPS 로그. ⚠ 상태를 갈지 않는다 — 5초마다 화면을 다시 그릴 이유가 없다.
+  void logPoint(double lat, double lng) {
+    final id = state.activeId;
+    if (id == null) return;
+    (_points[id] ??= []).add([
+      double.parse(lat.toStringAsFixed(5)),
+      double.parse(lng.toStringAsFixed(5)),
+    ]);
+  }
+
+  /// 들른 곳·스쳐간 곳·허탕. 같은 스팟을 두 번 담지 않는다.
+  void addStop(Spot spot, StopKind kind) {
+    final trip = state.active;
+    if (trip == null) return;
+    if (trip.stops.any((s) => s.spotId == spot.id)) return;
+
+    final now = DateTime.now();
+    final stop = TripStop(
+      spotId: spot.id,
+      spotName: spot.name,
+      type: spot.type,
+      at: '${_pad(now.hour)}:${_pad(now.minute)}',
+      kind: kind,
+    );
+    _replace(trip.id, (t) => _copy(t, stops: [...t.stops, stop]));
+  }
+
+  /// 주행 거리 갱신. 여행기의 'Nkm 달림'과 마이 탭 51선 진행률이 이걸 쓴다.
+  void updateDistance(double km) {
+    final trip = state.active;
+    if (trip == null) return;
+    final rounded = km.round();
+    if (rounded == trip.distanceKm) return;
+    _replace(trip.id, (t) => _copy(t, distanceKm: rounded));
+  }
+
+  /// 여행 마치기. 끝난 여행은 다시 열지 않는다.
+  String? end() {
+    final trip = state.active;
+    if (trip == null) return null;
+    final now = DateTime.now();
+    _replace(trip.id, (t) => _copy(t, endedAt: '${_pad(now.hour)}:${_pad(now.minute)}'));
+    state = TripLog(trips: state.trips, activeId: null);
+    unawaited(_persist());
+    return trip.id;
+  }
+
+  void _replace(String id, Trip Function(Trip) f) {
+    state = TripLog(
+      trips: [
+        for (final t in state.trips)
+          if (t.id == id) f(t) else t,
+      ],
+      activeId: state.activeId,
+    );
+    unawaited(_persist());
+  }
+
+  // ── 직렬화 ──────────────────────────────────────────────
+  static String _pad(int n) => n.toString().padLeft(2, '0');
+
+  static Trip _copy(
+    Trip t, {
+    int? distanceKm,
+    String? endedAt,
+    List<TripStop>? stops,
+    int? photoCount,
+  }) => Trip(
+    id: t.id,
+    episode: t.episode,
+    date: t.date,
+    routeId: t.routeId,
+    routeName: t.routeName,
+    startName: t.startName,
+    endName: t.endName,
+    distanceKm: distanceKm ?? t.distanceKm,
+    startedAt: t.startedAt,
+    endedAt: endedAt ?? t.endedAt,
+    stops: stops ?? t.stops,
+    photoCount: photoCount ?? t.photoCount,
+  );
+
+  static Map<String, dynamic> _toJson(Trip t) => {
+    'id': t.id,
+    'episode': t.episode,
+    'date': t.date,
+    'routeId': t.routeId,
+    'routeName': t.routeName,
+    'startName': t.startName,
+    'endName': t.endName,
+    'distanceKm': t.distanceKm,
+    'startedAt': t.startedAt,
+    'endedAt': t.endedAt,
+    'photoCount': t.photoCount,
+    'stops': [
+      for (final s in t.stops)
+        {
+          'spotId': s.spotId,
+          'spotName': s.spotName,
+          'type': s.type.name,
+          'at': s.at,
+          'kind': s.kind.name,
+          'note': s.note,
+          'stayMin': s.stayMin,
+        },
+    ],
+  };
+
+  static Trip _fromJson(Map<String, dynamic> m) => Trip(
+    id: m['id'] as String,
+    episode: (m['episode'] as num?)?.toInt() ?? 1,
+    date: (m['date'] as String?) ?? '',
+    routeId: (m['routeId'] as num?)?.toInt() ?? 0,
+    routeName: (m['routeName'] as String?) ?? '',
+    startName: (m['startName'] as String?) ?? '',
+    endName: (m['endName'] as String?) ?? '',
+    distanceKm: (m['distanceKm'] as num?)?.toInt() ?? 0,
+    startedAt: (m['startedAt'] as String?) ?? '',
+    endedAt: (m['endedAt'] as String?) ?? '',
+    photoCount: (m['photoCount'] as num?)?.toInt() ?? 0,
+    stops: [
+      for (final s in (m['stops'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>())
+        TripStop(
+          spotId: s['spotId'] as String,
+          spotName: (s['spotName'] as String?) ?? '',
+          type: SpotType.values.firstWhere(
+            (e) => e.name == s['type'],
+            orElse: () => SpotType.attraction,
+          ),
+          at: (s['at'] as String?) ?? '',
+          kind: StopKind.values.firstWhere(
+            (e) => e.name == s['kind'],
+            orElse: () => StopKind.visited,
+          ),
+          note: (s['note'] as String?) ?? '',
+          stayMin: (s['stayMin'] as num?)?.toInt(),
+        ),
+    ],
+  );
+}
