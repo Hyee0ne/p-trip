@@ -175,6 +175,25 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
     return deck;
   }
 
+  @override
+  Future<TodaySky?> todaySky({required double lat, required double lng}) async {
+    final rows =
+        await _db.rpc('sun_moon_today', params: {'p_lat': lat, 'p_lng': lng}) as List<dynamic>;
+    if (rows.isEmpty) return null;
+    final r = rows.first as Map<String, dynamic>;
+    String? hm(String k) {
+      final v = r[k] as String?;
+      return (v == null || v.length < 5) ? null : v.substring(0, 5);
+    }
+
+    return TodaySky(
+      sunset: hm('sunset'),
+      astroDusk: hm('astro_dusk'),
+      moonrise: hm('moonrise'),
+      moonset: hm('moonset'),
+    );
+  }
+
   // ── 레이더 ──────────────────────────────────────────────
   @override
   Future<List<Discovery>> radarQueue() async {

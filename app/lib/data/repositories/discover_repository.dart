@@ -36,6 +36,9 @@ abstract interface class DiscoverRepository {
   /// 「한 곳씩」 덱 — 스팟·코스·노선이 섞여 흐른다.
   Future<List<CurationCard>> curationDeck();
 
+  /// 오늘 이 자리의 해·달. 일몰 타이밍 가중치(§3.1)와 별 보기 좋은 밤(§3.8)이 쓴다.
+  Future<TodaySky?> todaySky({required double lat, required double lng});
+
   /// 레이더 발견 큐 — 데모 모드에서 순서대로 흘러나온다.
   Future<List<Discovery>> radarQueue();
 

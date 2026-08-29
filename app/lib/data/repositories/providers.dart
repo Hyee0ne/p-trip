@@ -88,6 +88,11 @@ final baseCandidatesProvider = FutureProvider<List<Spot>>((ref) async {
   return all.where((s) => s.type == SpotType.stay || s.type == SpotType.camp).toList();
 });
 
+/// 오늘 이 자리의 해·달. 격자 단위라 0.1도마다 한 번만 부른다.
+final todaySkyProvider = FutureProvider.family<TodaySky?, ({double lat, double lng})>(
+  (ref, p) => ref.watch(discoverRepositoryProvider).todaySky(lat: p.lat, lng: p.lng),
+);
+
 final radarQueueProvider = FutureProvider<List<Discovery>>(
   (ref) => ref.watch(discoverRepositoryProvider).radarQueue(),
 );

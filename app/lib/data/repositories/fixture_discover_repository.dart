@@ -251,6 +251,10 @@ class FixtureDiscoverRepository implements DiscoverRepository {
   @override
   Future<List<GeoPoint>> courseGeometry(String id) async => const [];
 
+  /// 픽스처엔 해·달 자료가 없다. 없는 시각을 지어내지 않는다.
+  @override
+  Future<TodaySky?> todaySky({required double lat, required double lng}) async => null;
+
   @override
   Future<Spot?> spot(String id) async => _spots.where((s) => s.id == id).firstOrNull;
 

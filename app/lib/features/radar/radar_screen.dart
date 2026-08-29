@@ -39,6 +39,15 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
   /// 이미 내보낸 발견. 같은 카드를 두 번 띄우지 않는다.
   final _shown = <String>{};
 
+  /// 직전에 내보낸 유형. 같은 유형을 연속으로 내보내지 않는다 (§3.1 6번).
+  SpotType? _lastType;
+
+  /// 카드를 내보낸 주행 시각(분). 30분당 2회 상한을 재는 데 쓴다.
+  final _shownAtMin = <double>[];
+
+  /// 오늘 이 자리의 해·달. 일몰 가중치가 쓴다.
+  TodaySky? _sky;
+
   /// 정차 시 몰아보기(DR-03)를 띄우기 위한 스쳐간 목록
   final _passed = <Discovery>[];
 
@@ -89,25 +98,74 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
 
   /// 진행률이 바뀔 때마다 **앞에 있는 발견**을 고른다.
   /// 시간으로 띄우지 않는다 — 어디를 지나고 있느냐가 기준이다.
+  ///
+  /// 창에 여럿이 걸리면 **타이밍 가중치**로 고른다 (§3.1 4번):
+  /// 장날인 시장 ×3 / 일몰 −60~−20분 뷰포인트 ×2 / 11–14시 음식점 ×2.
+  /// 그래서 시연 대본의 "장날 카드 → 일몰 카드"가 우연이 아니라 규칙으로 나온다.
   void _pickAhead(DriveState drive, List<Discovery> queue) {
     if (_cardVisible || _current != null || queue.isEmpty || !drive.running) return;
     if (!Env.autoCard) return;
     // 레이더를 먼저 보여준 뒤 발견이 다가온다. 바로 덮으면 레이더를 못 본다 (SCREENS DR-01).
     if (drive.elapsedSec < 4) return;
+    if (!_cooldownOk(drive)) return;
 
+    Discovery? best;
+    var bestScore = 0.0;
     for (final d in queue) {
       final f = d.spot.exitFrac;
       if (f == null || _shown.contains(d.spot.id)) continue;
       final min = drive.minutesTo(f);
       if (min < _minAhead || min > _maxAhead) continue;
-      _shown.add(d.spot.id);
-      _current = d;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _cardVisible = true);
-      });
-      return;
+      // 같은 유형을 연속으로 내보내지 않는다 (§3.1 6번). 밥집 다음에 또 밥집은 지겹다.
+      if (d.spot.type == _lastType) continue;
+      final score = _score(d.spot);
+      if (score > bestScore) {
+        bestScore = score;
+        best = d;
+      }
     }
+    if (best == null) return;
+
+    _shown.add(best.spot.id);
+    _lastType = best.spot.type;
+    _shownAtMin.add(_driveMinutes(drive));
+    _current = best;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _cardVisible = true);
+    });
   }
+
+  /// 주행 시간(분). 배속을 곱해 **실제 달린 시간**으로 환산한다 —
+  /// 쿨다운은 시연 배속이 아니라 여정을 기준으로 걸려야 한다.
+  double _driveMinutes(DriveState drive) => drive.elapsedSec * Env.driveScale / 60;
+
+  /// 30분당 최대 2회 (§3.1 6번). 재촉하지 않는 게 이 앱의 태도다.
+  bool _cooldownOk(DriveState drive) {
+    final now = _driveMinutes(drive);
+    _shownAtMin.removeWhere((t) => now - t > 30);
+    return _shownAtMin.length < 2;
+  }
+
+  /// 타이밍 가중치 (§3.1 4번). 점수를 **화면에 내보내지 않는다** — 순서를 정하는 데만 쓴다.
+  double _score(Spot spot) {
+    final now = DateTime.now();
+    var score = 1.0;
+    if (spot.hasPhoto) score += 0.5; // 사진 없는 카드는 전면 카드로 약하다
+
+    if (spot.timeliness == Timeliness.marketDay && spot.type == SpotType.market) {
+      score *= 3;
+    } else if (spot.type == SpotType.view) {
+      // 일몰 −60~−20분. 해가 지는 걸 보러 가려면 도착할 시간이 있어야 한다.
+      final left = _sky?.minutesToSunset(now);
+      if (left != null && left >= 20 && left <= 60) score *= 2;
+    } else if (spot.type == SpotType.food && now.hour >= 11 && now.hour < 14) {
+      score *= 2;
+    }
+    return score;
+  }
+
+  /// 0.1도 격자로 반올림. sun_moon 캐시가 그 단위다.
+  static double _grid(double v) => (v * 10).roundToDouble() / 10;
 
   /// GPS 로그와 주행 거리를 여행 기록에 남긴다.
   /// ⚠ 매 프레임 쓰지 않는다 — 0.5km마다 한 점이면 여행기를 그리기에 충분하다.
@@ -161,8 +219,15 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
     final queueAsync = ref.watch(radarQueueProvider);
     final base = ref.watch(baseCampProvider);
     final drive = ref.watch(driveProvider);
-    _record(drive);
-    _pickAhead(drive, queueAsync.value ?? const []);
+    // 일몰 가중치용. 격자 단위라 위치가 조금 움직여도 같은 값을 재사용한다.
+    if (drive.hasFix) {
+      _sky = ref.watch(todaySkyProvider((lat: _grid(drive.lat!), lng: _grid(drive.lng!)))).value;
+    }
+    // ⚠ build 안에서 provider를 고치면 안 된다 (Riverpod). 주행이 바뀔 때만 반응한다.
+    ref.listen(driveProvider, (_, next) {
+      _record(next);
+      _pickAhead(next, ref.read(radarQueueProvider).value ?? const []);
+    });
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       // 어두운 배경엔 밝은 상태바 (pro-rules: 다크 대비)

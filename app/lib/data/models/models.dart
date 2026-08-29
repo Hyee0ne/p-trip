@@ -69,6 +69,36 @@ class RouteLine {
   final List<List<GeoPoint>> paths;
 }
 
+/// 오늘 이 격자의 해·달 (천문연 출몰시각).
+///
+/// 일몰은 §3.1 타이밍 가중치(뷰포인트 ×2)에, 박명·월출·월몰은 §3.8 별 보기 좋은 밤에 쓴다.
+/// ⚠ 모르는 값은 null이다. 없는 시각을 지어내지 않는다.
+class TodaySky {
+  const TodaySky({this.sunset, this.astroDusk, this.moonrise, this.moonset});
+
+  /// 'HH:mm'
+  final String? sunset;
+  final String? astroDusk;
+  final String? moonrise;
+  final String? moonset;
+
+  /// 일몰까지 남은 분. 모르면 null, 이미 졌으면 음수.
+  int? minutesToSunset(DateTime now) {
+    final t = _parse(sunset);
+    if (t == null) return null;
+    return t.difference(DateTime(now.year, now.month, now.day, now.hour, now.minute)).inMinutes;
+  }
+
+  DateTime? _parse(String? hhmm) {
+    if (hhmm == null || hhmm.length < 5) return null;
+    final h = int.tryParse(hhmm.substring(0, 2));
+    final m = int.tryParse(hhmm.substring(3, 5));
+    if (h == null || m == null) return null;
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day, h, m);
+  }
+}
+
 /// 현 위치 조회 결과.
 ///
 /// 빈 목록에는 뜻이 둘이다 — "여기엔 국도가 없다"와 "이 지역 데이터를 아직 안 모았다".
