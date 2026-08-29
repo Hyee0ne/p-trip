@@ -118,7 +118,15 @@ Figma는 만들지 않는다 — CSS 변수 → `theme.dart` 1:1 이식이 목�
 - [ ] `fetch-tourapi.ts`: 위치기반관광정보 — 경로변 5km 버퍼 수집
       → type 매핑, **trust_score 배점표 적용**, exit_geom/exit_frac/detour_min 계산
 - [ ] 확장 병합: 관광사진, 행사(events), 고캠핑, 두루누비
-- [ ] 연관 관광지 → spot_links
+- [x] 연관 관광지 → spot_links (2026-08-29) — 211건, 순위 오른 연결 19건
+      `baseYm`으로 두 시점(202606/202603)을 각각 받아 비교 → **데이터랩 없이 급상승 산출 가능**
+      예: 묵호항→망상오토캠핑리조트 38위→13위, 추암해변→어달해변 25위→16위
+      ⚠ 좌표를 안 줘서 이름으로만 붙는다. 5,099건 중 109건만 붙은 건 스팟이 625건이라서다
+- [x] **진출점 계산** (2026-08-29) — `compute_spot_exits()` RPC. route_id·exit_geom·detour_min
+      7번 국도에 596건. 국도 10분 이내 453건, 그중 **게이트 통과 133건 = 레이더 후보**
+      ⚠ routes.geom에 GIST 인덱스가 없어 statement timeout이 났다. 인덱스 + 배치로 해결
+      ⚠ exit_frac은 아직 없다 — geom이 MultiLineString이라 ST_LineLocatePoint를 못 쓴다.
+        코스(courses.geom)가 생기면 그걸 기준으로 낸다
 - [x] `fetch-markets.ts` (2026-08-29) — 회랑 12km 안 11곳. **북평민속오일장 3·8일 · 85점 · 사진○**
       삼척 중앙시장 2·7일도 85점 — 시연일이 3·8일이 아닐 때의 대안
       ⚠ **시장을 새 스팟으로 만들지 않고 기존 TourAPI 스팟에 붙인다.** CSV엔 사진·개요가 없어
