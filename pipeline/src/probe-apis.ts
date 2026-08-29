@@ -15,7 +15,7 @@
  * 결과: 콘솔 요약 + probe-report.json (원문 일부 포함, .gitignore 대상)
  */
 
-import { writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { config } from 'dotenv';
 
 config({ path: '../.env' });
@@ -123,12 +123,14 @@ function valuesOf(body: string, tag: string): string[] {
 }
 
 function add(p: Probe) {
+  // ⚠ 저장 시점에 지운다. 출력만 마스킹하면 리포트 파일에 키가 그대로 남는다.
+  if (p.url) p.url = mask(p.url);
   report.push(p);
   const mark = p.ok ? '✓' : '✗';
   console.log(`\n${mark} ${p.name}`);
   console.log(`  질문: ${p.question}`);
   console.log(`  결과: ${p.note}`);
-  if (p.url) console.log(`  URL : ${mask(p.url)} (${p.status})`);
+  if (p.url) console.log(`  URL : ${p.url} (${p.status})`);
   if (p.fields?.length) console.log(`  필드: ${p.fields.join(', ')}`);
   if (!p.ok && p.attempts?.length) {
     console.log('  시도한 후보:');
@@ -368,30 +370,66 @@ async function probeAstro(key: string) {
 // ──────────────────────────────────────────────────────────
 // 5. 전통시장 표준데이터 — 장날 끝자리가 어떤 표기로 오는가
 // ──────────────────────────────────────────────────────────
-async function probeMarkets(key: string) {
-  // ⚠ 표준데이터(odcloud)는 데이터셋마다 uddi가 달라서 추측이 불가능하다.
-  //   MARKETS_ENDPOINT에 마이페이지의 요청주소를 넣으면 그걸 우선 쓴다.
-  const custom = process.env.MARKETS_ENDPOINT?.trim();
-  const sep = custom?.includes('?') ? '&' : '?';
-  const r = await tryFetch([
-    ...(custom ? [`${custom}${sep}serviceKey=${key}&page=1&perPage=5`] : []),
-    `https://apis.data.go.kr/1741000/StandardMarket/getStandardMarketList?serviceKey=${key}&pageNo=1&numOfRows=5&type=json`,
-  ]);
-  const f = r ? fieldsOf(r.body) : [];
-  const dayField = f.find((x) => /개설주기|장날|주기/.test(x));
+function probeMarkets() {
+  // ⚠ 이 데이터셋은 오픈API가 없다 (odcloud·apis 모두 404). 파일 제공만 하고
+  //   갱신주기도 연 1회라 파일이 맞다. data/README.md 참조.
+  const path = 'data/markets.csv';
+  if (!existsSync(path)) {
+    return add({
+      name: '전통시장 표준데이터 (파일)',
+      question: '장날 끝자리가 어떤 표기로 오는가 (예: "3,8" / "3·8일" / "매월 3일,8일")',
+      ok: false,
+      note: `${path}가 없다. data.go.kr 15012894에서 CSV를 받아 그 이름으로 두면 여기서 검증한다`,
+    });
+  }
+
+  // data.go.kr CSV는 EUC-KR로 오는 일이 많다. 깨지면 UTF-8로 다시 읽는다.
+  const raw = readFileSync(path);
+  let text = new TextDecoder('euc-kr').decode(raw);
+  if (text.includes('\uFFFD')) text = new TextDecoder('utf-8').decode(raw);
+
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  const header = lines[0].split(',').map((h) => h.replace(/^"|"$/g, '').trim());
+  const cycleIdx = header.findIndex((h) => /개설주기/.test(h));
+  const nameIdx = header.findIndex((h) => /시장명/.test(h));
+  if (cycleIdx < 0) {
+    return add({
+      name: '전통시장 표준데이터 (파일)',
+      question: '장날 필드가 있는가',
+      ok: false,
+      note: `'시장개설주기' 열을 못 찾았다. 헤더: ${header.slice(0, 12).join(' | ')}`,
+      fields: header,
+    });
+  }
+
+  const cells = (line: string) =>
+    line.split(',').map((c) => c.replace(/^"|"$/g, '').trim());
+  const rows = lines.slice(1).map(cells);
+  const forms = new Map<string, number>();
+  for (const r of rows) {
+    const v = r[cycleIdx] ?? '';
+    if (v) forms.set(v, (forms.get(v) ?? 0) + 1);
+  }
+  const top = [...forms].sort((a, b) => b[1] - a[1]).slice(0, 12);
+  // 데모 기준 데이터 — 북평 5일장은 3·8일이어야 한다 (CLAUDE.md).
+  const bukpyeong = rows.find((r) => /북평/.test(r[nameIdx] ?? ''));
+
   add({
-    name: '전통시장 표준데이터',
-    question: '장날 끝자리가 어떤 표기로 오는가 (예: "3,8" / "3·8일" / "매월 3일,8일")',
-    ok: Boolean(dayField),
-    url: r?.url,
-    status: r?.status,
-    note: dayField
-      ? `장날 필드 발견: ${dayField}. 표기 정규화 규칙을 여기서 정한다`
-      : `엔드포인트 미확인. 표준데이터는 uddi가 데이터셋마다 달라 추측할 수 없다 — .env에 MARKETS_ENDPOINT를 넣거나 파일(CSV)로 받는다. 응답: ${r?.body.slice(0, 160) ?? '(없음)'}`,
-    fields: f.slice(0, 30),
-    sample: r?.body.slice(0, 800),
-    attempts: r?.attempts,
+    name: '전통시장 표준데이터 (파일)',
+    question: '장날 끝자리 표기가 몇 가지이고, 북평장이 3·8일로 들어 있는가',
+    ok: Boolean(bukpyeong),
+    note: [
+      `${rows.length}개 시장`,
+      `개설주기 표기 ${forms.size}종`,
+      bukpyeong
+        ? `북평장 확인: "${bukpyeong[nameIdx]}" → "${bukpyeong[cycleIdx]}"`
+        : '⚠ 북평장을 못 찾았다 — 데모 시연에 쓸 장날이 없다',
+    ].join(' · '),
+    fields: header,
+    sample: { 표기분포: Object.fromEntries(top), 북평: bukpyeong?.slice(0, 8) },
   });
+  console.log('  개설주기 표기 상위:');
+  for (const [form, n] of top) console.log(`    ${String(n).padStart(5)}건  "${form}"`);
 }
 
 // ──────────────────────────────────────────────────────────
@@ -417,10 +455,12 @@ async function main() {
   if (dataGo) {
     await probeRiseSet(dataGo);
     await probeAstro(dataGo);
-    await probeMarkets(dataGo);
   } else {
-    console.log('\n⚠ DATA_GO_KR_KEY가 없어 출몰시각·천문현상·전통시장 검사를 건너뛴다.');
+    console.log('\n⚠ DATA_GO_KR_KEY가 없어 출몰시각·천문현상 검사를 건너뛴다.');
   }
+
+  // 파일 기반이라 키와 무관하게 항상 본다.
+  probeMarkets();
 
   if (!datalab) {
     console.log(
