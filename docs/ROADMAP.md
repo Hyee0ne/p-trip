@@ -72,7 +72,10 @@ Figma는 만들지 않는다 — CSS 변수 → `theme.dart` 1:1 이식이 목�
       WebView 기반 `kakao_map_plugin`에서 갈아탔다. pod install·Xcode 빌드 통과 확인.
       네이티브 렌더링이라 폴리라인 개수 부하 문제가 사라진다 — 가시영역 필터도 불필요.
       ⚠ 실제 타일 렌더는 **네이티브 앱 키**가 있어야 확인된다
-- [ ] 노선 LineString 1개 + 핀 3개 실렌더 (키 주입 후)
+- [x] **지도 실렌더 확인 (2026-08-29)** — 네이티브 앱 키 주입 후 동해시 기준 타일·라벨·
+      현재 위치 마커·줌 컨트롤 정상. 시뮬레이터 + 실기기(iPhone 12 mini) 둘 다.
+      KakaoMapsSDK.framework arm64 단일 — 슬라이스 오염 없음
+- [ ] 노선 LineString 실렌더 — **M1 `build-routes.ts`가 GeoJSON을 만들어야 그릴 게 생긴다**
 - [ ] `NaviApi.navigate(viaList:)` **실기기** 1회 호출 → 핸드오프 가능 여부 확정
 - [ ] geolocator 스트림 + heading/speed 실측 → §3.1 방향 필터 임계값 조정
 
