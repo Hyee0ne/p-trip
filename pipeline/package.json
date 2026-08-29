@@ -15,7 +15,8 @@
     "verify": "tsx src/verify.ts",
     "fetch:overview": "tsx src/fetch-overview.ts",
     "fetch:astro": "tsx src/fetch-astro.ts",
-    "fetch:related": "tsx src/fetch-related.ts"
+    "fetch:related": "tsx src/fetch-related.ts",
+    "build:courses": "tsx src/build-courses.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.47.0",
