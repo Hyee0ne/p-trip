@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kakao_flutter_sdk_navi/kakao_flutter_sdk_navi.dart';
 import 'package:kakao_map_sdk/kakao_map_sdk.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -24,6 +25,8 @@ void main() async {
   // ⚠ 지도와 내비 핸드오프가 같은 키를 쓴다.
   if (Env.hasMapKey) {
     unawaited(KakaoMapSdk.instance.initialize(Env.kakaoNativeAppKey));
+    // 내비 핸드오프도 같은 네이티브 키를 쓴다. 이걸 안 부르면 NaviApi가 조용히 실패한다.
+    KakaoSdk.init(nativeAppKey: Env.kakaoNativeAppKey);
   }
 
   runApp(const ProviderScope(child: PTripApp()));

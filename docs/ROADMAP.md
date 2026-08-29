@@ -173,7 +173,14 @@ Figma는 만들지 않는다 — CSS 변수 → `theme.dart` 1:1 이식이 목�
 - [x] CO-06 거점 설정: 후보 리스트 + 확정 → 거점 글로벌 상태. ⚠ 카카오 장소검색·지도 핀은 키/M0.5 대기
 - [x] `/base` 역진입 라우트 + CO-06b 모달 UI. ⚠ compare_routes Edge Fn은 키 대기 —
       소요시간을 지어내지 않으므로 그때까지 시트가 안 뜨는 게 정상 동작
-- [x] HND 핸드오프 시트 UI + 티맵 보조 + 미설치 스토어 분기 (NaviApi 실호출은 M3)
+- [x] HND 핸드오프 — **실호출까지 완료** (2026-08-29)
+      `NaviApi.navigate`에 좌표·경유지·무료도로 우선(RpOption.free)을 넘긴다
+      ⚠ 세 군데가 빠져 있어 버튼이 조용히 아무것도 안 했다:
+        · **좌표를 안 넘겼다** — 딥링크에 이름만 있었다. Spot에 lat/lng를 추가
+        · **iOS `LSApplicationQueriesSchemes`가 없었다** — 선언 안 하면 canLaunchUrl이 항상 false
+        · **`KakaoSdk.init`을 안 불렀다** — NaviApi가 조용히 실패한다
+      ⚠ 미설치 폴백이 `market://`(안드로이드 전용)뿐이라 iOS에선 아무것도 안 열렸다.
+        플랫폼별로 App Store / Play로 나눴다
 - [x] saves(like) 저장/해제 — 모든 하트가 한 상태를 공유. 마이 탭 목록은 M4
 
 > ✅ 2026-08-29: **실데이터로 전환 완료.** `SupabaseDiscoverRepository`가 붙었고

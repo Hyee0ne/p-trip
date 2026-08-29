@@ -147,7 +147,11 @@ class _RadarScreenState extends ConsumerState<RadarScreen> {
                         HandoffSheet.show(
                           context,
                           mode: HandoffMode.visit,
-                          destinationName: current.spot.name,
+                          destination: HandoffPlace(
+                            current.spot.name,
+                            current.spot.lat,
+                            current.spot.lng,
+                          ),
                         );
                         _advance(saved: true);
                       },

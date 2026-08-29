@@ -1,4 +1,7 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
+import 'package:kakao_flutter_sdk_navi/kakao_flutter_sdk_navi.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/strings.dart';
@@ -16,20 +19,37 @@ enum HandoffMode {
   visit,
 }
 
+/// 길안내로 넘길 한 곳. **좌표가 없으면 넘길 수 없다** — 내비는 이름만으로 못 간다.
+class HandoffPlace {
+  const HandoffPlace(this.name, this.lat, this.lng);
+  final String name;
+  final double? lat;
+  final double? lng;
+
+  bool get hasCoords => lat != null && lng != null;
+
+  Location toLocation() => Location(name: name, x: '$lng', y: '$lat');
+}
+
 class HandoffSheet extends StatelessWidget {
   const HandoffSheet({
     super.key,
     required this.mode,
-    required this.destinationName,
-    this.viaNames = const [],
+    required this.destination,
+    this.via = const [],
     this.showFreeRoadTip = true,
   });
 
   final HandoffMode mode;
-  final String destinationName;
+  final HandoffPlace destination;
 
-  /// 경유 앵커. 카카오내비만 지원한다.
-  final List<String> viaNames;
+  String get destinationName => destination.name;
+
+  /// 경유 앵커. **카카오내비만 지원한다** (티맵 공개 딥링크는 목적지 단건까지다).
+  /// 카카오내비도 최대 3곳이다.
+  final List<HandoffPlace> via;
+
+  List<String> get viaNames => [for (final v in via) v.name];
 
   /// '무료도로 우선' 안내 — 들르기에선 첫 1회만 (SCREENS.md §HND).
   final bool showFreeRoadTip;
@@ -37,8 +57,8 @@ class HandoffSheet extends StatelessWidget {
   static Future<void> show(
     BuildContext context, {
     required HandoffMode mode,
-    required String destinationName,
-    List<String> viaNames = const [],
+    required HandoffPlace destination,
+    List<HandoffPlace> via = const [],
     bool showFreeRoadTip = true,
   }) {
     return showModalBottomSheet(
@@ -46,8 +66,8 @@ class HandoffSheet extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (_) => HandoffSheet(
         mode: mode,
-        destinationName: destinationName,
-        viaNames: viaNames,
+        destination: destination,
+        via: via,
         showFreeRoadTip: showFreeRoadTip,
       ),
     );
@@ -170,23 +190,54 @@ class HandoffSheet extends StatelessWidget {
     );
   }
 
-  // TODO(M3): kakao_flutter_sdk_navi의 NaviApi.navigate로 교체.
-  //   출발 시 viaList로 앵커 1~2 전달 (TECH_SPEC §3.3). M0.5 실기기 검증 후.
+  /// 카카오내비 — 실호출. 경유지는 최대 3곳까지 넘긴다 (TECH_SPEC §3.3).
+  ///
+  /// ⚠ 무료도로 우선([RpOption.free])으로 넘긴다. 시트에 그렇게 써 놓고
+  ///   고속도로로 안내하면 말이 다르다 — 이 앱이 국도 앱인 이유이기도 하다.
   Future<void> _openKakao(BuildContext context) async {
-    final ok = await _launch(Uri.parse('kakaonavi://navigate'));
-    if (!context.mounted) return;
-    Navigator.of(context).pop();
-    if (!ok) await _openStore('kakaonavi');
+    if (!destination.hasCoords) return _noCoords(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final nav = Navigator.of(context);
+    try {
+      if (await NaviApi.instance.isKakaoNaviInstalled()) {
+        await NaviApi.instance.navigate(
+          destination: destination.toLocation(),
+          option: NaviOption(coordType: CoordType.wgs84, rpOption: RpOption.free),
+          viaList: [for (final v in via.where((v) => v.hasCoords).take(3)) v.toLocation()],
+        );
+        nav.pop();
+        return;
+      }
+    } catch (e) {
+      // SDK가 실패하면 삼키지 않고 말한다. 조용히 아무 일도 안 일어나는 게 제일 나쁘다.
+      nav.pop();
+      messenger.showSnackBar(
+        SnackBar(content: Text('카카오내비를 열지 못했어요 · $e'), duration: AppMotion.toast),
+      );
+      return;
+    }
+    nav.pop();
+    await _openStore(kakao: true);
   }
 
   /// 티맵은 공개 딥링크가 목적지 단건 수준이라 보조 지원 (TECH_SPEC §3.3).
   Future<void> _openTmap(BuildContext context) async {
-    final ok = await _launch(
-      Uri.parse('tmap://route?goalname=${Uri.encodeComponent(destinationName)}'),
+    if (!destination.hasCoords) return _noCoords(context);
+    final nav = Navigator.of(context);
+    final uri = Uri.parse(
+      'tmap://route?goalname=${Uri.encodeComponent(destination.name)}'
+      '&goalx=${destination.lng}&goaly=${destination.lat}',
     );
-    if (!context.mounted) return;
+    final ok = await _launch(uri);
+    nav.pop();
+    if (!ok) await _openStore(kakao: false);
+  }
+
+  void _noCoords(BuildContext context) {
     Navigator.of(context).pop();
-    if (!ok) await _openStore('tmap');
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text(S.handoffNoCoords), duration: AppMotion.toast));
   }
 
   Future<bool> _launch(Uri uri) async {
@@ -198,8 +249,11 @@ class HandoffSheet extends StatelessWidget {
   }
 
   /// 미설치 → 스토어로 (SCREENS.md §HND 예외).
-  Future<void> _openStore(String app) async {
-    final id = app == 'tmap' ? 'com.skt.tmap.ku' : 'com.locnall.KimGiSa';
-    await _launch(Uri.parse('market://details?id=$id'));
+  /// ⚠ `market://`는 안드로이드 전용이다. iOS에서는 아무것도 안 열린다.
+  Future<void> _openStore({required bool kakao}) async {
+    final uri = Platform.isIOS
+        ? Uri.parse('https://apps.apple.com/kr/app/id${kakao ? '417698849' : '431589174'}')
+        : Uri.parse('market://details?id=${kakao ? 'com.locnall.KimGiSa' : 'com.skt.tmap.ku'}');
+    await _launch(uri);
   }
 }

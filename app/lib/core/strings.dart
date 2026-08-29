@@ -57,6 +57,9 @@ class S {
   static const routeUndrivable = '통일을 기다리는 길';
   static const routeNoCourse = '이 길의 코스를 준비하고 있어요';
 
+  /// 좌표가 없어 내비로 넘길 수 없을 때. 지어내지 않고 그렇다고 말한다.
+  static const handoffNoCoords = '이곳은 위치 정보가 없어 길안내로 넘길 수 없어요';
+
   // CO-07 지도 + 바텀시트 (SCREENS.md CO-07, 2026-08-29 확정)
   static const routesNearTitle = '여기서 탈 수 있는 길';
   static const routesAllCta = '51선 전체';

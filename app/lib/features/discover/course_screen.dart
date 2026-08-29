@@ -279,7 +279,13 @@ class _Body extends ConsumerWidget {
       context.push('/course/${course.id}/base');
       return;
     }
-    HandoffSheet.show(context, mode: HandoffMode.depart, destinationName: base.name);
+    // 출발 = 거점이 목적지. 경유는 코스 위 '오늘의 앵커'인데, 아직 앵커 선정 로직이
+    // 없어서 비워 둔다 — 없는 경유지를 지어내지 않는다 (TECH_SPEC §3.3).
+    HandoffSheet.show(
+      context,
+      mode: HandoffMode.depart,
+      destination: HandoffPlace(base.name, base.lat, base.lng),
+    );
   }
 
   Widget _cta(BuildContext context) {

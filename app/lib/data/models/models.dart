@@ -111,6 +111,8 @@ class Spot {
     this.hasPhoto = false,
     this.parking,
     this.imageUrl,
+    this.lat,
+    this.lng,
   });
 
   final String id;
@@ -140,6 +142,10 @@ class Spot {
 
   /// TourAPI 대표사진 URL. 없으면 유형 그라데이션이 자리를 지킨다.
   final String? imageUrl;
+
+  /// 좌표. **없으면 길안내로 넘길 수 없다** — 내비 앱은 이름만으로 못 간다.
+  final double? lat;
+  final double? lng;
 
   /// 레이더 카드·푸시에 태울 수 있는가 (TECH_SPEC §3.1 3번).
   bool get passesTrustGate => trustScore >= 60;

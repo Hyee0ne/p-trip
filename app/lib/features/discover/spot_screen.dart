@@ -333,8 +333,11 @@ class _Body extends ConsumerWidget {
               backgroundColor: AppColors.routeBlue,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
             ),
-            onPressed: () =>
-                HandoffSheet.show(context, mode: HandoffMode.visit, destinationName: spot.name),
+            onPressed: () => HandoffSheet.show(
+              context,
+              mode: HandoffMode.visit,
+              destination: HandoffPlace(spot.name, spot.lat, spot.lng),
+            ),
             icon: const Icon(Icons.near_me, size: 18),
             label: const Text(
               S.spotNavigate,

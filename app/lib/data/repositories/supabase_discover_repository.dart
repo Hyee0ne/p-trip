@@ -250,6 +250,8 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
       addr: r['addr'] as String?,
       hasPhoto: image != null && image.isNotEmpty,
       imageUrl: image,
+      lat: (r['lat'] as num?)?.toDouble(),
+      lng: (r['lng'] as num?)?.toDouble(),
     );
   }
 

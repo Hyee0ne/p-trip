@@ -78,5 +78,14 @@
 	<array>
 		<string>location</string>
 	</array>
+	<!-- ⚠ iOS는 여기 없는 스킴에 대해 canLaunchUrl이 **항상 false**다.
+	     선언하지 않으면 카카오내비·티맵 버튼이 조용히 아무것도 안 한다. -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>kakaonavi</string>
+		<string>kakaonavi-sdk</string>
+		<string>kakaomap</string>
+		<string>tmap</string>
+	</array>
 </dict>
 </plist>
