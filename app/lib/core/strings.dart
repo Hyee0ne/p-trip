@@ -188,6 +188,7 @@ class S {
   static const bgOptInYes = '허용하러 가기';
   static const bgOptInNo = '지금은 괜찮아요';
   static const bgStopped = '레이더를 접어뒀어요';
+  static const bgDemoNote = '데모 모드에선 앱을 내리면 주행이 멈춰요 — 알림은 실제 주행에서 나갑니다.';
 
   // ── MY-02 여행기 ──
   static String episode(int n, String date) => 'EP.$n — $date';

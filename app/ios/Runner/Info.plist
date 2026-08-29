@@ -71,7 +71,11 @@
 	<string>레이더가 주변을 살피려면 위치가 필요해요. 이동 중에만 사용하고, 기록은 내 기기에 먼저 저장돼요.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>여행기에 사진을 자동 정리해드려요. 여행한 시간대의 사진만 봅니다.</string>
-	<!-- DR-06 백그라운드 근접 알림 — 2단계 옵트인. 먼저 묻지 않는다 -->
+	<!-- DR-06 백그라운드 근접 알림 — 2단계 옵트인. 먼저 묻지 않는다.
+	     ⚠ '항상 허용'을 **요청하지 않는다.** iOS는 '앱을 사용하는 동안'만으로도
+	        UIBackgroundModes:location + allowBackgroundLocationUpdates 조합이면
+	        백그라운드 위치를 준다(파란 표시줄). 그래야 "달리는 동안에만"이 사실이 된다.
+	        이 키는 iOS가 나중에 승격을 제안할 때 쓰일 문구로만 남겨둔다. -->
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>앱을 꺼둬도 근처 발견을 알려드려요. 달리는 동안에만 위치를 보고, 여행을 마치면 스스로 꺼져요.</string>
 	<key>UIBackgroundModes</key>

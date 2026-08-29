@@ -122,7 +122,10 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
       if (demo) {
         ref.read(driveProvider.notifier).start(path);
       } else {
-        ref.read(driveProvider.notifier).startLive(path);
+        // 알림을 켰으면 앱을 내려도 위치가 계속 온다 (DR-06).
+        ref
+            .read(driveProvider.notifier)
+            .startLive(path, background: ref.read(backgroundAlertsProvider));
       }
       // 달리기 시작 = 여행 시작. 기기 안에 기록이 쌓인다 (core/trip_log.dart).
       // ⚠ 노선·구간을 **고른 코스에서** 가져온다. 박아두면 어느 길을 달려도 7번이 된다.
@@ -548,6 +551,12 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     // ⚠ 권한을 거절하면 켜지 않는다. 켠 줄 알고 기다리게 두지 않는다.
     final ok = await ref.read(proximityAlertsProvider).requestPermission();
     await ref.read(backgroundAlertsProvider.notifier).set(ok);
+    // ⚠ 이미 달리는 중이면 스트림을 다시 연다. 안 그러면 이번 주행 내내
+    //   백그라운드 위치가 꺼진 채라 알림이 한 건도 안 나간다.
+    if (ok && mounted && !ref.read(demoModeProvider)) {
+      _started = false;
+      _setRunning(true);
+    }
   }
 
   Widget _topBar() {

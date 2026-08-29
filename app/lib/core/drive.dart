@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -159,7 +160,9 @@ class DriveNotifier extends Notifier<DriveState> {
   ///
   /// ⚠ 여기서도 길안내를 하지 않는다 (원칙 1). 코스 선형은 "코스의 몇 %를 지났나"를
   ///   내는 데만 쓴다 — 벗어나도 아무 일도 일어나지 않고, 되돌아가라고 말하지 않는다.
-  Future<void> startLive(List<GeoPoint> course) async {
+  /// [background]가 true면 앱을 내려도 위치가 계속 온다 (DR-06).
+  /// iOS는 서스펜드되면 Dart가 통째로 멈춰서, 이걸 안 켜면 알림이 **한 건도 안 나간다**.
+  Future<void> startLive(List<GeoPoint> course, {bool background = false}) async {
     _tick?.cancel();
     _tick = null;
     _sub?.cancel();
@@ -189,17 +192,45 @@ class DriveNotifier extends Notifier<DriveState> {
     }
 
     try {
-      _sub = Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          // 10m마다. 더 촘촘히 받아도 화면이 달라지지 않고 배터리만 먹는다.
-          distanceFilter: 10,
-        ),
-      ).listen(_onFix);
+      _sub = Geolocator.getPositionStream(locationSettings: _settings(background)).listen(_onFix);
     } catch (_) {
       // 기기가 못 주면 멈춰 있는다. 좌표를 지어내지 않는다.
       state = state.copyWith(running: false, needsLocation: true);
     }
+  }
+
+  /// ⚠ iOS 백그라운드는 **'앱을 사용하는 동안 허용'으로 충분하다.** '항상 허용'을 받지 않는다 —
+  ///   대신 파란 표시줄이 뜬다. 달리는 동안만 본다는 우리 문구가 그래야 사실이 된다.
+  /// ⚠ `pauseLocationUpdatesAutomatically`를 끄는 이유: iOS가 알아서 멈추면
+  ///   신호등 앞에서 레이더가 조용히 죽는다.
+  static LocationSettings _settings(bool background) {
+    if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
+      return AppleSettings(
+        accuracy: LocationAccuracy.high,
+        // 10m마다. 더 촘촘히 받아도 화면이 달라지지 않고 배터리만 먹는다.
+        distanceFilter: 10,
+        pauseLocationUpdatesAutomatically: false,
+        // 차로 이동 중이라는 힌트일 뿐 — 길안내가 아니다 (원칙 1).
+        activityType: ActivityType.automotiveNavigation,
+        allowBackgroundLocationUpdates: background,
+        showBackgroundLocationIndicator: background,
+      );
+    }
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return AndroidSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 10,
+        foregroundNotificationConfig: background
+            ? const ForegroundNotificationConfig(
+                notificationTitle: '레이더가 앞을 살피는 중',
+                notificationText: '여행을 마치면 스스로 꺼져요',
+                enableWakeLock: true,
+              )
+            : null,
+      );
+    }
+    return const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 10);
   }
 
   GeoPoint? _lastFix;

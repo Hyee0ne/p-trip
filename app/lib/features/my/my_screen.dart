@@ -432,6 +432,16 @@ class _MyScreenState extends ConsumerState<MyScreen> {
                   },
                 ),
               ),
+              // ⚠ 데모 모드는 타이머로 도는 모의 주행이라 앱을 내리면 멈춘다.
+              //   켜둔 알림이 안 오는 걸 고장으로 읽지 않게 이유를 적어둔다.
+              if (ref.watch(backgroundAlertsProvider) && ref.watch(demoModeProvider))
+                const Padding(
+                  padding: EdgeInsets.only(bottom: AppSpace.x3),
+                  child: Text(
+                    S.bgDemoNote,
+                    style: TextStyle(fontSize: 12.5, height: 1.5, color: AppColors.ink3),
+                  ),
+                ),
               const Divider(height: 1, thickness: 1, color: AppColors.line),
               row(
                 '데모 모드',
