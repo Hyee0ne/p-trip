@@ -43,7 +43,10 @@ courses: id, route_id, title('7번 국도 바다길'), start_name, end_name,
 -- 천문현상 (천문연 천문현상 정보 API)
 -- ⚠ **좌표가 없다.** 전국 공통 값이라 "여기서만"이 아니라 "오늘만"으로만 쓴다.
 --    스팟으로 만들어 레이더에 띄우면 위치를 지어내는 것이다 (원칙 2 위반).
-astro_events: locdate(date), title, event_time(time), description
+astro_events: locdate(date), title, event_time(time), description, is_event(bool)
+-- ⚠ 실측(2026-08-29): 2026년 198건 중 **186건은 title이 비고 description만 있는 월상 달력**
+--   (삭·망·근지점 등). 이름 붙은 '사건'은 12건뿐 — 유성우 3, 개기월식 1, 계절 별자리 4 등.
+--   적재 때 is_event로 가른다: true만 사용자에게 보이고, false는 월령 계산 입력값이다.
 
 -- 스팟 (관광지/음식점/문화시설/뷰포인트/숙박/캠핑장/시장 — 전부 동급)
 spots: id, tourapi_contentid, type(enum), name, lat, lng, geom(Point),
@@ -81,12 +84,20 @@ markets: spot_id(FK), open_cycle(int[]), open_rule(text, nullable), note
 -- 행사 (기간 한정)
 events: spot_id, title, start_date, end_date
 
+-- 일출·일몰·월출·월몰·박명 (천문연 출몰시각, 좌표 격자 0.1도 × 일 단위 캐시)
+-- 실측 확인(2026-08-29): sunrise/suntransit/sunset + moonrise/moontransit/moonset
+--   + civil·naut·astro 박명(아침·저녁)이 전부 한 응답에 온다. §3.8의 전제다.
+sun_moon: locdate, grid_lat, grid_lng,
+          sunrise, suntransit, sunset, moonrise, moontransit, moonset,
+          civil_dawn/dusk, naut_dawn/dusk, astro_dawn/dusk
+
 -- 사용자
 profiles: id(auth.uid), nickname
-saves: user_id, spot_id(nullable), course_id(nullable),
+saves: user_id, spot_id(nullable), course_id(nullable), route_id(nullable),
        kind('like'|'passed'), created_at
-       -- CHECK (num_nonnulls(spot_id, course_id) = 1)
-       -- UNIQUE (user_id, spot_id, course_id, kind)
+       -- ⚠ 앱은 **국도(route)도 찜한다** (MY '찜한 국도', core/saves.dart). 셋 중 하나만 채운다.
+       -- CHECK (num_nonnulls(spot_id, course_id, route_id) = 1)
+       -- UNIQUE 부분 인덱스 3개 (대상별로 user_id+kind 유일)
        -- passed = 스쳐간 발견 (자동 적립). ⚠ DR-05 동승자 브라우징의 '넘기기'는 적립하지 않는다
 
 -- 여행

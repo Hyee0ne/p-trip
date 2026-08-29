@@ -47,7 +47,7 @@ M1이 전부 여기 걸려 있다. M0 코딩과 **동시에** 진행할 것.
 - [x] Riverpod + go_router 3탭 셸 + 라우트 테이블 전체 선언 + 뷰 모드 글로벌 상태
 - [x] `.env.example` + `dart_defines.example.json` + `core/env.dart`, `.gitignore` 정비
 - [x] Supabase CLI 설치 + `supabase init` + **brrrp 격리**(project_id·포트·파이프라인 가드)
-- [ ] Supabase 프로젝트 연결 (`supabase link --project-ref <ref>`) + PostGIS 활성화  ← **ref 필요**
+- [x] Supabase 프로젝트 연결(`p-trip`, ap-northeast-1) + PostGIS 활성화 — 2026-08-29
 
 ## M0.3. 디자인 시안 (1~1.5일) ★신규 — 프로토타입 HTML을 직접 만든다
 
@@ -101,7 +101,12 @@ Figma는 만들지 않는다 — CSS 변수 → `theme.dart` 1:1 이식이 목�
       · 데이터랩 입도(시군구) ↔ 코스/스팟 매칭 방법 확정
       · TourAPI 쿼터·실제 응답 스키마 (문서와 다른 필드 주의)
       → 결과에 따라 아래 두 태스크의 구현 방식이 갈린다. **결과 먼저 공유**
-- [ ] 마이그레이션: routes/courses/spots/spot_links/markets/events/profiles/saves/trips/* (TECH_SPEC §2)
+- [x] 마이그레이션 5개 적용 (2026-08-29) — routes/courses/spots/spot_links/markets/events/
+      astro_events/sun_moon/profiles/saves/trips/trip_points/trip_stops/trip_photos + RLS + GRANT
+      ⚠ **GRANT를 따로 줘야 한다.** 마이그레이션이 postgres 역할로 안 돌아서 Supabase 기본
+        default privileges가 안 걸린다 — 빼먹으면 anon도 service_role도 42501이 난다
+      검증: 공개 읽기 200 / 익명 쓰기 401 / 사용자 테이블 익명 401 / service_role 쓰기 201 /
+            is_market_day([3,8], 9월3일)=true, 9월5일=false
 - [ ] `build-routes.ts`: 국도 51선 메타 시드 + 7번 국도 삼척–강릉 LineString
 - [ ] `fetch-tourapi.ts`: 위치기반관광정보 — 경로변 5km 버퍼 수집
       → type 매핑, **trust_score 배점표 적용**, exit_geom/exit_frac/detour_min 계산
