@@ -274,8 +274,12 @@ async function main() {
     if (++done % 100 === 0) console.log(`    ${done}/${targets.length}`);
   }
 
-  // 동시 8개. 공공데이터포털이 과한 동시 요청에 민감해서 넉넉히 잡지 않는다.
-  const LANES = 8;
+  // ⚠ 동시 8개로 돌렸더니 **초당 요청 수 초과**로 거부당했다
+  //   (LIMITED_NUMBER_OF_SERVICE_REQUESTS_PER_SECOND_EXCEEDS_ERROR).
+  //   일일 할당량과 다른 제한이라 재시도로는 못 넘는다 — 속도를 줄이는 수밖에 없다.
+  //   4개씩 + 묶음 사이 250ms면 초당 약 16콜이다.
+  const LANES = 4;
+  const GAP_MS = 250;
   for (let i = 0; i < targets.length; i += LANES) {
     // 한 건이 터져도 나머지는 간다.
     await Promise.all(
@@ -286,6 +290,7 @@ async function main() {
         }),
       ),
     );
+    if (i + LANES < targets.length) await new Promise((r) => setTimeout(r, GAP_MS));
   }
   if (failures) console.log(`  ⚠ 응답을 못 받은 요청 ${failures}건 — 그만큼 항목이 비어 있을 수 있다`);
 
