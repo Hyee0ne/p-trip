@@ -255,6 +255,9 @@ Figma는 만들지 않는다 — CSS 변수 → `theme.dart` 1:1 이식이 목�
       **iOS 기준으로 확정** (2026-08-29). SCREENS의 "Android 우선"을 뒤집었다
       iOS는 '항상 허용'을 안 받는다 — `UIBackgroundModes:location` +
       `allowBackgroundLocationUpdates`면 '앱을 사용하는 동안'만으로 백그라운드 위치가 온다
+      **채널은 음성 + 알림 둘 다** (2026-08-29 결정). `UIBackgroundModes: audio` 추가 —
+      이게 없으면 앱을 내린 순간 iOS가 낭독을 막는다. 앱을 살려두는 건 location이고
+      audio는 그동안 말할 수 있게 해줄 뿐이다
       ⚠ **모의 주행에선 안 나간다.** 앱을 내리면 iOS가 재워서 타이머가 멈춘다.
         실제 주행에서만 확인되는 기능이라 MY-03에 이유를 한 줄로 적어뒀다
       ⚠ 실기기 확인 남음: 파란 표시줄 · 서스펜드 후 스트림 유지 · 카카오내비와 동시 실행

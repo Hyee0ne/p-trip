@@ -197,9 +197,18 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     _lastType = best.spot.type;
     _shownAtMin.add(_driveMinutes(drive));
 
-    // DR-06 — 앱이 뒤에 있으면 카드 대신 알림으로 나간다.
+    // DR-06 — 앱이 뒤에 있으면 카드 대신 **음성 + 알림**으로 나간다 (2026-08-29 결정).
     // ⚠ 시의성 없는 스팟은 ProximityAlerts가 알아서 거른다. 꺼둔 앱이 말을 걸 이유는 '오늘만' 뿐이다.
+    // ⚠ 조건은 화면 안 쿨다운보다 엄격한 그대로 쓴다 — 음성이라고 자주 말하지 않는다.
     if (_background) {
+      if (best.spot.timeliness != Timeliness.none) {
+        // 운전 중엔 배너를 읽을 수 없다. 소리가 본 채널이고 알림은 나중에 볼 흔적이다.
+        if (_voiceOn) ref.read(voiceProvider).speak('${best.headline}. ${best.situation}');
+        // 뒤에서 알린 건 '보여줬다'가 아니다 — 응답할 화면이 없으니 스쳐간 발견으로 적립한다.
+        ref.read(savesProvider.notifier).markPassed(best.spot.id);
+        ref.read(tripLogProvider.notifier).addStop(best.spot, StopKind.passed);
+        _passed.add(best);
+      }
       ref
           .read(proximityAlertsProvider)
           .notify(spot: best.spot, head: best.headline, title: best.spot.name);

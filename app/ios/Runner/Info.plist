@@ -81,6 +81,10 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
+		<!-- ⚠ 이게 없으면 앱을 내린 순간 iOS가 낭독을 막는다. DR-06은 음성이 본 채널이다
+		     (2026-08-29 결정) — 운전 중에 배너를 읽을 수는 없다.
+		     앱을 살려두는 건 location이고, audio는 그동안 말할 수 있게 해줄 뿐이다. -->
+		<string>audio</string>
 	</array>
 	<!-- ⚠ iOS는 여기 없는 스킴에 대해 canLaunchUrl이 **항상 false**다.
 	     선언하지 않으면 카카오내비·티맵 버튼이 조용히 아무것도 안 한다. -->
