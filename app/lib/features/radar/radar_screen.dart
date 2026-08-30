@@ -206,14 +206,14 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     Discovery? best;
     var bestScore = 0.0;
     final now = DateTime.now();
+    // 큐는 이미 **현 위치 반경 _aheadKm, 진행 방향 ±60°**로 걸러져 온다
+    // (discover_ahead RPC). 여기서 거리를 다시 재지 않는다.
+    // ⚠ 전에는 exit_frac 으로 쟀는데, 그건 **그 스팟이 속한 노선의** 비율이라
+    //   다른 국도를 달리면 뺄셈 자체가 말이 안 됐다 (43번 위에서 7번 스팟이 뜬 이유).
+    // ⚠ '같은 유형 연속 금지'는 폐기했다 (2026-08-30). 빈도 제한이 없어진 마당에
+    //   유형으로 거르면 남은 게 전부 같은 유형일 때 아무것도 안 나가고 굶는다.
     for (final raw in queue) {
-      final f = raw.spot.exitFrac;
-      if (f == null || _shown.contains(raw.spot.id)) continue;
-      final km = drive.kmTo(f);
-      // 이미 지났거나(−1) 반경 밖이면 넘어간다. 반경 안이면 **전부** 내보낸다.
-      // ⚠ '같은 유형 연속 금지'는 폐기했다 (2026-08-30). 빈도 제한이 없어진 마당에
-      //   유형으로 거르면 남은 게 전부 같은 유형일 때 아무것도 안 나가고 굶는다.
-      if (km < 0 || km > _aheadKm) continue;
+      if (_shown.contains(raw.spot.id)) continue;
       // ⚠ **여기서 일몰을 덧입힌다** (core/sunset.dart). 저장소는 하늘을 모른다.
       //   이걸 빼면 실데이터에서 Timeliness.sunset이 한 번도 안 붙어
       //   DR-02 일몰 카드도, DR-06 일몰 알림도 영영 안 나온다.
@@ -277,6 +277,19 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
 
   /// 0.1도 격자로 반올림. sun_moon 캐시가 그 단위다.
   static double _grid(double v) => (v * 10).roundToDouble() / 10;
+
+  /// 레이더 조회 키. **주행 좌표를 그대로 쓰면 안 된다** — 10m마다 바뀌어
+  /// family가 매번 새 provider를 만들고 영원히 로딩에 머문다.
+  /// 0.01도(약 1.1km)와 30도로 뭉갠다. 반경이 5km라 그 정도 움직였을 때만 다시 묻는다.
+  ({double lat, double lng, double? heading, double km})? _queueKey(DriveState d) {
+    if (!d.hasFix) return null;
+    return (
+      lat: (d.lat! * 100).roundToDouble() / 100,
+      lng: (d.lng! * 100).roundToDouble() / 100,
+      heading: (d.headingDeg / 30).roundToDouble() * 30,
+      km: _aheadKm,
+    );
+  }
 
   /// GPS 로그와 주행 거리를 여행 기록에 남긴다.
   /// ⚠ 매 프레임 쓰지 않는다 — 0.5km마다 한 점이면 여행기를 그리기에 충분하다.
@@ -398,9 +411,15 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
 
   @override
   Widget build(BuildContext context) {
-    final queueAsync = ref.watch(radarQueueProvider);
-    final base = ref.watch(baseCampProvider);
     final drive = ref.watch(driveProvider);
+    final base = ref.watch(baseCampProvider);
+    // ⚠ 위치를 잡기 전에는 물어볼 좌표가 없다. 그렇다고 **스피너로 덮지 않는다** —
+    //   아래 data 분기가 DR-00('위치를 못 받는다')을 이미 말해준다.
+    //   덮으면 이유도 모른 채 도는 원만 보인다.
+    final key = _queueKey(drive);
+    final queueAsync = key == null
+        ? const AsyncValue<List<Discovery>>.data([])
+        : ref.watch(radarQueueProvider(key));
     // 일몰 가중치용. 격자 단위라 위치가 조금 움직여도 같은 값을 재사용한다.
     if (drive.hasFix) {
       _sky = ref.watch(todaySkyProvider((lat: _grid(drive.lat!), lng: _grid(drive.lng!)))).value;
@@ -410,7 +429,10 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
       _record(next);
       _maybeFold(next);
       _maybeCatchup(next);
-      _pickAhead(next, ref.read(radarQueueProvider).value ?? const []);
+      // ⚠ **뒤에 있을 땐 build가 안 돈다.** 그래서 여기서 키를 다시 만들어 read 한다 —
+      //   watch 에만 기대면 백그라운드에서 큐가 그 자리에 얼어붙는다.
+      final k = _queueKey(next);
+      _pickAhead(next, k == null ? const [] : (ref.read(radarQueueProvider(k)).value ?? const []));
     });
 
     return AnnotatedRegion<SystemUiOverlayStyle>(

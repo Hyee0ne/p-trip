@@ -83,8 +83,19 @@ abstract interface class DiscoverRepository {
     double km = 20,
   });
 
-  /// 레이더 발견 큐 — 데모 모드에서 순서대로 흘러나온다.
-  Future<List<Discovery>> radarQueue();
+  /// 레이더 발견 큐 (DR-01/02) — **현 위치 + 진행 방향 반경** 기준.
+  ///
+  /// ⚠ 2026-08-30 개정. 전에는 인자가 없었고 `exit_frac` 순으로 전 DB에서 30건을 집어왔다.
+  ///   데모(7번 국도 한 코스)에서만 맞는 구현이라, 다른 국도를 달리면 **엉뚱한 노선의
+  ///   스팟이 떴다** — 43번을 달리는데 삼척(7번) 전시관이 나오는 식이었다.
+  ///   원칙 2가 "발견 쿼리는 항상 현 위치+진행 방향 반경"이라고 못박은 이유다.
+  /// ⚠ 코스를 벗어나도 그대로 돈다. 경로를 따라가지 않는다.
+  Future<List<Discovery>> radarQueue({
+    required double lat,
+    required double lng,
+    double? headingDeg,
+    double km,
+  });
 
   // ⚠ 여행기는 여기 없다. **기기 안에** 둔다 (core/trip_log.dart, CLAUDE.md 원칙 5).
   //   로그인을 넣지 않기로 했고, 사진도 기기 안 식별자로만 갖는다.

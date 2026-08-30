@@ -123,9 +123,17 @@ final aheadProvider =
           .discoverAhead(lat: p.lat, lng: p.lng, headingDeg: p.heading, km: p.km),
     );
 
-final radarQueueProvider = FutureProvider<List<Discovery>>(
-  (ref) => ref.watch(discoverRepositoryProvider).radarQueue(),
-);
+/// DR-01/02 레이더 — **현 위치 + 진행 방향 반경**. 노선·코스를 보지 않는다 (원칙 2).
+///
+/// ⚠ 주행 좌표를 그대로 키로 쓰면 안 된다. 10m마다 바뀌어 family가 매번 새 provider를
+///   만들고 영원히 로딩에 머문다. 호출부에서 **격자로 뭉개서** 넣는다
+///   (`_RadarScreenState._queueKey`) — 동승자 모드가 같은 이유로 쓰는 수법이다.
+final radarQueueProvider =
+    FutureProvider.family<List<Discovery>, ({double lat, double lng, double? heading, double km})>(
+      (ref, p) => ref
+          .watch(discoverRepositoryProvider)
+          .radarQueue(lat: p.lat, lng: p.lng, headingDeg: p.heading, km: p.km),
+    );
 
 /// 여행기는 **기기 안**에서 온다 (core/trip_log.dart). 서버가 아니다.
 /// 화면은 이 provider만 보므로 출처가 바뀌어도 손대지 않는다.

@@ -357,38 +357,59 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
 
   // ── 레이더 ──────────────────────────────────────────────
   @override
-  Future<List<Discovery>> radarQueue() async {
-    // 코스를 지나는 순서대로. 신뢰도 게이트와 우회 10분을 통과한 것만 (§3.1).
-    final rows = await _db
+  Future<List<Discovery>> radarQueue({
+    required double lat,
+    required double lng,
+    double? headingDeg,
+    double km = 5,
+  }) async {
+    // ⚠ **현 위치 + 진행 방향 반경**이다 (원칙 2). 노선이나 코스를 보지 않는다 —
+    //   코스를 벗어나도, 다른 국도로 갈아타도 그대로 돈다.
+    //   전엔 exit_frac 순으로 전 DB에서 30건을 집어왔다. 데모 코스(7번)에서만 맞는 구현이라
+    //   43번 국도를 달리면 삼척(7번) 스팟이 떴다 (2026-08-30 실기기).
+    final rows =
+        await _db.rpc(
+              'discover_ahead',
+              params: {'p_lat': lat, 'p_lng': lng, 'p_heading': headingDeg, 'p_km': km},
+            )
+            as List<dynamic>;
+    if (rows.isEmpty) return const [];
+    final order = [for (final r in rows) (r as Map<String, dynamic>)['id'] as String];
+
+    // 신뢰도 게이트와 우회 10분은 **레이더에만** 건다 (§3.1). 동승자 모드(DR-05)는 안 건다 —
+    // 운전자를 방해하는 화면과 훑어보는 화면의 기준이 다르다.
+    final spots = await _db
         .from('spot_cards')
         .select()
-        .not('exit_frac', 'is', null)
+        .inFilter('id', order)
         .gte('trust_score', 60)
-        .lte('detour_min', 10)
-        .order('exit_frac', ascending: true)
-        .limit(30);
+        .lte('detour_min', 10);
+    final byId = {for (final s in spots) s['id'] as String: s};
+
     return [
-      for (final r in rows)
-        () {
-          final s = _spot(r);
-          // 타이틀은 **존재형 문구**다. ⚠ 거리 문구를 넣지 않는다 (SCREENS.md DR-02).
-          //   상황 칩이 이미 "국도에서 N분"을 말한다 — 타이틀에 또 쓰면 같은 말이 두 번이다.
-          final headline = switch (s.timeliness) {
-            Timeliness.marketDay => '오늘이 마침 ${s.name}이에요',
-            Timeliness.endingSoon => '${s.name}, 이번 주까지예요',
-            _ => s.name,
-          };
-          // 장날형은 다음 장 안내를 본문에 얹는다 (SCREENS.md DR-02 4번).
-          final note = s.timeliness == Timeliness.marketDay ? '' : s.timelinessNote;
-          return Discovery(
-            spot: s,
-            headline: headline,
-            situation: s.timelinessNote.isEmpty
-                ? '근처에 있어요 · 국도에서 ${s.detourMin}분'
-                : '${s.timelinessNote} · 국도에서 ${s.detourMin}분',
-            body: note.isEmpty ? s.blurb : '$note. ${s.blurb}',
-          );
-        }(),
+      // RPC가 준 순서(가까운 순)를 지킨다.
+      for (final id in order)
+        if (byId[id] != null)
+          () {
+            final s = _spot(byId[id]!);
+            // 타이틀은 **존재형 문구**다. ⚠ 거리 문구를 넣지 않는다 (SCREENS.md DR-02).
+            //   상황 칩이 이미 "국도에서 N분"을 말한다 — 타이틀에 또 쓰면 같은 말이 두 번이다.
+            final headline = switch (s.timeliness) {
+              Timeliness.marketDay => '오늘이 마침 ${s.name}이에요',
+              Timeliness.endingSoon => '${s.name}, 이번 주까지예요',
+              _ => s.name,
+            };
+            // 장날형은 다음 장 안내를 본문에 얹는다 (SCREENS.md DR-02 4번).
+            final note = s.timeliness == Timeliness.marketDay ? '' : s.timelinessNote;
+            return Discovery(
+              spot: s,
+              headline: headline,
+              situation: s.timelinessNote.isEmpty
+                  ? '근처에 있어요 · 국도에서 ${s.detourMin}분'
+                  : '${s.timelinessNote} · 국도에서 ${s.detourMin}분',
+              body: note.isEmpty ? s.blurb : '$note. ${s.blurb}',
+            );
+          }(),
     ];
   }
 

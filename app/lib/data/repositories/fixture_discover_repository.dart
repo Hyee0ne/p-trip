@@ -383,7 +383,13 @@ class FixtureDiscoverRepository implements DiscoverRepository {
 
   // ── 레이더 발견 큐 (DR-02) ──
   @override
-  Future<List<Discovery>> radarQueue() async => const [
+  // 픽스처는 시연용 한 코스라 위치를 보지 않는다. 실주행은 Supabase 구현이 맡는다.
+  Future<List<Discovery>> radarQueue({
+    required double lat,
+    required double lng,
+    double? headingDeg,
+    double km = 5,
+  }) async => const [
     Discovery(
       spot: Spot(
         id: 'bukpyeong-market',
