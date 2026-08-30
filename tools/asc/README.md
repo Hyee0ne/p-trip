@@ -16,9 +16,15 @@ pip3 install pyjwt cryptography
 ## 쓰는 법
 
 ```bash
-cd tools/asc
-python3 asc_status.py     # 무엇이 비어 있는지 (읽기 전용)
-python3 shots.py          # docs/screenshots/*.png 업로드
+python3 tools/asc/asc_status.py      # 제출 전 무엇이 비어 있는지 (읽기 전용)
+python3 tools/asc/shots.py           # docs/screenshots/*.png 업로드
+python3 tools/asc/review_status.py   # 심사 상태 한 줄로
+```
+
+심사 상태는 `--quiet`를 붙이면 **지난번과 다를 때만** 출력한다. cron 에 걸 때 쓴다:
+
+```bash
+*/30 * * * * cd ~/공모전/trip && python3 tools/asc/review_status.py --quiet
 ```
 
 ## 두 번 겪은 함정
