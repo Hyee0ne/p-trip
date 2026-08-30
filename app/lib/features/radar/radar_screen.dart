@@ -233,13 +233,16 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     // ⚠ 시의성 없는 스팟은 ProximityAlerts가 알아서 거른다. 꺼둔 앱이 말을 걸 이유는 '오늘만' 뿐이다.
     // ⚠ 조건은 화면 안 쿨다운보다 엄격한 그대로 쓴다 — 음성이라고 자주 말하지 않는다.
     if (_background) {
-      if (best.spot.timeliness != Timeliness.none) {
-        // 운전 중엔 배너를 읽을 수 없다. 소리가 본 채널이고 알림은 나중에 볼 흔적이다.
-        if (_voiceOn) ref.read(voiceProvider).speak('${best.headline}. ${best.situation}');
-        // 뒤에서 알린 건 '보여줬다'가 아니다 — 응답할 화면이 없으니 스쳐간 발견으로 적립한다.
-        ref.read(savesProvider.notifier).markPassed(best.spot.id);
-        ref.read(tripLogProvider.notifier).addStop(best.spot, StopKind.passed);
-        _passed.add(best);
+      // ⚠ 뒤에서 지나친 건 '보여줬다'가 아니다 — 응답할 화면이 없으니 **전부** 적립한다.
+      //   시의성 없는 것도 적립해야 한다. 안 하면 _shown 에만 남아 영영 사라진다:
+      //   알리지도 않고, 몰아보기에도 없고, 돌아와도 다시 안 뜬다 (원칙 6).
+      ref.read(savesProvider.notifier).markPassed(best.spot.id);
+      ref.read(tripLogProvider.notifier).addStop(best.spot, StopKind.passed);
+      _passed.add(best);
+      // 앞에 있을 때와 **같은 발견을** 내보낸다 (2026-08-30 결정, SCREENS.md DR-06).
+      // 운전 중엔 배너를 읽을 수 없어 소리가 본 채널이고 알림은 나중에 볼 흔적이다.
+      if (_voiceOn) {
+        ref.read(voiceProvider).speak('${best.headline}. ${best.situation}');
       }
       ref
           .read(proximityAlertsProvider)

@@ -10,20 +10,26 @@ import '../data/models/models.dart';
 
 /// DR-06 백그라운드 근접 알림.
 ///
-/// **꺼둔 앱이 말을 걸 이유는 "오늘만" 뿐이다.** 그래서 규칙이 화면 안 쿨다운보다 엄하다:
-/// - 장날·일몰·기간임박 중 하나일 때만 (일반 스팟은 절대 안 내보낸다 — 재촉 금지 원칙)
-/// - 30분에 1번, 하루 4번
+/// **앞에 있을 때와 같은 발견을 같은 빈도로 내보낸다** (2026-08-30 결정).
+/// 원래는 "장날·일몰·기간임박"만 내보냈다 — 꺼둔 앱이 말을 걸 이유는 '오늘만' 뿐이라는
+/// 이유였다. 실기기 주행에서 뒤집혔다: 앞에 카카오내비를 띄우고 달리면 앱은 뒤에 있지만
+/// **사용자는 여행 중**이다. '꺼둔 앱'이 아니다. 그 상태에서 침묵하면 레이더가 고장 난 것처럼 보인다.
+///
+/// 남은 규칙:
+/// - 30분에 2번까지 (화면 안 쿨다운 §3.1 6번과 **같은 값**)
 /// - 이동이 40분 없으면 스스로 접는다
 ///
-/// ⚠ 횟수를 **기기에 남긴다**. 메모리에만 두면 앱을 껐다 켜서 하루 제한을 우회하게 된다.
+/// ⚠ 횟수를 **기기에 남긴다**. 메모리에만 두면 앱을 껐다 켜서 제한을 우회하게 된다.
 /// ⚠ 설정에서 끄면 알림만 멈춘다 — OS 권한은 건드리지 않는다 (우리가 뺏을 것이 아니다).
 class ProximityAlerts {
   ProximityAlerts._();
   static final instance = ProximityAlerts._();
 
-  static const _kState = 'bgAlerts.v1';
-  static const _minGap = Duration(minutes: 30);
-  static const _dailyMax = 4;
+  static const _kState = 'bgAlerts.v2';
+
+  /// 화면 안 쿨다운(§3.1 6번)과 **같은 값**이어야 한다. 뒤에 있다고 덜 말하지 않는다.
+  static const _window = Duration(minutes: 30);
+  static const _maxInWindow = 2;
 
   /// 이동이 이만큼 없으면 스스로 접는다.
   static const foldAfter = Duration(minutes: 40);
@@ -31,9 +37,8 @@ class ProximityAlerts {
   FlutterLocalNotificationsPlugin? _plugin;
   bool _failed = false;
 
-  DateTime? _lastAt;
-  String _day = '';
-  int _sentToday = 0;
+  /// 최근 발신 시각들. 30분 창 안의 것만 남긴다.
+  final List<DateTime> _sentAt = [];
   bool _restored = false;
 
   Future<FlutterLocalNotificationsPlugin?> _engine() async {
@@ -85,10 +90,10 @@ class ProximityAlerts {
       final raw = (await SharedPreferences.getInstance()).getString(_kState);
       if (raw == null) return;
       final m = jsonDecode(raw) as Map<String, dynamic>;
-      _day = (m['day'] as String?) ?? '';
-      _sentToday = (m['sent'] as num?)?.toInt() ?? 0;
-      final at = m['lastAt'] as String?;
-      _lastAt = at == null ? null : DateTime.tryParse(at);
+      for (final s in (m['sentAt'] as List?) ?? const []) {
+        final at = DateTime.tryParse(s as String);
+        if (at != null) _sentAt.add(at);
+      }
     } catch (_) {
       /* 못 읽으면 오늘 처음인 셈 친다 */
     }
@@ -98,7 +103,9 @@ class ProximityAlerts {
     try {
       await (await SharedPreferences.getInstance()).setString(
         _kState,
-        jsonEncode({'day': _day, 'sent': _sentToday, 'lastAt': _lastAt?.toIso8601String()}),
+        jsonEncode({
+          'sentAt': [for (final a in _sentAt) a.toIso8601String()],
+        }),
       );
     } catch (_) {
       /* 저장 실패가 주행을 막지 않는다 */
@@ -111,14 +118,8 @@ class ProximityAlerts {
   @visibleForTesting
   Future<bool> allowed(DateTime now) async {
     await _restore();
-    final today = _dayKey(now);
-    if (today != _day) {
-      _day = today;
-      _sentToday = 0;
-    }
-    if (_sentToday >= _dailyMax) return false;
-    if (_lastAt != null && now.difference(_lastAt!) < _minGap) return false;
-    return true;
+    _sentAt.removeWhere((a) => now.difference(a) >= _window);
+    return _sentAt.length < _maxInWindow;
   }
 
   /// 발견 하나를 알림으로. 조건에 안 맞으면 아무 일도 안 일어난다.
@@ -130,9 +131,6 @@ class ProximityAlerts {
     required String title,
     DateTime? now,
   }) async {
-    // ⚠ 시의성 없는 스팟은 백그라운드로 내보내지 않는다. 이 한 줄이 원칙이다.
-    if (spot.timeliness == Timeliness.none) return;
-
     final at = now ?? DateTime.now();
     if (!await allowed(at)) return;
     final p = await _engine();
@@ -166,24 +164,21 @@ class ProximityAlerts {
   /// 실행 중에 세는 걸 지우면 하루 제한이 무의미해진다.
   @visibleForTesting
   void debugReset() {
-    _lastAt = null;
-    _day = '';
-    _sentToday = 0;
+    _sentAt.clear();
     _restored = false;
   }
 
   /// 한 건 내보냈다고 적는다. 이게 30분·하루 4회 제한의 기준점이다.
   @visibleForTesting
   Future<void> markSent(DateTime at) async {
-    // ⚠ 날짜를 **여기서도** 찍는다. 안 찍으면 횟수는 4인데 날짜가 비어 있어,
-    //   다음 검사에서 "날이 바뀌었네" 하고 카운트가 0으로 풀린다.
-    _day = _dayKey(at);
-    _lastAt = at;
-    _sentToday++;
+    // ⚠ **먼저 읽어온다.** 안 읽고 적으면 나중 _restore 가 저장본을 다시 얹어
+    //   같은 발신이 두 번 세어지고, 30분에 2회 제한이 1회처럼 동작한다.
+    await _restore();
+    _sentAt
+      ..removeWhere((a) => at.difference(a) >= _window)
+      ..add(at);
     await _save();
   }
-
-  static String _dayKey(DateTime d) => '${d.year}-${d.month}-${d.day}';
 
   /// 40분간 이동이 없어 스스로 접을 때. **무음**이다 — 접었다는 사실만 남긴다.
   Future<void> foldUp(String text) async {
