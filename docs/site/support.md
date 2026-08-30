@@ -46,5 +46,5 @@
 
 ## 문의
 
-- 이메일: `[연락처 입력 필요]`
+- 이메일: ricecookey.help@gmail.com
 - [개인정보처리방침](privacy.html)
