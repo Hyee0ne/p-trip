@@ -94,6 +94,7 @@ class _BaseScreenState extends ConsumerState<BaseScreen> {
               _searchHits(),
               const SizedBox(height: AppSpace.x3),
               _mapPicker(),
+              _pickedRow(),
               const SizedBox(height: AppSpace.x6),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: AppSpace.gutter),
@@ -275,28 +276,90 @@ class _BaseScreenState extends ConsumerState<BaseScreen> {
     showAppToast(context, S.baseToastExternal);
   }
 
-  /// 진짜 지도. 탭하면 그 자리가 거점이 된다 (SCREENS.md CO-06 4번).
+  /// 지도로 찍기 — **별도 화면으로 연다** (SCREENS.md CO-06 4번의 '지도에서 핀 찍기' 칩).
   ///
-  /// ⚠ 그전에는 그라데이션 상자에 핀 아이콘을 올린 **가짜 지도**였다.
-  ///   안내문이 "핀 하나만 찍으면"이라고 약속하는데 찍을 수가 없었다.
+  /// ⚠ 처음엔 이 자리에 작은 지도를 박았는데 **자리가 통째로 비어 나왔다.**
+  ///   카카오 지도는 네이티브 플랫폼 뷰라 스크롤 목록 안에서 합성되지 않는다.
+  ///   화면을 채우는 CO-07 방식으로 옮겼다 — 가짜 지도를 다시 그리지는 않는다.
   Widget _mapPicker() {
-    final fix = ref.watch(currentLocationProvider).value;
+    final picked = _pickedLat != null && _pickedLng != null;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
-      child: BasePinMap(
-        center: fix != null && fix.hasFix ? (fix.lat!, fix.lng!) : null,
-        picked: _pickedLat != null && _pickedLng != null ? (_pickedLat!, _pickedLng!) : null,
-        onPick: (lat, lng) {
-          setState(() {
-            _pickedLat = lat;
-            _pickedLng = lng;
-            // 지도에서 찍은 자리는 이름이 없다. 지어내지 않고 그렇게 적는다.
-            _pickedName = S.basePickedOnMap;
-          });
-          showAppToast(context, S.baseToastExternal);
-        },
+      child: SizedBox(
+        height: AppTouch.min,
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: AppColors.line2),
+            foregroundColor: AppColors.ink,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+            alignment: Alignment.centerLeft,
+          ),
+          onPressed: _openPicker,
+          icon: const Icon(Icons.map_outlined, size: 18, color: AppColors.violet),
+          label: Text(
+            picked ? S.basePinChange : S.basePinOnMap,
+            style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
+          ),
+        ),
       ),
     );
+  }
+
+  /// 지금 고른 자리. **정했다는 걸 눈으로 보여준다** — 지도에서 찍으면
+  /// 검색창에는 아무것도 안 남아서, 이게 없으면 정해졌는지 알 수가 없다.
+  Widget _pickedRow() {
+    final name = _pickedName;
+    if (name == null || _pickedLat == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.x3, AppSpace.gutter, 0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        decoration: BoxDecoration(
+          color: AppColors.tintViolet,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.place, size: 17, color: AppColors.violet),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.onTintViolet,
+                ),
+              ),
+            ),
+            // 좌표를 보여준다 — 지도에서 찍은 자리는 이름이 없으니 이게 유일한 확인이다.
+            Text(
+              '${_pickedLat!.toStringAsFixed(4)}, ${_pickedLng!.toStringAsFixed(4)}',
+              style: const TextStyle(fontSize: 11, color: Color(0xFF6B5292)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openPicker() async {
+    final fix = ref.read(currentLocationProvider).value;
+    final start = _pickedLat != null && _pickedLng != null
+        ? (_pickedLat!, _pickedLng!)
+        : (fix != null && fix.hasFix ? (fix.lat!, fix.lng!) : null);
+    final at = await BasePinPicker.open(context, center: start);
+    if (at == null || !mounted) return;
+    setState(() {
+      _pickedLat = at.$1;
+      _pickedLng = at.$2;
+      // 지도에서 찍은 자리는 이름이 없다. 지어내지 않고 그렇게 적는다.
+      _pickedName = S.basePickedOnMap;
+    });
+    showAppToast(context, S.baseToastExternal);
   }
 
   Widget _candidates() {
