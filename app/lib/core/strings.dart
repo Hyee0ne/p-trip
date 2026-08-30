@@ -94,6 +94,10 @@ class S {
   static const basePinOnMap = '지도에서 핀 찍기';
   static const baseCandidates = '종점 근처 참고 후보';
   static const baseCandidatesSub = '정보만 · 예약은 외부';
+
+  /// CO-02 배너 — 거점을 이미 정한 상태. 문구는 아래 baseSetSub(승인된 카피)를 쓴다.
+  static const baseChange = '바꾸기 ›';
+  static const basePick = '정하기 ›';
   static const baseWithout = '거점 없이 출발해도 레이더는 돌아가요.';
   static const baseCta = '이 위치를 오늘 밤 거점으로';
   static const baseNone = '오늘 밤 거점이 아직 없어요';
@@ -101,6 +105,8 @@ class S {
   static String baseSet(String name) => '오늘 밤 거점: $name';
   static const baseSetSub = '계획 끝. 이제 가는 길은 비워둬도 돼요';
   static const baseConfirmed = '확정됨';
+  static const baseMapUnavailable = '지도를 불러오지 못했어요 — 아래 후보로 정할 수 있어요';
+  static const basePickedOnMap = '지도에 찍은 위치';
   static const baseToastNoCoord = '이 후보는 위치를 몰라요. 다른 곳을 골라주세요.';
   static const baseToastExternal = '예약은 외부에서 — 여기선 위치만 받아요';
   static const baseToastPickFirst = '거점을 먼저 골라주세요';

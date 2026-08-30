@@ -117,6 +117,17 @@ class NightSky {
     return null;
   }
 
+  /// 거점 화면(CO-06)에 실을 한 줄. **오늘 밤은 아직 오지 않았다** — 현재형으로 쓴다.
+  String? get tonightLine {
+    final e = eventTitle;
+    if (e != null && e.isNotEmpty) {
+      final verb = e.contains('유성우') ? '쏟아져요' : '있어요';
+      return '오늘 밤엔 $e${_subjectJosa(e)} $verb.';
+    }
+    if (moonless == true) return '오늘 밤은 달이 없어요.';
+    return null;
+  }
+
   /// 주격 조사. 받침이 있으면 '이', 없으면 '가'.
   /// ⚠ '이(가)'로 얼버무리지 않는다 — 앉아서 읽는 화면이라 문장이 문장다워야 한다.
   static String _subjectJosa(String word) {

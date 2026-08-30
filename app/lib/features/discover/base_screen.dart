@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/base_camp.dart';
 import '../../core/demo.dart';
+import '../../core/location.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/app_toast.dart';
@@ -12,6 +13,7 @@ import '../../core/widgets/cards.dart';
 import '../../core/widgets/spot_image.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/providers.dart';
+import 'base_pin_map.dart';
 import 'base_suggest_sheet.dart';
 
 /// CO-06 거점 설정 (SCREENS.md CO-06).
@@ -84,6 +86,7 @@ class _BaseScreenState extends ConsumerState<BaseScreen> {
               ),
               const SizedBox(height: AppSpace.x3),
               _candidates(),
+              _tonightSky(),
               const SizedBox(height: AppSpace.x4),
               const Center(
                 child: Text(S.baseWithout, style: TextStyle(fontSize: 12.5, color: AppColors.ink3)),
@@ -128,45 +131,26 @@ class _BaseScreenState extends ConsumerState<BaseScreen> {
 
   /// ⚠ 여기가 지도를 쓰는 **유일한 화면**이다 — 위치를 직접 골라야 하기 때문.
   /// M0.5 스파이크로 kakao_map_plugin이 검증되면 이 자리를 실제 지도로 교체한다.
+  /// 진짜 지도. 탭하면 그 자리가 거점이 된다 (SCREENS.md CO-06 4번).
+  ///
+  /// ⚠ 그전에는 그라데이션 상자에 핀 아이콘을 올린 **가짜 지도**였다.
+  ///   안내문이 "핀 하나만 찍으면"이라고 약속하는데 찍을 수가 없었다.
   Widget _mapPicker() {
+    final fix = ref.watch(currentLocationProvider).value;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
-      child: Stack(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.hero),
-            child: Container(
-              height: 180,
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFFE8F1EE), Color(0xFFDCEAEC), Color(0xFFCFE3E9)],
-                ),
-              ),
-            ),
-          ),
-          const Positioned.fill(
-            child: Center(child: Icon(Icons.place, size: 40, color: AppColors.violet)),
-          ),
-          Positioned(
-            left: 12,
-            bottom: 12,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-              decoration: BoxDecoration(
-                color: const Color(0xF0FFFFFF),
-                borderRadius: BorderRadius.circular(AppRadius.chip),
-                boxShadow: AppShadow.card,
-              ),
-              child: const Text(
-                S.basePinOnMap,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-        ],
+      child: BasePinMap(
+        center: fix != null && fix.hasFix ? (fix.lat!, fix.lng!) : null,
+        picked: _pickedLat != null && _pickedLng != null ? (_pickedLat!, _pickedLng!) : null,
+        onPick: (lat, lng) {
+          setState(() {
+            _pickedLat = lat;
+            _pickedLng = lng;
+            // 지도에서 찍은 자리는 이름이 없다. 지어내지 않고 그렇게 적는다.
+            _pickedName = S.basePickedOnMap;
+          });
+          showAppToast(context, S.baseToastExternal);
+        },
       ),
     );
   }
@@ -200,6 +184,36 @@ class _BaseScreenState extends ConsumerState<BaseScreen> {
       _pickedLng = spot.lng;
     });
     showAppToast(context, S.baseToastExternal);
+  }
+
+  /// 오늘 밤 하늘 (SCREENS.md CO-06 8번, TECH_SPEC §3.8).
+  ///
+  /// ⚠ **핀을 찍은 뒤에만.** 어디서 잘지 정해지지 않았는데 그날 밤 이야기를 할 수 없다.
+  /// ⚠ SCREENS 예시는 "달이 01:20에 집니다"인데 **그 값을 낼 수 없다** —
+  ///   데이터의 moonset은 그날 아침에 진 달이라 짝이 맞지 않는다 (20260829190000 참고).
+  ///   낼 수 있는 사실만 말한다. 없으면 줄을 그리지 않는다.
+  Widget _tonightSky() {
+    final lat = _pickedLat;
+    final lng = _pickedLng;
+    if (lat == null || lng == null) return const SizedBox.shrink();
+    final sky = ref.watch(nightSkyProvider((lat: lat, lng: lng, date: DateTime.now()))).value;
+    final line = sky?.tonightLine;
+    if (line == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.x5, AppSpace.gutter, 0),
+      child: Row(
+        children: [
+          const Icon(Icons.nightlight_outlined, size: 15, color: AppColors.ink3),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              line,
+              style: const TextStyle(fontSize: 13.5, height: 1.6, color: AppColors.ink2),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _cta() {

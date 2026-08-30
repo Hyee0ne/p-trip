@@ -64,7 +64,7 @@ class _Body extends ConsumerWidget {
             const SizedBox(height: AppSpace.x4),
             _stats(),
             const SizedBox(height: AppSpace.x3),
-            _baseBanner(context),
+            _baseBanner(context, ref),
             const SizedBox(height: AppSpace.x6),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
@@ -161,8 +161,10 @@ class _Body extends ConsumerWidget {
     );
   }
 
-  Widget _baseBanner(BuildContext context) {
-    // TODO(M2): 거점 설정 상태를 글로벌 상태로 읽어 '설정됨' 배너로 전환
+  /// 거점 배너. **정했으면 정했다고 보여준다** (SCREENS.md CO-06 인터랙션).
+  /// ⚠ 그전엔 상태를 안 읽어서, 거점을 정하고 돌아와도 계속 '정해주세요'로 보였다.
+  Widget _baseBanner(BuildContext context, WidgetRef ref) {
+    final base = ref.watch(baseCampProvider);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
       child: GestureDetector(
@@ -182,26 +184,32 @@ class _Body extends ConsumerWidget {
             children: [
               const Icon(Icons.cabin_outlined, size: 20, color: AppColors.violet),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      S.baseNone,
-                      style: TextStyle(
+                      // 승인된 카피를 쓴다 — 이름만 덩그러니 두지 않는다.
+                      base == null ? S.baseNone : S.baseSet(base.name),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w700,
                         color: AppColors.onTintViolet,
                       ),
                     ),
-                    SizedBox(height: 2),
-                    Text(S.baseNoneSub, style: TextStyle(fontSize: 11.5, color: Color(0xFF6B5292))),
+                    const SizedBox(height: 2),
+                    Text(
+                      base == null ? S.baseNoneSub : S.baseSetSub,
+                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF6B5292)),
+                    ),
                   ],
                 ),
               ),
-              const Text(
-                '정하기 ›',
-                style: TextStyle(
+              Text(
+                base == null ? S.basePick : S.baseChange,
+                style: const TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
                   color: AppColors.violet,
