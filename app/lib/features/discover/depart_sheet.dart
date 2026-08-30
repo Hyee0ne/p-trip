@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/geo.dart';
 import '../../core/journey.dart';
 import '../../core/location.dart';
 import '../../core/strings.dart';
@@ -9,6 +10,7 @@ import '../../core/theme.dart';
 import '../../core/widgets/route_badge.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/providers.dart';
+import '../handoff/handoff_sheet.dart';
 
 /// CO-08 길 떠나기 — 노선 탭 직후.
 ///
@@ -37,6 +39,9 @@ class DepartSheet extends ConsumerStatefulWidget {
   @override
   ConsumerState<DepartSheet> createState() => _DepartSheetState();
 }
+
+/// 이보다 가까우면 이미 국도 위다 — 안내할 게 없다.
+const _entryThresholdKm = 0.3;
 
 class _DepartSheetState extends ConsumerState<DepartSheet> {
   bool _busy = false;
@@ -92,6 +97,22 @@ class _DepartSheetState extends ConsumerState<DepartSheet> {
             path: path,
           ),
         );
+
+    // ⚠ **국도까지는 데려다줘야 한다.** 집에서 출발하면 국도 위에 있지도 않다.
+    //   목적지는 **그 국도의 진입점**이다 — 선형의 끝을 목적지로 잡으면
+    //   카카오내비가 최단 경로로 안내해서 **고속도로로 빠진다.** 국도를 타려고 켠 내비가
+    //   국도를 벗어나게 만드는 셈이다. 짧게 끊어야 그 일이 안 생긴다.
+    final entry = path.first;
+    final toEntryKm = roughKm(fix.lat!, fix.lng!, entry.lat, entry.lng);
+    if (toEntryKm > _entryThresholdKm) {
+      await HandoffSheet.show(
+        context,
+        mode: HandoffMode.depart,
+        destination: HandoffPlace(S.routeNumber(widget.route.id), entry.lat, entry.lng),
+      );
+      if (!mounted) return;
+    }
+    // 이미 국도 위면 안내할 게 없다. 바로 달린다.
     context.go('/radar');
   }
 
