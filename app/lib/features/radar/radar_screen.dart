@@ -52,10 +52,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
   final _shown = <String>{};
 
   /// 직전에 내보낸 유형. 같은 유형을 연속으로 내보내지 않는다 (§3.1 6번).
-  SpotType? _lastType;
 
   /// 카드를 내보낸 주행 시각(분). 30분당 2회 상한을 재는 데 쓴다.
-  final _shownAtMin = <double>[];
 
   /// 오늘 이 자리의 해·달. 일몰 가중치가 쓴다.
   TodaySky? _sky;
@@ -77,8 +75,11 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
 
   /// 카드를 띄우는 구간 — 진출로까지 3~7분 (TECH_SPEC §3.1 5번).
   /// 너무 이르면 잊어버리고, 너무 늦으면 상의할 시간이 없다.
-  static const _minAhead = 3.0;
-  static const _maxAhead = 7.0;
+  /// 발견을 내보내는 **반경(km)**. 진행 방향으로 이 안에 들어오면 알린다.
+  ///
+  /// ⚠ 2026-08-30: '3~7분 앞'에서 바꿨다. 시간 기준은 속도를 타서, 막히면 코앞만 뜨고
+  ///   뻥 뚫리면 한참 먼 게 떴다. 거리 기준이라야 "여기서 N km 안"이 말이 된다.
+  static const _aheadKm = 5.0;
 
   @override
   void initState() {
@@ -201,7 +202,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     if (!Env.autoCard) return;
     // 레이더를 먼저 보여준 뒤 발견이 다가온다. 바로 덮으면 레이더를 못 본다 (SCREENS DR-01).
     if (drive.elapsedSec < 4) return;
-    if (!_cooldownOk(drive)) return;
 
     Discovery? best;
     var bestScore = 0.0;
@@ -209,10 +209,11 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     for (final raw in queue) {
       final f = raw.spot.exitFrac;
       if (f == null || _shown.contains(raw.spot.id)) continue;
-      final min = drive.minutesTo(f);
-      if (min < _minAhead || min > _maxAhead) continue;
-      // 같은 유형을 연속으로 내보내지 않는다 (§3.1 6번). 밥집 다음에 또 밥집은 지겹다.
-      if (raw.spot.type == _lastType) continue;
+      final km = drive.kmTo(f);
+      // 이미 지났거나(−1) 반경 밖이면 넘어간다. 반경 안이면 **전부** 내보낸다.
+      // ⚠ '같은 유형 연속 금지'는 폐기했다 (2026-08-30). 빈도 제한이 없어진 마당에
+      //   유형으로 거르면 남은 게 전부 같은 유형일 때 아무것도 안 나가고 굶는다.
+      if (km < 0 || km > _aheadKm) continue;
       // ⚠ **여기서 일몰을 덧입힌다** (core/sunset.dart). 저장소는 하늘을 모른다.
       //   이걸 빼면 실데이터에서 Timeliness.sunset이 한 번도 안 붙어
       //   DR-02 일몰 카드도, DR-06 일몰 알림도 영영 안 나온다.
@@ -226,8 +227,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     if (best == null) return;
 
     _shown.add(best.spot.id);
-    _lastType = best.spot.type;
-    _shownAtMin.add(_driveMinutes(drive));
 
     // DR-06 — 앱이 뒤에 있으면 카드 대신 **음성 + 알림**으로 나간다 (2026-08-29 결정).
     // ⚠ 시의성 없는 스팟은 ProximityAlerts가 알아서 거른다. 꺼둔 앱이 말을 걸 이유는 '오늘만' 뿐이다.
@@ -256,17 +255,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
       setState(() => _cardVisible = true);
       _announce(best!);
     });
-  }
-
-  /// 주행 시간(분). 배속을 곱해 **실제 달린 시간**으로 환산한다 —
-  /// 쿨다운은 시연 배속이 아니라 여정을 기준으로 걸려야 한다.
-  double _driveMinutes(DriveState drive) => drive.elapsedSec * Env.driveScale / 60;
-
-  /// 30분당 최대 2회 (§3.1 6번). 재촉하지 않는 게 이 앱의 태도다.
-  bool _cooldownOk(DriveState drive) {
-    final now = _driveMinutes(drive);
-    _shownAtMin.removeWhere((t) => now - t > 30);
-    return _shownAtMin.length < 2;
   }
 
   /// 타이밍 가중치 (§3.1 4번). 점수를 **화면에 내보내지 않는다** — 순서를 정하는 데만 쓴다.

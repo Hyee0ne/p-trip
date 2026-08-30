@@ -55,12 +55,15 @@ class DriveState {
 
   bool get hasFix => lat != null && lng != null;
 
-  /// 지금 속도로 [exitFrac] 지점까지 남은 시간(분).
-  /// ⚠ **도착 시각으로 환산하지 않는다.** 카드를 언제 띄울지 정하는 데만 쓴다 (§3.1).
-  double minutesTo(double exitFrac) {
+  /// [exitFrac] 지점까지 **앞으로 남은 거리(km)**. 이미 지났으면 −1.
+  ///
+  /// ⚠ 카드를 언제 띄울지 정하는 데만 쓴다. **도착 시각으로 환산하지 않는다** (원칙 1).
+  /// ⚠ 2026-08-30: 노출 기준을 '남은 시간(분)'에서 **거리**로 바꿨다.
+  ///   시간 기준은 속도에 따라 창이 늘었다 줄었다 해서, 같은 길을 달려도
+  ///   막히면 코앞의 것만 뜨고 뻥 뚫리면 한참 먼 것이 떴다.
+  double kmTo(double exitFrac) {
     final aheadKm = (exitFrac - frac) * courseKm;
-    if (aheadKm <= 0) return -1;
-    return aheadKm / math.max(speedKmh, 20) * 60;
+    return aheadKm <= 0 ? -1 : aheadKm;
   }
 
   DriveState copyWith({

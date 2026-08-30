@@ -47,16 +47,31 @@ class Voice {
     }
   }
 
-  Future<void> speak(String text) async {
+  /// 낭독 순서. **앞의 말을 끊지 않고 줄을 세운다.**
+  ///
+  /// ⚠ 전에는 speak마다 `stop()`을 불러 앞 문장을 잘랐다. 발견을 하나씩 띄우던 시절엔
+  ///   문제가 없었는데, 반경 안의 것을 **전부** 알리게 되면서(2026-08-30) 여러 건이
+  ///   연달아 들어온다 — 끊으면 마지막 한 조각만 들리고 나머지는 사라진다.
+  Future<void> _queue = Future<void>.value();
+
+  Future<void> speak(String text) {
+    if (text.trim().isEmpty) return _queue;
+    final next = _queue.then((_) => _speakOne(text));
+    // 한 건이 실패해도 줄이 끊기지 않게 한다.
+    _queue = next.catchError((_) {});
+    return _queue;
+  }
+
+  Future<void> _speakOne(String text) async {
     final t = await _engine();
-    if (t == null || text.trim().isEmpty) return;
+    if (t == null) return;
     try {
-      await t.stop();
       // ⚠ **매번 세션을 켠다.** flutter_tts는 카테고리만 잡고 `setActive`를 안 부른다 —
       //   시뮬레이터는 그래도 소리가 나지만 **실기기는 조용하다.** 여기가 그 차이였다.
       //   낭독이 끝나면 플러그인이 알아서 notifyOthersOnDeactivation으로 내린다
       //   (autoStopSharedSession 기본 true) — 그래서 내비 볼륨이 도로 올라온다.
       await t.setSharedInstance(true);
+      // awaitSpeakCompletion(true) 라서 여기서 **끝날 때까지 기다린다** — 그게 줄의 근거다.
       await t.speak(text);
     } catch (e) {
       // 낭독 실패가 화면을 막지 않는다.
@@ -64,7 +79,9 @@ class Voice {
     }
   }
 
+  /// 지금 말하는 것을 멈추고 **줄도 비운다** (여행을 끝냈을 때 등).
   Future<void> stop() async {
+    _queue = Future<void>.value();
     try {
       await _tts?.stop();
     } catch (_) {
