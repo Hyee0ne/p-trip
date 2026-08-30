@@ -54,6 +54,11 @@ class S {
   // ── CO-07 국도 선택 ──
   static const routesTitle = '국도 51선';
   static const routesSub = '남북 27 · 동서 24';
+
+  /// 노선 한 줄 (CO-01 재설계). ⚠ 절대량 인기를 말하지 않는다 (원칙 3).
+  static String routeNoteMarket(int n) => n == 1 ? '오늘 이 길에 장이 서요' : '오늘 이 길에 장이 $n곳 서요';
+  static const routeNoteRising = '요즘 이 길로 더 도네요';
+
   static const routeUndrivable = '통일을 기다리는 길';
   static const routeNoCourse = '이 길의 코스를 준비하고 있어요';
 

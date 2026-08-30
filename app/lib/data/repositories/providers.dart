@@ -94,6 +94,11 @@ final baseCandidatesProvider = FutureProvider<List<Spot>>((ref) async {
 });
 
 /// 오늘 이 자리의 해·달. 격자 단위라 0.1도마다 한 번만 부른다.
+/// 노선에 붙는 한 줄. 홈이 이걸로 '떠날 이유'를 길 위에 얹는다 (CO-01 재설계).
+final routeNotesProvider = FutureProvider<Map<int, RouteNote>>(
+  (ref) => ref.watch(discoverRepositoryProvider).routeNotes(),
+);
+
 /// 그날 밤 하늘 (MY-02 §3). 여행기 하나당 한 번만 묻는다.
 final nightSkyProvider =
     FutureProvider.family<NightSky?, ({double lat, double lng, DateTime date})>(

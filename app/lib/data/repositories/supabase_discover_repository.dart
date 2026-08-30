@@ -195,6 +195,18 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
   }
 
   @override
+  Future<Map<int, RouteNote>> routeNotes() async {
+    final rows = await _db.rpc('route_notes') as List<dynamic>;
+    return {
+      for (final r in rows.cast<Map<String, dynamic>>())
+        (r['route_id'] as num).toInt(): RouteNote(
+          r['kind'] == 'market_today' ? RouteNoteKind.marketToday : RouteNoteKind.rising,
+          (r['spots'] as num?)?.toInt() ?? 0,
+        ),
+    };
+  }
+
+  @override
   Future<List<PlaceHit>> searchPlaces(String query, {double? lat, double? lng}) async {
     if (query.trim().isEmpty) return const [];
     try {

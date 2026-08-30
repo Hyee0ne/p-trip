@@ -39,6 +39,9 @@ abstract interface class DiscoverRepository {
   /// 오늘 이 자리의 해·달. 일몰 타이밍 가중치(§3.1)와 별 보기 좋은 밤(§3.8)이 쓴다.
   Future<TodaySky?> todaySky({required double lat, required double lng});
 
+  /// 노선별 한 줄의 근거. 근거 없는 노선은 아예 안 담긴다 (CO-01 재설계).
+  Future<Map<int, RouteNote>> routeNotes();
+
   /// 거점으로 삼을 장소 검색 (CO-06). 위치를 주면 가까운 순으로 정렬만 한다 —
   /// **범위를 막지 않는다.** "어디서 예약했든 상관없어요"가 이 화면의 안내문이다.
   Future<List<PlaceHit>> searchPlaces(String query, {double? lat, double? lng});

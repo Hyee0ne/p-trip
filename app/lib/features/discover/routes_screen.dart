@@ -569,7 +569,15 @@ class _RouteRow extends ConsumerWidget {
     final title = drivable
         ? (route.name.isEmpty ? '${route.id}번 국도' : route.name)
         : S.routeUndrivable;
-    final sub = distanceKm != null ? '${distanceKm!.round()}km' : route.fromTo;
+    // ⚠ 보조 줄의 우선순위: **오늘 장날 > 요즘 더 도는 길 > 거리/구간**.
+    //   큐레이션을 홈의 섹션으로 세우지 않고 길에 붙인다 (CO-01 재설계) —
+    //   목록이 아니라 길의 속성이라 무엇이 있는지는 안 밝힌다.
+    final note = ref.watch(routeNotesProvider).value?[route.id];
+    final sub = switch (note?.kind) {
+      RouteNoteKind.marketToday => S.routeNoteMarket(note!.spots),
+      RouteNoteKind.rising => S.routeNoteRising,
+      null => distanceKm != null ? '${distanceKm!.round()}km' : route.fromTo,
+    };
 
     return InkWell(
       onTap: drivable ? () => _openCourses(context, ref) : null,
@@ -603,7 +611,16 @@ class _RouteRow extends ConsumerWidget {
                       sub,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12.5, color: AppColors.ink2),
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        // 오늘만 있는 일은 눈에 띄어야 한다. 나머지는 조용히.
+                        fontWeight: note == null ? FontWeight.w400 : FontWeight.w600,
+                        color: switch (note?.kind) {
+                          RouteNoteKind.marketToday => AppColors.marketRed,
+                          RouteNoteKind.rising => AppColors.sun,
+                          null => AppColors.ink2,
+                        },
+                      ),
                     ),
                   ],
                 ],

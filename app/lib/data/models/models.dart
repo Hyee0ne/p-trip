@@ -206,6 +206,22 @@ class NearbyResult {
 }
 
 /// 현 위치에서 탈 수 있는 노선 하나.
+/// 노선에 붙는 한 줄의 근거 (CO-01 재설계).
+///
+/// ⚠ **절대량 인기가 아니다** (원칙 3). 오늘 장이 서거나, 요즘 사람들이 더 도는 곳이
+///   그 길에 있다는 사실뿐이다. 근거가 없는 노선에는 아예 줄이 없다.
+enum RouteNoteKind { marketToday, rising }
+
+class RouteNote {
+  const RouteNote(this.kind, this.spots);
+
+  final RouteNoteKind kind;
+
+  /// 그 근거에 해당하는 스팟 수. **개수는 안심의 근거지 계획표가 아니다** —
+  /// 목록은 보여주지 않는다.
+  final int spots;
+}
+
 class NearbyRoute {
   const NearbyRoute(this.route, {this.distanceKm});
 
