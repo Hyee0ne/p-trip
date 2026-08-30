@@ -39,6 +39,10 @@ abstract interface class DiscoverRepository {
   /// 오늘 이 자리의 해·달. 일몰 타이밍 가중치(§3.1)와 별 보기 좋은 밤(§3.8)이 쓴다.
   Future<TodaySky?> todaySky({required double lat, required double lng});
 
+  /// 거점으로 삼을 장소 검색 (CO-06). 위치를 주면 가까운 순으로 정렬만 한다 —
+  /// **범위를 막지 않는다.** "어디서 예약했든 상관없어요"가 이 화면의 안내문이다.
+  Future<List<PlaceHit>> searchPlaces(String query, {double? lat, double? lng});
+
   /// 고속도로 ↔ 국도 소요시간 비교 (TECH_SPEC §3.7). **거점 확정 직후 1회.**
   /// ⚠ 길찾기 키는 Edge Function 뒤에 있다. 앱은 분 두 개만 받는다.
   /// ⚠ 비교가 성립하지 않으면(키 없음·경로 없음·국도가 더 빠름) null — 모달을 안 띄운다.

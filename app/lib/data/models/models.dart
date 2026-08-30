@@ -79,6 +79,28 @@ class RouteLine {
 ///   "은하수가 보였다"는 구름을 모르니 말할 수 없다.
 /// ⚠ 달이 **떠 있던** 밤은 문장을 만들지 않는다 — 데이터의 moonset은 그날 아침에 진
 ///   달이라 '몇 시에 졌다'를 쓸 수가 없다. 틀린 문장보다 없는 줄이 낫다.
+/// 장소검색 결과 한 건 (CO-06 거점 검색).
+///
+/// ⚠ **이름·주소·좌표만** 담는다. 거점은 '위치 좌표 입력값'일 뿐이라(원칙 4)
+///   전화번호·카테고리·예약 링크를 들고 오지 않는다 — 있으면 쓰고 싶어진다.
+class PlaceHit {
+  const PlaceHit({
+    required this.name,
+    required this.addr,
+    required this.lat,
+    required this.lng,
+    this.distanceM,
+  });
+
+  final String name;
+  final String addr;
+  final double lat;
+  final double lng;
+
+  /// 현재 위치에서의 거리(m). 위치를 몰랐으면 null — 0으로 채우지 않는다.
+  final int? distanceM;
+}
+
 /// 고속도로 ↔ 국도 소요시간 (TECH_SPEC §3.7). **비교 근거일 뿐 ETA가 아니다.**
 ///
 /// ⚠ 도착 시각으로 환산하지 않는다. Edge Function도 분 두 개만 돌려준다 —

@@ -1,9 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:p_trip/core/base_camp.dart';
 import 'package:p_trip/core/strings.dart';
-import 'package:p_trip/data/models/models.dart';
 
 /// CO-02 거점 배너가 쓰는 **상태와 문구의 계약**.
 ///

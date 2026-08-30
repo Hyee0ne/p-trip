@@ -195,6 +195,32 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
   }
 
   @override
+  Future<List<PlaceHit>> searchPlaces(String query, {double? lat, double? lng}) async {
+    if (query.trim().isEmpty) return const [];
+    try {
+      final res = await _db.functions.invoke(
+        'search_places',
+        body: {'query': query.trim(), 'lat': ?lat, 'lng': ?lng},
+      );
+      final d = res.data as Map<String, dynamic>?;
+      if (d == null || d['ok'] != true) return const [];
+      return [
+        for (final p in (d['places'] as List<dynamic>).cast<Map<String, dynamic>>())
+          PlaceHit(
+            name: p['name'] as String,
+            addr: (p['addr'] as String?) ?? '',
+            lat: (p['lat'] as num).toDouble(),
+            lng: (p['lng'] as num).toDouble(),
+            distanceM: (p['distanceM'] as num?)?.toInt(),
+          ),
+      ];
+    } catch (_) {
+      // 못 물어봤으면 결과가 없는 것이다. 화면은 '없음'을 보여준다.
+      return const [];
+    }
+  }
+
+  @override
   Future<RouteCompare?> compareRoutes({
     required double fromLat,
     required double fromLng,

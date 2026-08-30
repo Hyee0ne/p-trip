@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -36,6 +38,18 @@ class BaseScreen extends ConsumerStatefulWidget {
 
 class _BaseScreenState extends ConsumerState<BaseScreen> {
   String? _pickedName;
+
+  final _search = TextEditingController();
+  Timer? _debounce;
+  bool _searching = false;
+  List<PlaceHit> _hits = const [];
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _search.dispose();
+    super.dispose();
+  }
 
   /// ⚠ 좌표를 안 들고 있으면 거점을 정해도 내비가 엉뚱한 데로 간다.
   double? _pickedLat;
@@ -77,6 +91,7 @@ class _BaseScreenState extends ConsumerState<BaseScreen> {
               ),
               const SizedBox(height: AppSpace.x4),
               _searchField(),
+              _searchHits(),
               const SizedBox(height: AppSpace.x3),
               _mapPicker(),
               const SizedBox(height: AppSpace.x6),
@@ -99,8 +114,12 @@ class _BaseScreenState extends ConsumerState<BaseScreen> {
     );
   }
 
+  /// 진짜 검색창 (SCREENS.md CO-06 3번).
+  ///
+  /// ⚠ 그전엔 `Text` 위젯이었다. 탭해도 아무 일도 안 났다 —
+  ///   후보 목록에 없는 숙소를 잡은 사람은 거점을 정할 방법이 없었다.
+  /// ⚠ 키는 Edge Function 뒤에 있다. 앱은 이름·주소·좌표만 받는다.
   Widget _searchField() {
-    // TODO(M2): 카카오 장소검색 API 연결 (M0.5 키 발급 후)
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
       child: Container(
@@ -115,22 +134,147 @@ class _BaseScreenState extends ConsumerState<BaseScreen> {
           children: [
             const Icon(Icons.search, size: 16, color: AppColors.ink3),
             const SizedBox(width: 9),
-            Text(
-              _pickedName ?? S.baseSearchHint,
-              style: TextStyle(
-                fontSize: 14.5,
-                color: _pickedName == null ? AppColors.ink3 : AppColors.ink,
-                fontWeight: _pickedName == null ? FontWeight.w400 : FontWeight.w700,
+            Expanded(
+              child: TextField(
+                controller: _search,
+                textInputAction: TextInputAction.search,
+                onChanged: _onQuery,
+                onSubmitted: (q) => _runSearch(q),
+                style: const TextStyle(fontSize: 14.5, color: AppColors.ink),
+                decoration: const InputDecoration(
+                  isDense: true,
+                  border: InputBorder.none,
+                  hintText: S.baseSearchHint,
+                  hintStyle: TextStyle(fontSize: 14.5, color: AppColors.ink3),
+                ),
               ),
             ),
+            if (_searching)
+              const SizedBox(
+                width: 15,
+                height: 15,
+                child: CircularProgressIndicator(strokeWidth: 1.8),
+              )
+            else if (_search.text.isNotEmpty)
+              GestureDetector(
+                onTap: () {
+                  _search.clear();
+                  setState(() => _hits = const []);
+                },
+                child: const Icon(Icons.close, size: 16, color: AppColors.ink3),
+              ),
           ],
         ),
       ),
     );
   }
 
-  /// ⚠ 여기가 지도를 쓰는 **유일한 화면**이다 — 위치를 직접 골라야 하기 때문.
-  /// M0.5 스파이크로 kakao_map_plugin이 검증되면 이 자리를 실제 지도로 교체한다.
+  /// 타이핑이 멈춘 뒤에 한 번 부른다. 글자마다 부르면 할당량만 태운다.
+  void _onQuery(String q) {
+    _debounce?.cancel();
+    if (q.trim().isEmpty) {
+      setState(() => _hits = const []);
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 400), () => _runSearch(q));
+  }
+
+  Future<void> _runSearch(String q) async {
+    if (q.trim().isEmpty) return;
+    setState(() => _searching = true);
+    final fix = ref.read(currentLocationProvider).value;
+    final hits = await ref
+        .read(discoverRepositoryProvider)
+        .searchPlaces(q, lat: fix?.lat, lng: fix?.lng);
+    if (!mounted) return;
+    setState(() {
+      _hits = hits;
+      _searching = false;
+    });
+  }
+
+  /// 검색 결과. 없으면 자리를 만들지 않는다.
+  Widget _searchHits() {
+    if (_hits.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.x3, AppSpace.gutter, 0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: Border.all(color: AppColors.line2),
+        ),
+        child: Column(
+          children: [
+            for (var i = 0; i < _hits.length && i < 6; i++) ...[
+              if (i != 0) const Divider(height: 1, thickness: 1, color: AppColors.line),
+              InkWell(
+                onTap: () => _pickPlace(_hits[i]),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _hits[i].name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.ink,
+                              ),
+                            ),
+                            if (_hits[i].addr.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                _hits[i].addr,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 12, color: AppColors.ink3),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      // 거리는 알 때만. 모르면 자리를 비운다 — 0km라고 하지 않는다.
+                      if (_hits[i].distanceM != null) ...[
+                        const SizedBox(width: 10),
+                        Text(
+                          S.kmAway(_hits[i].distanceM! / 1000),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.ink2,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _pickPlace(PlaceHit p) {
+    setState(() {
+      _pickedName = p.name;
+      _pickedLat = p.lat;
+      _pickedLng = p.lng;
+      _hits = const [];
+    });
+    _search.text = p.name;
+    FocusScope.of(context).unfocus();
+    showAppToast(context, S.baseToastExternal);
+  }
+
   /// 진짜 지도. 탭하면 그 자리가 거점이 된다 (SCREENS.md CO-06 4번).
   ///
   /// ⚠ 그전에는 그라데이션 상자에 핀 아이콘을 올린 **가짜 지도**였다.

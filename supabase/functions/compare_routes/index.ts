@@ -38,7 +38,9 @@ async function ask(
 Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("method not allowed", { status: 405 });
 
-  const key = Deno.env.get("KAKAO_MOBILITY_REST_KEY");
+  // 카카오 REST API 키 하나로 로컬 검색과 길찾기를 다 쓴다.
+  // 예전 이름도 받아준다 — 시크릿을 갈기 전에 배포되면 조용히 죽는다.
+  const key = Deno.env.get("KAKAO_REST_API_KEY") ?? Deno.env.get("KAKAO_MOBILITY_REST_KEY");
   // 키가 없으면 **비교하지 않는다.** 화면은 근거가 없으면 모달을 띄우지 않는다.
   if (!key) return Response.json({ ok: false, reason: "no_key" }, { status: 200 });
 
