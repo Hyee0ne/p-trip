@@ -38,6 +38,8 @@ const _expandedFrom = 0.45;
 double get _initialExtent => Env.sheetExpanded ? _expanded : _collapsed;
 
 class _RoutesScreenState extends ConsumerState<RoutesScreen> {
+  bool _autoDeparted = false;
+
   final _sheet = DraggableScrollableController();
   _Axis _axis = _Axis.all;
   double _extent = _initialExtent;
@@ -93,6 +95,21 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
     ref.listen(nearbyRoutesProvider, (_, next) {
       final result = next.value;
       if (result != null) _autoExpandIfNothingNear(result);
+      // 시연 리허설·캡처용. 켜져 있을 때만 한 번 연다.
+      if (Env.departAt > 0 && !_autoDeparted && result != null) {
+        final r = result.routes.where((n) => n.route.id == Env.departAt).firstOrNull;
+        if (r != null) {
+          _autoDeparted = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            DepartSheet.show(
+              context,
+              r.route,
+              note: ref.read(routeNotesProvider).value?[r.route.id],
+            );
+          });
+        }
+      }
     });
 
     return Scaffold(

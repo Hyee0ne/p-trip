@@ -140,7 +140,10 @@ p-trip/
   `--dart-define=SHEET_AT=expanded` (CO-07 바텀시트를 펼친 채 시작),
   `--dart-define=FAKE_LOCATION=37.5245,129.1143` (위치 고정. 있으면 geolocator를 아예 안 부른다).
   `--dart-define=DRIVE_SCALE=10` (모의 주행 배속. 기본 20이면 데모 코스 65km가 약 3분),
-  `--dart-define=START_MODE=browse` (홈을 훑어보기로 시작).
+  `--dart-define=DEPART_AT=7` (그 노선의 「길 떠나기」 시트를 열고 시작).
+  ⚠ **zsh는 `$VAR`를 단어 분리하지 않는다.** `--dart-define`들을 변수에 모아
+    `$DEF`로 넘기면 통째로 한 인자가 되어 **일부만 먹는다** — 조용히 픽스처로 떨어진다.
+    `$(cat defs.txt)`처럼 명령 치환으로 넘길 것.
   시연 리허설에도 쓴다.
 - 시뮬레이터 위치는 `xcrun simctl location <sim> set 37.5245,129.1143`로 넣는다.
   권한 팝업은 `xcrun simctl privacy <sim> grant location com.ptrip.roadtrip2026`으로 미리 준다.

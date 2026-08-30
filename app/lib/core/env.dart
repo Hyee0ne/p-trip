@@ -44,6 +44,10 @@ class Env {
   /// 모의 주행 배속. `--dart-define=DRIVE_SCALE=10` (기본 20 = 1초에 20초 주행).
   /// 데모 코스 65km가 기본값으로 약 3분 걸린다. 리허설 속도를 여기서 맞춘다.
   /// ⚠ Dart에 `double.fromEnvironment`는 없다. int로 받아 변환한다.
+  /// 시작하자마자 그 노선의 「길 떠나기」 시트를 연다. `--dart-define=DEPART_AT=7`
+  /// 시연 리허설과 화면 캡처용 — START_AT·SHEET_AT과 같은 용도다.
+  static const departAt = int.fromEnvironment('DEPART_AT');
+
   /// **모의 주행을 쓸 수 있는 빌드인가.**
   ///
   /// ⚠ 출시 빌드에는 '가짜로 달리는 모드'가 있으면 안 된다 (2026-08-30 출시 전환).
