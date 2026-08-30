@@ -1,5 +1,5 @@
 /**
- * TourAPI 위치기반관광정보 → spots 적재.
+ * TourAPI 지역기반관광정보 → spots 적재. **전국.**
  *
  * 실측(2026-08-29)으로 확정된 것:
  *  - 엔드포인트는 **KorService2**
@@ -11,8 +11,26 @@
  * ⚠ exit_geom·exit_frac·detour_min은 노선 선형이 있어야 계산된다.
  *   없으면 null로 둔다 — 지어내지 않는다.
  *
+ * 전국 수집 (2026-08-30 출시 전환):
+ *  - 시도 17개를 순회한다. 시군구까지 내려가지 않아도 페이지 총량은 같다
+ *  - 회랑 판정은 **`near_routes` RPC**가 한다. 손으로 찍은 좌표선은 전국에 못 쓴다 —
+ *    이미 `routes.geom`에 51선 실제 선형이 있다
+ *  - 목록도 상세도 할당량이다. 목록은 `data/candidates.json`에 캐시하고,
+ *    상세는 이미 채운 건 건너뛴다 (둘 다 중단·재개를 전제로 짰다)
+ *
+ * ⚠ **개발계정으로는 못 끝낸다.** 전국이면 상세만 수만 콜이다 —
+ *   data.go.kr 운영계정이 있어야 한다 (ROADMAP M6).
+ * ⚠ 첫 실행에서 **'⚠ 0건 — 코드 확인'**이 뜨는 시도가 있으면 법정동 시도 코드가
+ *   바뀐 것이다. 조용히 넘어가면 그 지역이 통째로 빈다.
+ *
  * 실행: cd pipeline && npm run fetch:spots
+ *       REGIONS=51,47 npm run fetch:spots   # 시도를 좁혀서
+ *       RELIST=1 ...                        # 목록 캐시 무시하고 새로 받기
+ *       RESET=1 ...                         # 상세까지 전부 다시
  */
+
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { supabase } from './lib/supabase.js';
 
@@ -28,45 +46,46 @@ const COMMON = `MobileOS=ETC&MobileApp=PTrip&_type=json`;
  *   같은 동해시가 구 코드로는 48건, 법정동 코드로는 116건이다.
  *   위치기반(locationBasedList2)도 같은 이유로 묵호등대를 안 준다 — 그래서 안 쓴다.
  */
-const SIGUNGU = [
-  { name: '삼척시', regn: '51', signgu: '230' },
-  { name: '동해시', regn: '51', signgu: '170' },
-  { name: '강릉시', regn: '51', signgu: '150' },
+const REGIONS: { name: string; regn: string }[] = [
+  { name: '서울특별시', regn: '11' },
+  { name: '부산광역시', regn: '26' },
+  { name: '대구광역시', regn: '27' },
+  { name: '인천광역시', regn: '28' },
+  { name: '광주광역시', regn: '29' },
+  { name: '대전광역시', regn: '30' },
+  { name: '울산광역시', regn: '31' },
+  { name: '세종특별자치시', regn: '36' },
+  { name: '경기도', regn: '41' },
+  { name: '충청북도', regn: '43' },
+  { name: '충청남도', regn: '44' },
+  { name: '전라남도', regn: '46' },
+  { name: '경상북도', regn: '47' },
+  { name: '경상남도', regn: '48' },
+  { name: '제주특별자치도', regn: '50' },
+  { name: '강원특별자치도', regn: '51' },
+  { name: '전북특별자치도', regn: '52' },
 ];
 
 /**
- * 7번 국도 해안 구간의 대략 선형. 이 선에서 [CORRIDOR_KM] 안쪽만 담는다.
- * 강릉시는 내륙까지 넓어서 시군구 전체를 담으면 국도와 상관없는 스팟이 섞인다.
- * ⚠ 손으로 찍은 근사선이다. build-routes가 실제 선형을 넣으면 그걸로 바꾼다.
+ * 국도 회랑 반경(km). 이 안쪽 스팟만 상세를 받는다.
+ * ⚠ 상세는 **1건당 1콜**이다. 회랑 밖까지 받으면 할당량이 몇 배로 든다.
+ * ⚠ 판정은 `near_routes` RPC가 한다 — 손으로 찍은 좌표선을 전국에 쓸 수는 없다.
+ *   실제 `routes.geom` 51선을 쓴다.
  */
-const CORRIDOR = [
-  [129.1650, 37.4500], // 삼척
-  [129.1143, 37.5245], // 동해
-  [129.1150, 37.5520], // 묵호
-  [129.0530, 37.6060], // 망상
-  [129.0300, 37.6600], // 옥계
-  [129.0340, 37.6900], // 정동진
-  [128.8960, 37.7550], // 강릉
-];
 const CORRIDOR_KM = Number(process.env.CORRIDOR_KM ?? 10);
 
-/** 점과 선분 사이 거리(km). 위도 37도 부근이라 평면 근사로 충분하다. */
-function distToCorridorKm(lat: number, lng: number): number {
-  const KX = 88.0; // 경도 1도 ≈ 88km (위도 37도)
-  const KY = 111.0;
-  let best = Infinity;
-  for (let i = 0; i < CORRIDOR.length - 1; i++) {
-    const [x1, y1] = CORRIDOR[i];
-    const [x2, y2] = CORRIDOR[i + 1];
-    const ax = (lng - x1) * KX, ay = (lat - y1) * KY;
-    const bx = (x2 - x1) * KX, by = (y2 - y1) * KY;
-    const len2 = bx * bx + by * by;
-    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, (ax * bx + ay * by) / len2));
-    const dx = ax - bx * t, dy = ay - by * t;
-    best = Math.min(best, Math.hypot(dx, dy));
-  }
-  return best;
-}
+/** 좁혀 돌 때. `REGIONS=51,47 npm run fetch:spots` */
+const ONLY = (process.env.REGIONS ?? '')
+  .split(',')
+  .map((x) => x.trim())
+  .filter(Boolean);
+
+/**
+ * 목록 캐시. **목록 조회도 할당량이다** — 전국이면 수천 페이지라
+ * 다시 돌 때마다 새로 받으면 상세를 받을 몫이 남지 않는다.
+ * `RELIST=1`이면 무시하고 새로 받는다.
+ */
+const CACHE = join(import.meta.dirname, 'data', 'candidates.json');
 
 /** TourAPI contenttypeid → 우리 spot_type. 25(여행코스)는 우리 코스와 겹쳐서 버린다. */
 const TYPE_MAP: Record<string, string> = {
@@ -110,12 +129,12 @@ async function api(path: string, params: string, tries = 3): Promise<Item[]> {
 }
 
 /** 목록 — 시군구 전체. 페이지를 끝까지 넘긴다. */
-async function listSigungu(regn: string, signgu: string): Promise<Item[]> {
+async function listRegion(regn: string): Promise<Item[]> {
   const out: Item[] = [];
   for (let page = 1; page <= 40; page++) {
     const rows = await api(
       'areaBasedList2',
-      `lDongRegnCd=${regn}&lDongSignguCd=${signgu}&numOfRows=100&pageNo=${page}`,
+      `lDongRegnCd=${regn}&numOfRows=100&pageNo=${page}`,
     );
     out.push(...rows);
     if (rows.length < 100) break;
@@ -171,21 +190,55 @@ async function main() {
   if (!KEY) throw new Error('TOURAPI_KEY가 비어 있습니다. .env를 확인하세요.');
   const db = supabase();
 
-  // 1) 시군구별 전체 목록 → 국도 회랑 10km 안쪽만 남긴다.
+  // 1) 시도별 전체 목록 → 국도 회랑 안쪽만 남긴다.
+  //    ⚠ 목록도 상세도 할당량이다. 목록은 캐시하고, 회랑 판정으로 상세 대상을 줄인다.
+  const regions = ONLY.length ? REGIONS.filter((r) => ONLY.includes(r.regn)) : REGIONS;
   const seen = new Map<string, Item>();
-  for (const sg of SIGUNGU) {
-    const rows = await listSigungu(sg.regn, sg.signgu);
-    let kept = 0;
-    for (const r of rows) {
-      if (!r.contentid || seen.has(r.contentid)) continue;
-      const lat = Number(r.mapy), lng = Number(r.mapx);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-      if (distToCorridorKm(lat, lng) > CORRIDOR_KM) continue;
-      seen.set(r.contentid, r);
-      kept++;
+
+  const cached = !process.env.RELIST && existsSync(CACHE)
+    ? (JSON.parse(readFileSync(CACHE, 'utf-8')) as Record<string, Item>)
+    : null;
+
+  if (cached) {
+    for (const [id, it] of Object.entries(cached)) seen.set(id, it);
+    console.log(`  목록 캐시 ${seen.size}건 (다시 받으려면 RELIST=1)`);
+  } else {
+    const candidates: Item[] = [];
+    for (const rg of regions) {
+      const rows = await listRegion(rg.regn);
+      let ok = 0;
+      for (const r of rows) {
+        if (!r.contentid || candidates.some((c) => c.contentid === r.contentid)) continue;
+        const lat = Number(r.mapy);
+        const lng = Number(r.mapx);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+        candidates.push(r);
+        ok++;
+      }
+      // ⚠ 0건이면 시도 코드가 틀린 것이다. 조용히 넘어가면 그 지역이 통째로 빈다.
+      console.log(`  ${rg.name}(${rg.regn}): ${rows.length}건${ok === 0 ? '  ⚠ 0건 — 코드 확인' : ''}`);
     }
-    console.log(`  ${sg.name}: ${rows.length}건 → 회랑 ${CORRIDOR_KM}km 안 ${kept}건`);
+
+    // 회랑 판정은 실제 노선 선형으로 한다 (near_routes RPC).
+    // 한 번에 다 던지면 요청이 너무 커서 나눠 보낸다.
+    console.log(`\n  후보 ${candidates.length}건 → 국도 ${CORRIDOR_KM}km 회랑 판정…`);
+    const CHUNK = 500;
+    for (let i = 0; i < candidates.length; i += CHUNK) {
+      const slice = candidates.slice(i, i + CHUNK);
+      const { data, error } = await db.rpc('near_routes', {
+        p_points: slice.map((r) => [Number(r.mapy), Number(r.mapx)]),
+        p_max_km: CORRIDOR_KM,
+      });
+      if (error) throw new Error(`회랑 판정 실패: ${error.message}`);
+      for (const row of (data ?? []) as { idx: number }[]) {
+        const r = slice[row.idx];
+        if (r?.contentid) seen.set(r.contentid, r);
+      }
+    }
+    writeFileSync(CACHE, JSON.stringify(Object.fromEntries(seen), null, 0), 'utf-8');
+    console.log(`  회랑 안 ${seen.size}건 (목록 캐시에 남겼다)`);
   }
+
   console.log(`\n합계 ${seen.size}건. 상세를 채웁니다…`);
 
   // 2) 상세를 채우고 점수를 매긴다.
