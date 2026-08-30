@@ -97,18 +97,9 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        backgroundColor: AppColors.bg,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-          onPressed: () => context.pop(),
-        ),
-        // ⚠ 제목을 두지 않는다. 시트 헤더가 지금 보고 있는 걸 이미 말하고 있고
-        //    ('여기서 탈 수 있는 길' / '국도 51선'), 겹쳐 쓰면 같은 말이 두 번 나온다.
-        titleSpacing: 0,
-      ),
+      // ⚠ **이 화면이 홈이다** (2026-08-30 재설계). 뒤로 갈 데가 없으니 상단바도 없다.
+      //   제목도 두지 않는다 — 시트 헤더가 지금 보는 걸 이미 말하고 있고
+      //   ('여기서 탈 수 있는 길' / '국도 51선'), 겹쳐 쓰면 같은 말이 두 번 나온다.
       body: LayoutBuilder(
         builder: (context, box) {
           // ⚠ 지도에 넘길 건 **선형이 실린 근처 노선**이다.
@@ -123,6 +114,21 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
                   fix: fixAsync.value,
                   routes: onMap,
                   bottomInset: _extent * box.maxHeight,
+                ),
+              ),
+              // 검색은 지도 위에 뜬다. 시트 안에 넣으면 끌어올려야 보인다.
+              Positioned(
+                left: AppSpace.gutter,
+                right: AppSpace.gutter,
+                top: MediaQuery.viewPaddingOf(context).top + AppSpace.x2,
+                child: const Row(
+                  children: [
+                    // ⚠ 홈에 상단바가 없어지면서 앱 이름이 갈 데가 없어졌다.
+                    //   첫 화면에 정체성이 없으면 어색해서 검색창 옆에 뱃지로 둔다.
+                    _LogoBadge(),
+                    SizedBox(width: AppSpace.x2),
+                    Expanded(child: _MapSearchBar()),
+                  ],
                 ),
               ),
               NotificationListener<DraggableScrollableNotification>(
@@ -228,6 +234,63 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
         child: SizedBox(height: AppSpace.x8 + MediaQuery.viewPaddingOf(context).bottom),
       ),
     ];
+  }
+}
+
+/// 앱 이름 자리. 상단바가 없는 홈이라 여기가 유일한 정체성이다.
+class _LogoBadge extends StatelessWidget {
+  const _LogoBadge();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 48,
+    padding: const EdgeInsets.symmetric(horizontal: 14),
+    alignment: Alignment.center,
+    decoration: BoxDecoration(
+      color: AppColors.routeBlue,
+      borderRadius: BorderRadius.circular(14),
+      boxShadow: AppShadow.card,
+    ),
+    child: const Text(
+      S.appName,
+      style: TextStyle(
+        fontSize: 13.5,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.3,
+        color: Colors.white,
+      ),
+    ),
+  );
+}
+
+/// 지도 위 검색창 (홈 재설계). 누르면 §SR 검색 화면이 위로 덮는다.
+///
+/// ⚠ 여기서 직접 검색하지 않는다 — 입력·결과·필터는 SR의 몫이고,
+///   이건 그 문으로 들어가는 손잡이다. 문을 두 개 만들지 않는다.
+class _MapSearchBar extends StatelessWidget {
+  const _MapSearchBar();
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.push('/search'),
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 15),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: AppShadow.card,
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.search, size: 18, color: AppColors.ink3),
+            SizedBox(width: 10),
+            Text(S.searchHint, style: TextStyle(fontSize: 14.5, color: AppColors.ink3)),
+          ],
+        ),
+      ),
+    );
   }
 }
 

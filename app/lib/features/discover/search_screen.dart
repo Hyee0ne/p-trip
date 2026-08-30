@@ -271,7 +271,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             SectionLabel('${spots.length}곳'),
             const SizedBox(height: AppSpace.x2),
             for (var i = 0; i < spots.length; i++) ...[
-              SpotListRow(spot: spots[i], onTap: () => context.push('/spot/${spots[i].id}')),
+              SpotListRow(spot: spots[i], onTap: () => context.push('/search/spot/${spots[i].id}')),
               if (i != spots.length - 1)
                 const Divider(height: 1, thickness: 1, color: AppColors.line),
             ],

@@ -6,14 +6,10 @@ import '../../core/base_camp.dart';
 import '../../core/journey.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
-import '../../core/view_mode.dart';
 import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/cards.dart';
-import '../../core/widgets/chips.dart';
 import '../../core/widgets/route_badge.dart';
 import '../../core/widgets/route_preview.dart';
-import '../../core/widgets/spot_image.dart';
-import '../../core/widgets/view_toggle.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/providers.dart';
 import '../handoff/handoff_sheet.dart';
@@ -47,7 +43,6 @@ class _Body extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final mode = ref.watch(viewModeProvider);
     final spotsAsync = ref.watch(courseSpotsProvider(course.id));
 
     return Stack(
@@ -74,7 +69,9 @@ class _Body extends ConsumerWidget {
             spotsAsync.maybeWhen(
               orElse: () => const SizedBox(height: 120),
               data: (spots) =>
-                  mode == ViewMode.oneByOne ? _carousel(context, spots) : _list(context, spots),
+                  // 뷰 토글이 없어졌다 (2026-08-30). 코스는 '짜여진 것'을 보는 화면이라
+                  // 목록 하나면 된다 — 캐러셀은 같은 걸 느리게 보여줄 뿐이었다.
+                  _list(context, spots),
             ),
           ],
         ),
@@ -106,7 +103,6 @@ class _Body extends ConsumerWidget {
               ),
             ),
           ),
-          const ViewToggle(),
         ],
       ),
     );
@@ -223,24 +219,6 @@ class _Body extends ConsumerWidget {
   }
 
   /// 「한 곳씩」 — 발견을 가로 캐러셀 전면 카드로.
-  Widget _carousel(BuildContext context, List<Spot> spots) {
-    return SizedBox(
-      height: 244,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
-        itemCount: spots.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 13),
-        itemBuilder: (_, i) => SizedBox(
-          width: 200,
-          child: GestureDetector(
-            onTap: () => context.push('/spot/${spots[i].id}'),
-            child: _MiniFullBleed(spot: spots[i]),
-          ),
-        ),
-      ),
-    );
-  }
 
   /// 「훑어보기」 — 리스트 행으로 한 화면에 모두.
   Widget _list(BuildContext context, List<Spot> spots) {
@@ -363,62 +341,4 @@ class _VDivider extends StatelessWidget {
   const _VDivider();
   @override
   Widget build(BuildContext context) => Container(width: 1, height: 34, color: AppColors.line);
-}
-
-class _MiniFullBleed extends StatelessWidget {
-  const _MiniFullBleed({required this.spot});
-  final Spot spot;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          SpotImage(type: spot.type, spotId: spot.id, imageUrl: spot.imageUrl, radius: 18),
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [Color(0xA8140E08), Color(0x00140E08)],
-                stops: [0, 0.5],
-              ),
-            ),
-          ),
-          Positioned(
-            left: 14,
-            right: 14,
-            bottom: 14,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (spot.timeliness != Timeliness.none)
-                  TimelinessChip(spot.timeliness, compact: true),
-                const SizedBox(height: 8),
-                Text(
-                  spot.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '국도에서 ${spot.detourMin}분',
-                  style: const TextStyle(fontSize: 11.5, color: Color(0xE0FFFFFF)),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

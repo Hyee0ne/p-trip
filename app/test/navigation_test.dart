@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:p_trip/core/strings.dart';
+import 'package:p_trip/core/widgets/cards.dart';
 import 'package:p_trip/main.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// 발견 탭 화면 간 이동이 실제로 되는지 — 라우트 선언만으로는 안 잡히는 것.
 void main() {
@@ -14,6 +16,10 @@ void main() {
       await tester.pump(const Duration(milliseconds: 60));
     }
   }
+
+  // ⚠ 저장소가 파일 내내 공유된다. 최근 검색·찜이 앞 테스트에서 넘어오면
+  //   뒤 테스트가 이유 없이 흔들린다.
+  setUp(() => SharedPreferences.setMockInitialValues({}));
 
   Future<void> pumpApp(WidgetTester tester) async {
     tester.view.physicalSize = const Size(393 * 3, 852 * 3);
@@ -27,21 +33,23 @@ void main() {
     }
   }
 
-  Future<void> toBrowse(WidgetTester tester) async {
-    await tester.tap(find.byIcon(Icons.grid_view_rounded));
-    await tester.pumpAndSettle();
+  /// ⚠ **홈이 곧 지도다** (2026-08-30 재설계). 예전엔 홈 → 훑어보기 → '전체 51'을
+  ///   거쳐야 여기 왔는데, 이제 앱을 켜면 바로 이 화면이다.
+  Future<void> toRoutes(WidgetTester tester) async {
+    await settleRoutes(tester);
   }
 
-  /// 훑어보기 하단의 국도 레일까지 끌어내려 '전체 51'을 누른다.
-  /// 큐레이션 섹션이 늘어나면 화면 밖으로 밀리므로 항상 스크롤 후 탭한다.
-  Future<void> toRoutes(WidgetTester tester) async {
-    await tester.dragUntilVisible(
-      find.text('전체 51'),
-      find.byKey(const Key('browse-list')),
-      const Offset(0, -260),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('전체 51'));
+  /// 스팟으로 가는 길. ⚠ 옛 홈의 큐레이션 목록이 없어져서(2026-08-30 재설계)
+  /// 이제 **검색**이 스팟에 닿는 문이다.
+  Future<void> toSpot(WidgetTester tester, String name) async {
+    await settleRoutes(tester);
+    // ⚠ 홈(지도)이 뒤에서 계속 그려서 pumpAndSettle이 제대로 안 끝난다.
+    await tester.tap(find.text(S.searchHint));
+    await settleRoutes(tester);
+    await tester.enterText(find.byType(TextField), name);
+    await settleRoutes(tester);
+    // ⚠ 입력창에도 같은 글자가 있다. 결과 행(SpotListRow)만 정확히 집는다.
+    await tester.tap(find.widgetWithText(SpotListRow, name));
     await settleRoutes(tester);
   }
 
@@ -80,7 +88,6 @@ void main() {
 
   testWidgets('홈 → 국도 선택(CO-07): 지도 + 바텀시트, 주행 불가 노선 문구', (tester) async {
     await pumpApp(tester);
-    await toBrowse(tester);
 
     await toRoutes(tester);
 
@@ -102,7 +109,6 @@ void main() {
 
   testWidgets('국도를 고르면 방향만 묻는다 (CO-08) — 코스로 빠지지 않는다', (tester) async {
     await pumpApp(tester);
-    await toBrowse(tester);
     await toRoutes(tester);
 
     await tapRoute(tester, '동해 바닷길');
@@ -123,10 +129,8 @@ void main() {
 
   testWidgets('스팟 상세(CO-03): 확신도 문구가 있고 별점은 없다', (tester) async {
     await pumpApp(tester);
-    await toBrowse(tester);
 
-    await tester.tap(find.text('북평 5일장').first);
-    await tester.pumpAndSettle();
+    await toSpot(tester, '북평 5일장');
 
     expect(find.text(S.trustNotice), findsOneWidget);
     expect(find.text(S.trustCall), findsOneWidget);
@@ -139,13 +143,13 @@ void main() {
 
   testWidgets('검색(SR)은 별도 화면 — 토글이 사라지고 탭바를 덮는다', (tester) async {
     await pumpApp(tester);
-    await toBrowse(tester);
+    // ⚠ 홈이 지도라 뜨는 데 프레임이 걸린다. 바로 누르면 아직 없다.
+    await settleRoutes(tester);
 
     await tester.tap(find.text(S.searchHint));
     await tester.pumpAndSettle();
 
-    // 신호 3: 토글 없음 + 탭바 덮음
-    expect(find.text(S.viewBrowse), findsNothing);
+    // 검색은 탭바를 덮는 별도 화면이다 (§SR).
     expect(find.text(S.tabRadar), findsNothing);
     // 입력 전 화면
     // ⚠ '최근 검색'은 **처음 켠 앱에 없는 게 맞다.** 전에는 가짜 기록을 심어두고
@@ -156,9 +160,10 @@ void main() {
 
   testWidgets('검색하면 그때부터 최근 검색이 생긴다', (tester) async {
     await pumpApp(tester);
-    await toBrowse(tester);
+    await settleRoutes(tester);
+    // ⚠ 홈(지도)이 뒤에서 계속 그려서 pumpAndSettle이 제대로 안 끝난다.
     await tester.tap(find.text(S.searchHint));
-    await tester.pumpAndSettle();
+    await settleRoutes(tester);
 
     await tester.enterText(find.byType(TextField), '물회');
     await tester.testTextInput.receiveAction(TextInputAction.search);
@@ -166,7 +171,7 @@ void main() {
 
     // 검색 중에는 결과가 보인다. 입력을 비워야 입력 전 화면으로 돌아온다.
     await tester.enterText(find.byType(TextField), '');
-    await tester.pumpAndSettle();
+    await settleRoutes(tester);
 
     expect(find.text(S.searchRecent), findsOneWidget);
     expect(find.text('물회'), findsWidgets);
@@ -174,12 +179,13 @@ void main() {
 
   testWidgets('검색어를 넣으면 결과가 리스트로 나온다', (tester) async {
     await pumpApp(tester);
-    await toBrowse(tester);
+    await settleRoutes(tester);
+    // ⚠ 홈(지도)이 뒤에서 계속 그려서 pumpAndSettle이 제대로 안 끝난다.
     await tester.tap(find.text(S.searchHint));
-    await tester.pumpAndSettle();
+    await settleRoutes(tester);
 
     await tester.enterText(find.byType(TextField), '물회');
-    await tester.pumpAndSettle();
+    await settleRoutes(tester);
 
     expect(find.text('1곳'), findsOneWidget);
     expect(find.text('어달마을 물회 골목'), findsOneWidget);
@@ -187,9 +193,10 @@ void main() {
 
   testWidgets('없는 걸 검색하면 억지로 채우지 않는다', (tester) async {
     await pumpApp(tester);
-    await toBrowse(tester);
+    await settleRoutes(tester);
+    // ⚠ 홈(지도)이 뒤에서 계속 그려서 pumpAndSettle이 제대로 안 끝난다.
     await tester.tap(find.text(S.searchHint));
-    await tester.pumpAndSettle();
+    await settleRoutes(tester);
 
     await tester.enterText(find.byType(TextField), '스키장');
     await tester.pumpAndSettle();
@@ -202,7 +209,8 @@ void main() {
 
   testWidgets('하트를 누르면 찜에 담기고 토스트가 뜬다', (tester) async {
     await pumpApp(tester);
-    await toBrowse(tester);
+    // ⚠ 옛 홈 카드의 하트가 없어졌다 (2026-08-30 재설계). 하트는 스팟 상세에 있다.
+    await toSpot(tester, '북평 5일장');
 
     expect(find.byIcon(Icons.favorite), findsNothing);
     await tester.tap(find.byIcon(Icons.favorite_border).first);
@@ -214,20 +222,22 @@ void main() {
 
   testWidgets('찜 상태는 화면이 바뀌어도 유지된다', (tester) async {
     await pumpApp(tester);
-    await toBrowse(tester);
+    await toSpot(tester, '북평 5일장');
     await tester.tap(find.byIcon(Icons.favorite_border).first);
-    await tester.pumpAndSettle();
+    await settleRoutes(tester);
 
-    await tester.tap(find.text('북평 5일장').first);
-    await tester.pumpAndSettle();
+    // 나갔다 다시 들어와도 같은 상태를 본다.
+    // ⚠ CO-03은 Cupertino 뒤로가기가 아니라 우리 아이콘 버튼을 쓴다.
+    await tester.tap(find.byIcon(Icons.arrow_back_ios_new).first);
+    await settleRoutes(tester);
+    await tester.tap(find.widgetWithText(SpotListRow, '북평 5일장'));
+    await settleRoutes(tester);
 
-    // CO-03 상단 하트도 같은 상태를 본다
     expect(find.byIcon(Icons.favorite), findsWidgets);
   });
 
   testWidgets('거점 없이 출발하면 강제하지 않고 CO-06으로 유도한다', (tester) async {
     await pumpApp(tester);
-    await toBrowse(tester);
     await toRoutes(tester);
     await toCourse(tester);
 
@@ -250,7 +260,6 @@ void main() {
 
   testWidgets('거점은 위치만 받는다 — 예약 버튼은 외부 링크', (tester) async {
     await pumpApp(tester);
-    await toBrowse(tester);
     await toRoutes(tester);
     await toCourse(tester);
     await tester.tap(find.text(S.baseNone));
@@ -266,9 +275,7 @@ void main() {
 
   testWidgets('스팟 길 안내 → HND 시트. 무료도로 안내가 있다', (tester) async {
     await pumpApp(tester);
-    await toBrowse(tester);
-    await tester.tap(find.text('북평 5일장').first);
-    await tester.pumpAndSettle();
+    await toSpot(tester, '북평 5일장');
 
     await tester.tap(find.text(S.spotNavigate));
     await tester.pumpAndSettle();

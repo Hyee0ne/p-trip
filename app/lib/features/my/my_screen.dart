@@ -338,7 +338,7 @@ class _MyScreenState extends ConsumerState<MyScreen> {
                 children: [
                   for (final r in routes)
                     GestureDetector(
-                      onTap: () => context.push('/routes'),
+                      onTap: () => context.go('/'),
                       child: Container(
                         padding: const EdgeInsets.fromLTRB(10, 8, 14, 8),
                         decoration: BoxDecoration(
