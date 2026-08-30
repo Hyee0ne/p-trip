@@ -6,8 +6,9 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<!-- 홈 화면에 뜨는 이름. 한국 사용자가 쓰는 앱이라 한글이다. -->
 	<key>CFBundleDisplayName</key>
-	<string>P Trip</string>
+	<string>P의 여행</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
