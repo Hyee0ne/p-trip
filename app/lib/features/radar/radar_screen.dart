@@ -229,8 +229,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     _shown.add(best.spot.id);
 
     // DR-06 — 앱이 뒤에 있으면 카드 대신 **음성 + 알림**으로 나간다 (2026-08-29 결정).
-    // ⚠ 시의성 없는 스팟은 ProximityAlerts가 알아서 거른다. 꺼둔 앱이 말을 걸 이유는 '오늘만' 뿐이다.
-    // ⚠ 조건은 화면 안 쿨다운보다 엄격한 그대로 쓴다 — 음성이라고 자주 말하지 않는다.
+    // ⚠ 대상도 빈도도 앞에 있을 때와 같다 (2026-08-30). 거르는 건 반경과 `_shown` 뿐이다.
     if (_background) {
       // ⚠ 뒤에서 지나친 건 '보여줬다'가 아니다 — 응답할 화면이 없으니 **전부** 적립한다.
       //   시의성 없는 것도 적립해야 한다. 안 하면 _shown 에만 남아 영영 사라진다:
