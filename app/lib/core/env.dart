@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// 앱에 주입되는 환경변수.
 ///
 /// 실행: `flutter run --dart-define-from-file=dart_defines.json`
@@ -42,9 +44,20 @@ class Env {
   /// 모의 주행 배속. `--dart-define=DRIVE_SCALE=10` (기본 20 = 1초에 20초 주행).
   /// 데모 코스 65km가 기본값으로 약 3분 걸린다. 리허설 속도를 여기서 맞춘다.
   /// ⚠ Dart에 `double.fromEnvironment`는 없다. int로 받아 변환한다.
+  /// **모의 주행을 쓸 수 있는 빌드인가.**
+  ///
+  /// ⚠ 출시 빌드에는 '가짜로 달리는 모드'가 있으면 안 된다 (2026-08-30 출시 전환).
+  ///   개발·프로파일 빌드에서만 켜지고, release에서는 `DEMO=true`를 명시해야 열린다 —
+  ///   공모전 시연은 그 플래그를 준 release 빌드로 만든다.
+  static const demoAvailable = !kReleaseMode || _demoForced;
+  static const _demoForced = bool.fromEnvironment('DEMO_BUILD');
+
   /// 데모 모드 초깃값. 시연 리허설에서 실주행 경로를 확인할 때
   /// `--dart-define=DEMO=false`로 껐다 켠다. 저장된 설정이 있으면 그쪽이 이긴다.
   static const demoDefault = bool.fromEnvironment('DEMO', defaultValue: true);
+
+  /// 실제로 모의 주행을 할 것인가. **쓸 수 없는 빌드면 무조건 실주행이다.**
+  static bool get demoUsable => demoAvailable && demoDefault;
 
   static const driveScale = int.fromEnvironment('DRIVE_SCALE', defaultValue: 20) * 1.0;
 

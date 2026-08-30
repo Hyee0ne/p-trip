@@ -23,11 +23,14 @@ class DemoModeNotifier extends Notifier<bool> {
 
   @override
   bool build() {
+    // 데모를 못 쓰는 빌드(출시)면 저장값과 무관하게 항상 실주행이다.
+    if (!Env.demoAvailable) return false;
     _ready = _restore();
     return Env.demoDefault;
   }
 
   Future<void> _restore() async {
+    if (!Env.demoAvailable) return;
     try {
       final p = await SharedPreferences.getInstance();
       _prefs = p;

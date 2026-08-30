@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/env.dart';
 import '../../core/saves.dart';
 import '../../core/proximity_alert.dart';
 import '../../core/settings.dart';
@@ -443,28 +444,31 @@ class _MyScreenState extends ConsumerState<MyScreen> {
                   },
                 ),
               ),
-              // ⚠ 데모 모드는 타이머로 도는 모의 주행이라 앱을 내리면 멈춘다.
-              //   켜둔 알림이 안 오는 걸 고장으로 읽지 않게 이유를 적어둔다.
-              if (ref.watch(backgroundAlertsProvider) && ref.watch(demoModeProvider))
-                const Padding(
-                  padding: EdgeInsets.only(bottom: AppSpace.x3),
-                  child: Text(
-                    S.bgDemoNote,
-                    style: TextStyle(fontSize: 12.5, height: 1.5, color: AppColors.ink3),
+              // ⚠ **데모 모드는 개발 빌드에만 보인다** (2026-08-30, 출시 전환).
+              //   출시 앱 설정에 '가짜로 달리는 모드'가 있으면 안 된다.
+              //   Env.demoAvailable이 거짓이면 주행은 항상 진짜 GPS다.
+              if (Env.demoAvailable) ...[
+                if (ref.watch(backgroundAlertsProvider) && ref.watch(demoModeProvider))
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: AppSpace.x3),
+                    child: Text(
+                      S.bgDemoNote,
+                      style: TextStyle(fontSize: 12.5, height: 1.5, color: AppColors.ink3),
+                    ),
+                  ),
+                const Divider(height: 1, thickness: 1, color: AppColors.line),
+                row(
+                  '데모 모드',
+                  Switch(
+                    value: ref.watch(demoModeProvider),
+                    activeThumbColor: Colors.white,
+                    activeTrackColor: AppColors.routeBlue,
+                    // ⚠ 켜면 모의 주행(코스 선형 배속), 끄면 진짜 GPS.
+                    //   다음 출발부터 적용된다 — 달리는 중에 갈아타면 기록이 끊긴다.
+                    onChanged: (v) => ref.read(demoModeProvider.notifier).set(v),
                   ),
                 ),
-              const Divider(height: 1, thickness: 1, color: AppColors.line),
-              row(
-                '데모 모드',
-                Switch(
-                  value: ref.watch(demoModeProvider),
-                  activeThumbColor: Colors.white,
-                  activeTrackColor: AppColors.routeBlue,
-                  // ⚠ 켜면 모의 주행(코스 선형 배속), 끄면 진짜 GPS.
-                  //   다음 출발부터 적용된다 — 달리는 중에 갈아타면 기록이 끊긴다.
-                  onChanged: (v) => ref.read(demoModeProvider.notifier).set(v),
-                ),
-              ),
+              ],
               const Divider(height: 1, thickness: 1, color: AppColors.line),
               row('사진 접근', const Icon(Icons.chevron_right, size: 18, color: AppColors.ink3)),
             ],
