@@ -79,6 +79,10 @@
 	        이 키는 iOS가 나중에 승격을 제안할 때 쓰일 문구로만 남겨둔다. -->
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>앱을 꺼둬도 근처 발견을 알려드려요. 달리는 동안에만 위치를 보고, 여행을 마치면 스스로 꺼져요.</string>
+	<!-- ⚠ 이게 없으면 업로드할 때마다 '수출 규정 준수' 질문을 받는다.
+	     HTTPS(표준 암호화)만 쓰므로 면제 대상이라 false다. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
