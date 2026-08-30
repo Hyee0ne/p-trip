@@ -195,6 +195,31 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
   }
 
   @override
+  Future<List<GeoPoint>> routePathAhead({
+    required int routeId,
+    required double lat,
+    required double lng,
+    required bool northOrEast,
+    double maxKm = 120,
+  }) async {
+    final rows =
+        await _db.rpc(
+              'route_path_ahead',
+              params: {
+                'p_route_id': routeId,
+                'p_lat': lat,
+                'p_lng': lng,
+                'p_north_or_east': northOrEast,
+                'p_max_km': maxKm,
+              },
+            )
+            as List<dynamic>;
+    if (rows.isEmpty) return const [];
+    // 이을 수 있는 조각이 없으면 빈 목록. 없는 길을 지어내지 않는다.
+    return _geoJsonPaths(rows.first['geojson'] as String?).expand((p) => p).toList();
+  }
+
+  @override
   Future<Map<int, RouteNote>> routeNotes() async {
     final rows = await _db.rpc('route_notes') as List<dynamic>;
     return {

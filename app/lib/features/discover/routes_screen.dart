@@ -10,6 +10,7 @@ import '../../core/theme.dart';
 import '../../core/widgets/route_badge.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/providers.dart';
+import 'depart_sheet.dart';
 import 'route_map.dart';
 
 /// CO-07 국도 선택 — 지도 전면 + 끌어올리는 바텀시트 (SCREENS.md CO-07).
@@ -219,10 +220,46 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
       else
         SliverList.list(children: [for (final r in rest) _RouteRow(route: r)]),
 
+      // 코스는 **보조 진입로**다 (CO-01 재설계). 주 흐름은 길과 방향이고,
+      // 코스는 "처음이라 걱정되면" 쪽으로 맨 아래 한 줄만 둔다.
+      const SliverToBoxAdapter(child: _CourseLine()),
+
       SliverToBoxAdapter(
         child: SizedBox(height: AppSpace.x8 + MediaQuery.viewPaddingOf(context).bottom),
       ),
     ];
+  }
+}
+
+/// 코스 진입 한 줄. **버튼이 아니라 문장이다** — 주인공이 아니라는 뜻이 모양에 있어야 한다.
+///
+/// ⚠ 코스를 없애지 않는 이유: 처음 쓰는 사람에게 안전망이 필요하다.
+///   다만 앞세우면 다시 '짜여진 경로를 고르는' 흐름이 된다 (CO-01 재설계).
+class _CourseLine extends ConsumerWidget {
+  const _CourseLine();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final courses = ref.watch(allCoursesProvider).value ?? const [];
+    // 코스가 없으면 줄도 없다. 눌러도 갈 데가 없는 문장을 두지 않는다.
+    if (courses.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.x5, AppSpace.gutter, 0),
+      child: Center(
+        child: GestureDetector(
+          onTap: () => context.push('/course/${courses.first.id}'),
+          child: const Text(
+            S.routesCourseHint,
+            style: TextStyle(
+              fontSize: 12.5,
+              color: AppColors.ink3,
+              decoration: TextDecoration.underline,
+              decorationColor: AppColors.ink3,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -580,7 +617,7 @@ class _RouteRow extends ConsumerWidget {
     };
 
     return InkWell(
-      onTap: drivable ? () => _openCourses(context, ref) : null,
+      onTap: drivable ? () => _depart(context, ref) : null,
       child: Container(
         constraints: const BoxConstraints(minHeight: 60),
         padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter, vertical: AppSpace.x2),
@@ -633,15 +670,10 @@ class _RouteRow extends ConsumerWidget {
     );
   }
 
-  Future<void> _openCourses(BuildContext context, WidgetRef ref) async {
-    final courses = await ref.read(coursesProvider(route.id).future);
-    if (!context.mounted) return;
-    if (courses.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text(S.routeNoCourse), duration: AppMotion.toast));
-      return;
-    }
-    context.go('/course/${courses.first.id}');
+  /// 노선을 고르면 **방향만 정하고 출발한다** (CO-08).
+  /// ⚠ 그전엔 구간 코스 목록으로 빠졌다 — 길을 골랐는데 다시 코스를 고르게 하면
+  ///   결국 목적지를 정하는 흐름이고, 그게 내비 문법이다.
+  void _depart(BuildContext context, WidgetRef ref) {
+    DepartSheet.show(context, route, note: ref.read(routeNotesProvider).value?[route.id]);
   }
 }

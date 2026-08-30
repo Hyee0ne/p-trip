@@ -125,24 +125,30 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     }
     if (_started) return;
     _started = true;
-    // ⚠ 모의 주행은 **실제 코스 선형**을 따라간다. 좌표를 지어내지 않는다.
+    // ⚠ 모의 주행도 **실제 선형**을 따라간다. 좌표를 지어내지 않는다.
     //   데모 모드를 끄면 같은 선형 위를 진짜 GPS로 달린다 (마이 탭 설정).
     final demo = ref.read(demoModeProvider);
-    // 발견 탭에서 고른 코스. 레이더 탭을 바로 누른 사람에겐 데모 코스가 돈다.
-    final courseId = ref.read(startedCourseIdProvider) ?? _demoCourseId;
-    ref.read(courseGeometryProvider(courseId).future).then((path) {
+    final journey = ref.read(startedJourneyProvider);
+
+    if (journey != null && journey.path.length >= 2) {
+      _begin(journey.path, demo);
+      ref
+          .read(tripLogProvider.notifier)
+          .start(
+            routeId: journey.routeId,
+            routeName: journey.routeName,
+            startName: journey.startName,
+            endName: journey.endName,
+            courseId: journey.courseId,
+          );
+      return;
+    }
+
+    // 아무것도 안 고르고 레이더 탭을 바로 누른 사람 — 데모 코스가 돈다.
+    ref.read(courseGeometryProvider(_demoCourseId).future).then((path) {
       if (!mounted || path.length < 2) return;
-      if (demo) {
-        ref.read(driveProvider.notifier).start(path);
-      } else {
-        // 알림을 켰으면 앱을 내려도 위치가 계속 온다 (DR-06).
-        ref
-            .read(driveProvider.notifier)
-            .startLive(path, background: ref.read(backgroundAlertsProvider));
-      }
-      // 달리기 시작 = 여행 시작. 기기 안에 기록이 쌓인다 (core/trip_log.dart).
-      // ⚠ 노선·구간을 **고른 코스에서** 가져온다. 박아두면 어느 길을 달려도 7번이 된다.
-      ref.read(courseProvider(courseId).future).then((course) {
+      _begin(path, demo);
+      ref.read(courseProvider(_demoCourseId).future).then((course) {
         if (!mounted) return;
         ref
             .read(tripLogProvider.notifier)
@@ -151,10 +157,22 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
               routeName: course?.title ?? '동해 바닷길',
               startName: course?.startName ?? '삼척',
               endName: course?.endName ?? '강릉',
-              courseId: courseId,
+              courseId: _demoCourseId,
             );
       });
     });
+  }
+
+  /// 모의 주행이냐 실주행이냐만 가른다. 선형은 이미 정해져 온다.
+  void _begin(List<GeoPoint> path, bool demo) {
+    if (demo) {
+      ref.read(driveProvider.notifier).start(path);
+    } else {
+      // 알림을 켰으면 앱을 내려도 위치가 계속 온다 (DR-06).
+      ref
+          .read(driveProvider.notifier)
+          .startLive(path, background: ref.read(backgroundAlertsProvider));
+    }
   }
 
   @override
@@ -647,29 +665,37 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     );
   }
 
+  /// ⚠ **탭하면 거점을 정하러 간다.** CO-08에서 거점을 빼면서(2026-08-30)
+  ///   거점 진입로가 코스뿐이 됐다 — 주 흐름에서 닿을 데가 없어진다.
+  ///   잘 곳은 가면서 정하는 게 이 앱의 결에도 맞다.
+  /// ⚠ 거점이 없으면 「들르기」가 목적지를 발견으로 바꿔버려 경유지가 안 걸린다.
   Widget _baseChip(BaseCamp? base) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 11),
-        decoration: BoxDecoration(
-          color: const Color(0x14F0EDE6),
-          borderRadius: BorderRadius.circular(AppRadius.chip),
-          border: Border.all(color: AppColors.darkLine),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.cabin_outlined, size: 15, color: Color(0xFFB79BE0)),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Text(
-                base == null ? S.baseChipNone : S.baseChipSet(base.name),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12.5, color: AppColors.darkInk2),
+      child: GestureDetector(
+        onTap: () => context.push('/base'),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 11),
+          decoration: BoxDecoration(
+            color: const Color(0x14F0EDE6),
+            borderRadius: BorderRadius.circular(AppRadius.chip),
+            border: Border.all(color: AppColors.darkLine),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.cabin_outlined, size: 15, color: Color(0xFFB79BE0)),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Text(
+                  base == null ? S.baseChipNone : S.baseChipSet(base.name),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12.5, color: AppColors.darkInk2),
+                ),
               ),
-            ),
-          ],
+              const Icon(Icons.chevron_right, size: 16, color: AppColors.darkInk2),
+            ],
+          ),
         ),
       ),
     );

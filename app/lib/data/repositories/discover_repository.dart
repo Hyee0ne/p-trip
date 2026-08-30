@@ -39,6 +39,16 @@ abstract interface class DiscoverRepository {
   /// 오늘 이 자리의 해·달. 일몰 타이밍 가중치(§3.1)와 별 보기 좋은 밤(§3.8)이 쓴다.
   Future<TodaySky?> todaySky({required double lat, required double lng});
 
+  /// 지금 여기서 이 국도를 타고 고른 방향으로 뻗은 선형 (CO-08 길 떠나기).
+  /// ⚠ 길안내가 아니다 — 이 길이 이쪽으로 이렇게 뻗어 있다는 사실만 받는다 (원칙 1).
+  Future<List<GeoPoint>> routePathAhead({
+    required int routeId,
+    required double lat,
+    required double lng,
+    required bool northOrEast,
+    double maxKm = 120,
+  });
+
   /// 노선별 한 줄의 근거. 근거 없는 노선은 아예 안 담긴다 (CO-01 재설계).
   Future<Map<int, RouteNote>> routeNotes();
 

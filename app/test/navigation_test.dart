@@ -52,6 +52,19 @@ void main() {
   }
 
   /// 시트 안에서 노선 줄을 찾아 탭한다. 51줄이라 화면 밖으로 나간다.
+  /// 코스는 이제 **시트 맨 아래 한 줄**로 들어간다 (CO-01 재설계).
+  /// 주 흐름은 국도 → 방향이고, 코스는 "처음이라 걱정되면" 쪽이다.
+  Future<void> toCourse(WidgetTester tester) async {
+    await tester.dragUntilVisible(
+      find.text(S.routesCourseHint),
+      find.byKey(const Key('routes-sheet-list')),
+      const Offset(0, -120),
+    );
+    await settleRoutes(tester);
+    await tester.tap(find.text(S.routesCourseHint));
+    await tester.pumpAndSettle();
+  }
+
   Future<void> tapRoute(WidgetTester tester, String name) async {
     await tester.dragUntilVisible(
       find.text(name),
@@ -60,7 +73,9 @@ void main() {
     );
     await settleRoutes(tester);
     await tester.tap(find.text(name));
-    await tester.pumpAndSettle();
+    // ⚠ CO-07 지도 화면은 계속 그려서 pumpAndSettle이 안 끝난다 (그래서 settleRoutes가 있다).
+    //   노선을 탭하면 그 위에 CO-08 시트가 얹히므로 여기서도 같은 방식으로 기다린다.
+    await settleRoutes(tester);
   }
 
   testWidgets('홈 → 국도 선택(CO-07): 지도 + 바텀시트, 주행 불가 노선 문구', (tester) async {
@@ -85,33 +100,25 @@ void main() {
     expect(find.text(S.routeUndrivable), findsOneWidget);
   });
 
-  testWidgets('국도 선택 → 코스 상세(CO-02): ETA 없이 순수 주행시간만', (tester) async {
+  testWidgets('국도를 고르면 방향만 묻는다 (CO-08) — 코스로 빠지지 않는다', (tester) async {
     await pumpApp(tester);
     await toBrowse(tester);
     await toRoutes(tester);
 
     await tapRoute(tester, '동해 바닷길');
 
-    expect(find.text('순수 주행시간'), findsOneWidget);
-    // 스탯 숫자는 RichText(값+단위)로 그려서 findRichText가 필요하다
-    expect(find.text('2:10', findRichText: true), findsOneWidget);
-    expect(find.text('86km', findRichText: true), findsOneWidget);
-    expect(find.text(S.courseStart), findsOneWidget);
-    // 거점 미설정 배너
-    expect(find.text(S.baseNone), findsOneWidget);
-  });
+    // ⚠ 길을 골랐는데 다시 코스를 고르게 하면 결국 목적지를 정하는 흐름이고,
+    //   그게 내비 문법이다 (CO-01 재설계).
+    expect(find.text(S.departWhichWay), findsOneWidget);
+    expect(find.text(S.departNorth), findsOneWidget);
+    expect(find.text(S.departSouth), findsOneWidget);
 
-  testWidgets('코스 상세는 뷰 모드를 따른다 — 훑어보기면 발견이 번호 목록으로', (tester) async {
-    await pumpApp(tester);
-    await toBrowse(tester);
-    await toRoutes(tester);
-    await tapRoute(tester, '동해 바닷길');
+    // 목적지를 묻지 않는다는 걸 화면이 직접 말한다
+    expect(find.text(S.departNoDestination), findsOneWidget);
 
-    expect(find.text(S.courseDiscoveries), findsOneWidget);
-    expect(find.text(S.courseOrder), findsOneWidget);
-    // 4곳이 한 화면에 (아홉 번 넘기지 않는다)
-    expect(find.text('북평 5일장'), findsWidgets);
-    expect(find.text('묵호등대'), findsWidgets);
+    // 코스 상세로 새지 않았다
+    expect(find.text(S.courseStart), findsNothing);
+    expect(find.text('순수 주행시간'), findsNothing);
   });
 
   testWidgets('스팟 상세(CO-03): 확신도 문구가 있고 별점은 없다', (tester) async {
@@ -222,7 +229,7 @@ void main() {
     await pumpApp(tester);
     await toBrowse(tester);
     await toRoutes(tester);
-    await tapRoute(tester, '동해 바닷길');
+    await toCourse(tester);
 
     await tester.tap(find.text(S.courseStart));
     await tester.pumpAndSettle();
@@ -245,7 +252,7 @@ void main() {
     await pumpApp(tester);
     await toBrowse(tester);
     await toRoutes(tester);
-    await tapRoute(tester, '동해 바닷길');
+    await toCourse(tester);
     await tester.tap(find.text(S.baseNone));
     await tester.pumpAndSettle();
 

@@ -59,6 +59,22 @@ class S {
   static String routeNoteMarket(int n) => n == 1 ? '오늘 이 길에 장이 서요' : '오늘 이 길에 장이 $n곳 서요';
   static const routeNoteRising = '요즘 이 길로 더 도네요';
 
+  /// 코스 진입 — 주인공이 아니라 안전망이라는 게 문장에 있어야 한다.
+  static const routesCourseHint = '처음이라 걱정되면, 짜여진 코스로';
+
+  // ── CO-08 길 떠나기 ──
+  static String routeNumber(int id) => '$id번 국도';
+  static const departWhichWay = '여기서 어느 쪽으로 갈까요?';
+  static const departNorth = '북쪽으로';
+  static const departSouth = '남쪽으로';
+  static const departEast = '동쪽으로';
+  static const departWest = '서쪽으로';
+
+  /// ⚠ 목적지를 묻지 않는다는 걸 화면이 직접 말한다 — 내비와 다른 점이라서.
+  static const departNoDestination = '목적지는 정하지 않아요. 가다 마음에 들면 멈추면 돼요.';
+  static const departNeedLocation = '위치를 알아야 이 길의 어느 쪽인지 알 수 있어요.';
+  static const departNoPath = '이쪽으로는 이어진 길을 못 찾았어요. 반대쪽으로 가볼까요?';
+
   static const routeUndrivable = '통일을 기다리는 길';
   static const routeNoCourse = '이 길의 코스를 준비하고 있어요';
 

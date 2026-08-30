@@ -94,6 +94,11 @@ final baseCandidatesProvider = FutureProvider<List<Spot>>((ref) async {
 });
 
 /// 오늘 이 자리의 해·달. 격자 단위라 0.1도마다 한 번만 부른다.
+/// 코스 전체. CO-07 시트 맨 아래 '처음이라 걱정되면' 한 줄이 이걸 본다.
+final allCoursesProvider = FutureProvider<List<Course>>(
+  (ref) => ref.watch(discoverRepositoryProvider).courses(),
+);
+
 /// 노선에 붙는 한 줄. 홈이 이걸로 '떠날 이유'를 길 위에 얹는다 (CO-01 재설계).
 final routeNotesProvider = FutureProvider<Map<int, RouteNote>>(
   (ref) => ref.watch(discoverRepositoryProvider).routeNotes(),

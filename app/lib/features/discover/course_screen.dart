@@ -280,6 +280,23 @@ class _Body extends ConsumerWidget {
     );
   }
 
+  /// 코스로 출발할 때의 여정. 선형은 코스 것을 그대로 쓴다.
+  static Future<void> _setJourney(ProviderContainer c, Course course) async {
+    final path = await c.read(courseGeometryProvider(course.id).future);
+    c
+        .read(startedJourneyProvider.notifier)
+        .set(
+          Journey(
+            routeId: course.routeId,
+            routeName: course.title,
+            path: path,
+            courseId: course.id,
+            startName: course.startName,
+            endName: course.endName,
+          ),
+        );
+  }
+
   /// 거점 미설정이면 CO-06으로 유도(강제하지 않는다), 설정됐으면 HND 시트.
   Future<void> _onDepart(BuildContext context) async {
     final container = ProviderScope.containerOf(context);
@@ -289,7 +306,8 @@ class _Body extends ConsumerWidget {
     //   권하기만 하고, 그 화면에서 '건너뛰고 출발'로 바로 레이더에 들어갈 수 있다.
     if (base == null) {
       showAppToast(context, S.courseStartWithoutBase);
-      container.read(startedCourseIdProvider.notifier).set(course.id);
+      await _setJourney(container, course);
+      if (!context.mounted) return;
       context.push('/course/${course.id}/base');
       return;
     }
@@ -302,7 +320,7 @@ class _Body extends ConsumerWidget {
       destination: HandoffPlace(base.name, base.lat, base.lng),
     );
     // 레이더가 **이 코스**를 달린다. 안 넘기면 무슨 코스를 골랐든 데모 코스가 돈다.
-    container.read(startedCourseIdProvider.notifier).set(course.id);
+    await _setJourney(container, course);
     // 내비를 켰든 취소했든 우리 앱은 레이더로 넘어간다 (SCREENS.md CO-02 → DR-01).
     if (context.mounted) context.go('/radar');
   }
