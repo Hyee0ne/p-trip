@@ -451,6 +451,34 @@ class Trip {
 }
 
 /// DR-02 근접 발견 카드에 실을 한 건.
+extension SpotTimeliness on Spot {
+  /// 시의성만 갈아끼운 복사본.
+  ///
+  /// ⚠ **일몰 시의성은 저장소가 정할 수 없다.** 조회 시점의 하늘(`sun_moon`)에 달려 있고,
+  ///   그건 레이더가 위치 격자로 따로 읽는다. 그래서 화면에서 덧입힌다 (`core/sunset.dart`).
+  ///   장날·기간임박은 저장소가 그대로 정한다.
+  Spot withTimeliness(Timeliness t, String note) => Spot(
+    id: id,
+    name: name,
+    type: type,
+    routeId: routeId,
+    detourMin: detourMin,
+    trustScore: trustScore,
+    blurb: blurb,
+    timeliness: t,
+    timelinessNote: note,
+    openHours: openHours,
+    tel: tel,
+    addr: addr,
+    hasPhoto: hasPhoto,
+    parking: parking,
+    imageUrl: imageUrl,
+    lat: lat,
+    lng: lng,
+    exitFrac: exitFrac,
+  );
+}
+
 class Discovery {
   const Discovery({
     required this.spot,

@@ -15,6 +15,7 @@ import '../../core/saves.dart';
 import '../../core/proximity_alert.dart';
 import '../../core/settings.dart';
 import '../../core/strings.dart';
+import '../../core/sunset.dart';
 import '../../core/theme.dart';
 import '../../core/trip_log.dart';
 import '../../core/voice.dart';
@@ -106,7 +107,13 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
 
     if (away) {
       // 알림을 안 켠 사람은 뒤에서 위치를 보지 않는다. 켠 사람만 계속 돈다.
-      if (!on) ref.read(driveProvider.notifier).stop();
+      if (!on) {
+        ref.read(driveProvider.notifier).stop();
+      } else {
+        // ⚠ 주행 도중에 설정을 켰다면 스트림이 아직 포그라운드 설정이다.
+        //   여기서 맞춰주지 않으면 켠 줄 알고 기다리는데 iOS가 앱을 재운다.
+        ref.read(driveProvider.notifier).setBackground(true);
+      }
       _background = on;
       return;
     }
@@ -198,13 +205,18 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
 
     Discovery? best;
     var bestScore = 0.0;
-    for (final d in queue) {
-      final f = d.spot.exitFrac;
-      if (f == null || _shown.contains(d.spot.id)) continue;
+    final now = DateTime.now();
+    for (final raw in queue) {
+      final f = raw.spot.exitFrac;
+      if (f == null || _shown.contains(raw.spot.id)) continue;
       final min = drive.minutesTo(f);
       if (min < _minAhead || min > _maxAhead) continue;
       // 같은 유형을 연속으로 내보내지 않는다 (§3.1 6번). 밥집 다음에 또 밥집은 지겹다.
-      if (d.spot.type == _lastType) continue;
+      if (raw.spot.type == _lastType) continue;
+      // ⚠ **여기서 일몰을 덧입힌다** (core/sunset.dart). 저장소는 하늘을 모른다.
+      //   이걸 빼면 실데이터에서 Timeliness.sunset이 한 번도 안 붙어
+      //   DR-02 일몰 카드도, DR-06 일몰 알림도 영영 안 나온다.
+      final d = applySunset(raw, _sky, now);
       final score = _score(d.spot);
       if (score > bestScore) {
         bestScore = score;
@@ -255,6 +267,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
   }
 
   /// 타이밍 가중치 (§3.1 4번). 점수를 **화면에 내보내지 않는다** — 순서를 정하는 데만 쓴다.
+  /// ⚠ [spot]은 `applySunset`을 **거친** 것이어야 한다. 일몰 판정을 여기서 또 하면
+  ///   점수와 알림 게이트가 서로 다른 값을 보게 된다 — 그게 원래 버그였다.
   double _score(Spot spot) {
     final now = DateTime.now();
     var score = 1.0;
@@ -262,10 +276,9 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
 
     if (spot.timeliness == Timeliness.marketDay && spot.type == SpotType.market) {
       score *= 3;
-    } else if (spot.type == SpotType.view) {
+    } else if (spot.timeliness == Timeliness.sunset) {
       // 일몰 −60~−20분. 해가 지는 걸 보러 가려면 도착할 시간이 있어야 한다.
-      final left = _sky?.minutesToSunset(now);
-      if (left != null && left >= 20 && left <= 60) score *= 2;
+      score *= 2;
     } else if (spot.type == SpotType.food && now.hour >= 11 && now.hour < 14) {
       score *= 2;
     }

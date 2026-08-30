@@ -23,23 +23,14 @@ class DataSourcesSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.sizeOf(context).height * 0.8,
-      ),
+      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.8),
       decoration: const BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppRadius.sheet),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
       ),
       // 출처는 지울 수 없는 목록이라 화면이 작으면 스크롤로 감당한다.
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpace.gutter,
-          12,
-          AppSpace.gutter,
-          28,
-        ),
+        padding: const EdgeInsets.fromLTRB(AppSpace.gutter, 12, AppSpace.gutter, 28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -59,28 +50,16 @@ class DataSourcesSheet extends StatelessWidget {
             const SizedBox(height: AppSpace.x2),
             const Text(
               S.sourcesIntro,
-              style: TextStyle(
-                fontSize: 13.5,
-                height: 1.5,
-                color: AppColors.ink2,
-              ),
+              style: TextStyle(fontSize: 13.5, height: 1.5, color: AppColors.ink2),
             ),
             const SizedBox(height: AppSpace.x5),
             for (final s in S.sources) _Row(org: s.org, what: s.what),
-            const Divider(
-              height: AppSpace.x6,
-              thickness: 1,
-              color: AppColors.line,
-            ),
+            const Divider(height: AppSpace.x6, thickness: 1, color: AppColors.line),
             const _Row(org: S.sourcesMapOrg, what: S.sourcesMapRow),
             const SizedBox(height: AppSpace.x5),
             const Text(
               S.sourcesNote,
-              style: TextStyle(
-                fontSize: 12.5,
-                height: 1.5,
-                color: AppColors.ink3,
-              ),
+              style: TextStyle(fontSize: 12.5, height: 1.5, color: AppColors.ink3),
             ),
           ],
         ),
@@ -103,21 +82,10 @@ class _Row extends StatelessWidget {
       children: [
         Text(
           org,
-          style: const TextStyle(
-            fontSize: 14.5,
-            fontWeight: FontWeight.w700,
-            color: AppColors.ink,
-          ),
+          style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppColors.ink),
         ),
         const SizedBox(height: 2),
-        Text(
-          what,
-          style: const TextStyle(
-            fontSize: 13,
-            height: 1.5,
-            color: AppColors.ink2,
-          ),
-        ),
+        Text(what, style: const TextStyle(fontSize: 13, height: 1.5, color: AppColors.ink2)),
       ],
     ),
   );

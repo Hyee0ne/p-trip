@@ -8,6 +8,8 @@ import 'package:p_trip/data/models/models.dart';
 /// ⚠ 실기기에서 발견된 결함이다 — 앱을 한 번 내리면 그 세션 내내 레이더가 죽어 있었다.
 ///   화면 테스트로는 안 잡힌다. 여기서 잡는다.
 void main() {
+  _backgroundToggleTests();
+
   // 삼척 → 강릉 방향 대략 선형. 실제 코스 대신 짧게.
   const path = [
     GeoPoint(37.4500, 129.1650),
@@ -45,5 +47,25 @@ void main() {
     // 경로가 없으면 달릴 것도 없다.
     n.resume();
     expect(c.read(driveProvider).running, isFalse);
+  });
+}
+
+/// 주행 도중에 「앱을 꺼둬도 알림」을 켠 경우 (실기기 리포트 2026-08-30).
+/// startLive 가 백그라운드 여부를 스트림에 굳혀 넣어서, 켠 줄 알지만
+/// iOS가 여전히 백그라운드 위치를 안 주던 문제.
+void _backgroundToggleTests() {
+  test('모의 주행에서는 setBackground 가 주행을 건드리지 않는다', () async {
+    final c = ProviderContainer();
+    addTearDown(c.dispose);
+    final n = c.read(driveProvider.notifier);
+    n.start(const [GeoPoint(37.45, 129.165), GeoPoint(37.50, 129.140)], kmh: 60, scale: 400);
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    final ran = c.read(driveProvider).distanceKm;
+
+    // 실주행(_live)이 아니면 스트림이 없다. 껐다 켜도 아무 일이 없어야 한다.
+    n.setBackground(true);
+    expect(c.read(driveProvider).running, isTrue, reason: '모의 주행이 끊기면 안 된다');
+    expect(c.read(driveProvider).needsLocation, isFalse);
+    expect(c.read(driveProvider).distanceKm, greaterThanOrEqualTo(ran));
   });
 }

@@ -292,6 +292,24 @@ class DriveNotifier extends Notifier<DriveState> {
   ///
   /// ⚠ 진행률·거리를 **그대로 이어받는다.** 앱을 내렸다 돌아왔다고 여행이 처음으로
   ///   돌아가면 안 된다 — 달린 만큼은 달린 것이다.
+  /// 백그라운드 위치 허용 여부를 **달리는 중에** 바꾼다.
+  ///
+  /// ⚠ `startLive`가 이 값을 스트림에 굳혀 넣는다. 그래서 주행을 시작한 뒤
+  ///   마이 설정에서 「앱을 꺼둬도 알림」을 켜면, 켠 줄 알지만 iOS는 여전히
+  ///   백그라운드 위치를 안 준다 — 앱을 내리는 순간 조용히 멈춘다.
+  ///   값이 바뀌었을 때만 스트림을 다시 연다.
+  void setBackground(bool background) {
+    if (!_live || _wasBackground == background) return;
+    _wasBackground = background;
+    if (!state.running) return;
+    _sub?.cancel();
+    try {
+      _sub = Geolocator.getPositionStream(locationSettings: _settings(background)).listen(_onFix);
+    } catch (_) {
+      state = state.copyWith(running: false, needsLocation: true);
+    }
+  }
+
   void resume() {
     if (state.running || _path.length < 2) return;
     _tick?.cancel();

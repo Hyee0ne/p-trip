@@ -252,6 +252,12 @@ class S {
   /// ⚠ 섹션 라벨만 덩그러니 두지 않는다 — 빈 화면에 아무 말이 없으면 고장으로 읽힌다.
   static const tripsEmpty = '아직 여행기가 없어요. 레이더를 켜고 한 번 달리면 여기 쌓여요.';
 
+  // ── 일몰 발견 (SCREENS.md DR-02 2·3번) ──
+  // ⚠ 문구는 DR-02 규정 그대로다. 임의로 다시 쓰지 말 것.
+  static String sunsetTitle(String name) => '곧 $name에 해가 져요';
+  static String sunsetSituation(int minLeft, int detourMin) => '일몰 $minLeft분 전 · 국도에서 $detourMin분';
+  static String sunsetNote(int minLeft) => '일몰 $minLeft분 전';
+
   // ── 데이터 출처 (MY-01/03 설정) ──
   // ⚠ 공공누리는 유형과 무관하게 **출처표시가 의무**다. 스토어 설명이 아니라
   //   콘텐츠를 쓰는 앱 안에서 밝혀야 한다. 이 목록을 지우지 말 것.

@@ -114,6 +114,11 @@ p-trip/
   route blue `#1D4ED8`, field green `#3E7C4F`, market red `#C2452D`,
   sun `#E8A13D`, night `#0D1117`, bg `#F4F5F1`.
   시그니처 = 국도 표지판 파란 타원 뱃지 (RouteBadge 위젯).
+- ⚠ **`dart format`은 반드시 `--line-length=100`.** 그냥 부르면 80칸으로 재감싸서
+  손대지도 않은 파일 수백 줄이 바뀌고 `curly_braces_in_flow_control_structures` 린트가 뜬다.
+  검증: `dart format --line-length=100 --output=none --set-exit-if-changed lib` 가 조용해야 정상.
+- ⚠ **파일을 문자열 치환으로 고칠 때 들여쓰기를 눈으로 세지 말 것.** 이 리포는 4칸이고
+  읽기 도구가 들여쓰기를 덧붙여 보여줘서 6칸으로 착각하기 쉽다. 원문에서 정규식으로 읽어 쓸 것.
 - 커밋: conventional commits (`feat:`, `fix:`, `data:`, `docs:`). 한 커밋 = 한 관심사.
 - API 키는 절대 커밋 금지. `.env` + `--dart-define`, TourAPI 키는 Edge Function 뒤로.
 - **⚠ Supabase는 `brrrp` 프로젝트와 섞지 않는다** (2026-08-27). 같은 사람이 두 프로젝트를 만진다.

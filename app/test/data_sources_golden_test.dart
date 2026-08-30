@@ -17,9 +17,9 @@ void main() {
     for (final w in ['Regular', 'Medium', 'SemiBold', 'Bold', 'ExtraBold']) {
       final f = File('assets/fonts/Pretendard-$w.otf');
       if (!f.existsSync()) continue;
-      await (FontLoader('Pretendard')
-            ..addFont(Future.value(ByteData.sublistView(f.readAsBytesSync()))))
-          .load();
+      await (FontLoader(
+        'Pretendard',
+      )..addFont(Future.value(ByteData.sublistView(f.readAsBytesSync())))).load();
     }
   });
 
@@ -34,10 +34,7 @@ void main() {
         theme: buildAppTheme(),
         home: const Scaffold(
           backgroundColor: AppColors.bg,
-          body: Align(
-            alignment: Alignment.bottomCenter,
-            child: DataSourcesSheet(),
-          ),
+          body: Align(alignment: Alignment.bottomCenter, child: DataSourcesSheet()),
         ),
       ),
     );
@@ -56,10 +53,6 @@ void main() {
   /// 가장 작은 현역 아이폰(SE, 320×568)에서 **넘치지 않아야** 한다.
   /// 처음 만들 때 기본 시트 높이에서 19px 넘쳤다 — 그래서 이 크기로도 잰다.
   testWidgets('데이터 출처 시트 — 작은 화면에서도 안 넘친다', (tester) async {
-    await pumpAt(
-      tester,
-      const Size(320, 568),
-      'goldens/data_sources_small.png',
-    );
+    await pumpAt(tester, const Size(320, 568), 'goldens/data_sources_small.png');
   });
 }

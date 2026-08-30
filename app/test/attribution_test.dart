@@ -20,7 +20,9 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: Scaffold(body: MyScreen()))),
+      const ProviderScope(
+        child: MaterialApp(home: Scaffold(body: MyScreen())),
+      ),
     );
     for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(milliseconds: 120));
