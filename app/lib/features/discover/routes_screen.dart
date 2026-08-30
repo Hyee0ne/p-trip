@@ -114,6 +114,10 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
                   fix: fixAsync.value,
                   routes: onMap,
                   bottomInset: _extent * box.maxHeight,
+                  // 지도의 파란 선을 눌러도 길을 고를 수 있다 —
+                  // 시트를 뒤져 찾는 것보다 지도에서 바로 짚는 게 지도책의 문법이다.
+                  onRouteTap: (r) =>
+                      DepartSheet.show(context, r, note: ref.read(routeNotesProvider).value?[r.id]),
                 ),
               ),
               // 검색은 지도 위에 뜬다. 시트 안에 넣으면 끌어올려야 보인다.

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:kakao_map_sdk/kakao_map_sdk.dart';
 
@@ -21,6 +23,7 @@ class RouteMapPanel extends StatefulWidget {
     required this.fix,
     required this.routes,
     required this.bottomInset,
+    this.onRouteTap,
   });
 
   /// 현재 위치. 없으면 남한 전체를 보여준다.
@@ -31,6 +34,9 @@ class RouteMapPanel extends StatefulWidget {
 
   /// 시트에 가려지는 높이. 줌·내 위치 버튼을 그 위로 띄운다.
   final double bottomInset;
+
+  /// 지도 위의 파란 선을 눌렀을 때. 그 노선을 돌려준다.
+  final void Function(m.RouteLine)? onRouteTap;
 
   @override
   State<RouteMapPanel> createState() => _RouteMapPanelState();
@@ -46,6 +52,38 @@ const _zoomWhole = 7;
 class _RouteMapPanelState extends State<RouteMapPanel> {
   KakaoMapController? _controller;
   Object? _error;
+
+  /// 지금 줌. 손가락 오차를 미터로 환산할 때 쓴다.
+  int _zoom = _zoomWhole;
+
+  /// 눌린 자리에서 가장 가까운 노선.
+  ///
+  /// ⚠ SDK가 폴리라인 탭을 직접 주지 않아 좌표로 찾는다.
+  /// ⚠ 허용 오차를 **줌에 따라 바꾼다.** 전국이 보이는 화면에서 1km는 1픽셀도 안 되고,
+  ///   확대한 화면에서 1km는 화면 절반이다. 고정값을 쓰면 둘 중 하나는 못 쓴다.
+  m.RouteLine? _routeAt(LatLng at) {
+    // 웹 메르카토르 기준 미터/픽셀. 손가락 반경 24px쯤을 허용한다.
+    final mPerPx = 156543.03 * math.cos(at.latitude * math.pi / 180) / math.pow(2, _zoom);
+    final tolKm = (mPerPx * 24 / 1000).clamp(0.15, 20.0);
+
+    m.RouteLine? best;
+    var bestKm = double.infinity;
+    for (final r in widget.routes) {
+      for (final chain in r.paths) {
+        for (final p in chain) {
+          final dx = (p.lng - at.longitude) * 88.0;
+          final dy = (p.lat - at.latitude) * 111.0;
+          final km = math.sqrt(dx * dx + dy * dy);
+          if (km < bestKm) {
+            bestKm = km;
+            best = r;
+          }
+        }
+      }
+    }
+    // 멀면 아무것도 안 고른다 — 바다를 눌렀는데 노선이 열리면 안 된다.
+    return bestKm <= tolKm ? best : null;
+  }
 
   /// 이미 그린 노선. 같은 선을 두 번 얹지 않는다.
   final _drawn = <int>{};
@@ -83,6 +121,13 @@ class _RouteMapPanelState extends State<RouteMapPanel> {
           child: KakaoMap(
             option: KakaoMapOption(position: _center, zoomLevel: _hasFix ? _zoomNear : _zoomWhole),
             onMapReady: _onReady,
+            onCameraMoveEnd: (pos, _) => _zoom = pos.zoomLevel,
+            onMapClick: widget.onRouteTap == null
+                ? null
+                : (_, at) {
+                    final r = _routeAt(at);
+                    if (r != null) widget.onRouteTap!(r);
+                  },
             // 키가 틀리면 여기로 온다. 조용히 빈 화면을 두지 않는다.
             onMapError: (e) {
               if (mounted) setState(() => _error = e);
