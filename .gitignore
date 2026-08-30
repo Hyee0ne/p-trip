@@ -6,6 +6,15 @@
 *.jks
 *.keystore
 
+# ── 서명·배포 자격증명 (절대 커밋 금지) ──
+# .p8  = App Store Connect API 키. **다시 다운로드할 수 없고**, 팀 배포 권한 그 자체다
+# .p12 = 인증서 + 개인키. 이것만 있으면 남이 우리 이름으로 앱을 올릴 수 있다
+*.p8
+*.p12
+*.cer
+*.certSigningRequest
+*.mobileprovision
+
 # ── Flutter / Dart ──
 app/.dart_tool/
 app/.flutter-plugins
