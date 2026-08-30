@@ -252,6 +252,26 @@ class S {
   /// ⚠ 섹션 라벨만 덩그러니 두지 않는다 — 빈 화면에 아무 말이 없으면 고장으로 읽힌다.
   static const tripsEmpty = '아직 여행기가 없어요. 레이더를 켜고 한 번 달리면 여기 쌓여요.';
 
+  // ── 데이터 출처 (MY-01/03 설정) ──
+  // ⚠ 공공누리는 유형과 무관하게 **출처표시가 의무**다. 스토어 설명이 아니라
+  //   콘텐츠를 쓰는 앱 안에서 밝혀야 한다. 이 목록을 지우지 말 것.
+  static const sourcesRow = '데이터 출처';
+  static const sourcesIntro = '이 앱은 아래 공공데이터를 이용합니다.';
+  static const sourcesNote = '사진과 소개글의 저작권은 각 제공기관에 있습니다.';
+  static const sourcesMapRow = '지도 · 길찾기 · 장소검색';
+  static const sourcesMapOrg = '카카오';
+
+  /// (제공기관, 데이터셋). 파이프라인이 **실제로 부르는 것**만 적는다 —
+  /// 안 쓰는 출처를 적으면 그것도 거짓말이다.
+  static const sources = <({String org, String what})>[
+    (org: '한국관광공사', what: '국문 관광정보 · 관광지 연관정보'),
+    (org: '한국천문연구원', what: '출몰시각 · 천문현상 정보'),
+    (org: '소상공인시장진흥공단', what: '전국전통시장표준데이터'),
+    (org: '국토교통부', what: '일반국도 도로중심선'),
+  ];
+
+  static const photoAccessRow = '사진 접근';
+
   // ── 토스트 (§0.2 — 단일 스타일, 1.9초) ──
   static const toastSaved = '찜에 담았어요';
   static const toastPassed = '스쳐간 발견에 담아뒀어요';

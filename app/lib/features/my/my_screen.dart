@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:photo_manager/photo_manager.dart';
 
 import '../../core/env.dart';
 import '../../core/saves.dart';
@@ -14,6 +15,7 @@ import '../../core/widgets/route_badge.dart';
 import '../../core/widgets/spot_image.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/providers.dart';
+import 'data_sources_sheet.dart';
 
 /// MY-01/03 마이 (SCREENS.md MY-01/03).
 ///
@@ -406,17 +408,33 @@ class _MyScreenState extends ConsumerState<MyScreen> {
   }
 
   Widget _settings() {
-    Widget row(String label, Widget trailing) => Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(label, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600)),
-          ),
-          trailing,
-        ],
-      ),
-    );
+    // ⚠ 화살표(`>`)를 단 행은 **반드시 onTap이 있어야 한다.** 눌러도 아무 일이
+    //   없는 행은 애플이 '비활성 UI 요소'로 반려한다.
+    Widget row(String label, Widget trailing, {VoidCallback? onTap}) {
+      final body = Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
+              ),
+            ),
+            trailing,
+          ],
+        ),
+      );
+      if (onTap == null) return body;
+      return InkWell(
+        onTap: onTap,
+        // 운전 중에도 누르는 화면이다 — 터치 영역을 규격 아래로 줄이지 않는다.
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AppTouch.min),
+          child: body,
+        ),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -470,7 +488,19 @@ class _MyScreenState extends ConsumerState<MyScreen> {
                 ),
               ],
               const Divider(height: 1, thickness: 1, color: AppColors.line),
-              row('사진 접근', const Icon(Icons.chevron_right, size: 18, color: AppColors.ink3)),
+              row(
+                S.photoAccessRow,
+                const Icon(Icons.chevron_right, size: 18, color: AppColors.ink3),
+                // 권한을 앱에서 바꿀 수는 없다. iOS 설정을 열어주는 게 할 수 있는 전부다.
+                onTap: PhotoManager.openSetting,
+              ),
+              const Divider(height: 1, thickness: 1, color: AppColors.line),
+              // ⚠ 공공누리 출처표시 의무. 지우지 말 것 (SCREENS.md MY-01/03).
+              row(
+                S.sourcesRow,
+                const Icon(Icons.chevron_right, size: 18, color: AppColors.ink3),
+                onTap: () => DataSourcesSheet.show(context),
+              ),
             ],
           ),
         ),
