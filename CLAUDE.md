@@ -146,14 +146,14 @@ p-trip/
     `$(cat defs.txt)`처럼 명령 치환으로 넘길 것.
   시연 리허설에도 쓴다.
 - 시뮬레이터 위치는 `xcrun simctl location <sim> set 37.5245,129.1143`로 넣는다.
-  권한 팝업은 `xcrun simctl privacy <sim> grant location com.ptrip.roadtrip2026`으로 미리 준다.
+  권한 팝업은 `xcrun simctl privacy <sim> grant location com.ricecookey.pjourney`으로 미리 준다.
   이러면 FAKE_LOCATION 없이 **실제 geolocator 경로**를 확인할 수 있다.
 - **실기기 배포는 release로.** iOS 14+에서 debug 빌드는 Flutter 툴이 붙어 있어야만 뜬다
   (홈 화면에서 열면 "debug mode Flutter apps can only be launched from Flutter tooling" 안내가 뜬다).
   ```bash
   flutter build ios --release $(dart-defines)
   xcrun devicectl device install app --device <udid> "$PWD/build/ios/iphoneos/Runner.app"
-  xcrun devicectl device process launch --terminate-existing --device <udid> com.ptrip.roadtrip2026
+  xcrun devicectl device process launch --terminate-existing --device <udid> com.ricecookey.pjourney
   ```
   ⚠ `flutter install --use-application-binary`는 멀쩡히 있는 `.app`을 "does not exist"라고 거부한다.
   ⚠ `flutter run -d <기기>`는 **`iproxy` 포트 포워딩이 깨져서 못 붙는다.**

@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.ptrip.roadtrip2026"
+        applicationId = "com.ricecookey.pjourney"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         // kakao_map_sdk가 23을 요구한다 (플러그인 android/build.gradle)
