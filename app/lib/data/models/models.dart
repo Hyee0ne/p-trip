@@ -172,18 +172,22 @@ class TodaySky {
 
   /// 일몰까지 남은 분. 모르면 null, 이미 졌으면 음수.
   int? minutesToSunset(DateTime now) {
-    final t = _parse(sunset);
+    final t = _parse(sunset, now);
     if (t == null) return null;
     return t.difference(DateTime(now.year, now.month, now.day, now.hour, now.minute)).inMinutes;
   }
 
-  DateTime? _parse(String? hhmm) {
+  /// 'HH:mm' 을 [on] **그 날의** 시각으로 읽는다.
+  ///
+  /// ⚠ 전에는 여기서 `DateTime.now()`로 날짜를 만들었다. 호출부는 인자로 받은 날짜와
+  ///   빼는데 날이 다르면 결과가 며칠치 분으로 튄다. 운영에선 둘 다 오늘이라 안 드러났고,
+  ///   날짜를 고정한 테스트가 **날이 바뀐 뒤에** 깨지면서 드러났다 (2026-09-03).
+  DateTime? _parse(String? hhmm, DateTime on) {
     if (hhmm == null || hhmm.length < 5) return null;
     final h = int.tryParse(hhmm.substring(0, 2));
     final m = int.tryParse(hhmm.substring(3, 5));
     if (h == null || m == null) return null;
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day, h, m);
+    return DateTime(on.year, on.month, on.day, h, m);
   }
 }
 

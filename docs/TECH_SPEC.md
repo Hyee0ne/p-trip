@@ -167,7 +167,13 @@ Supabase RPC `discover_nearby(lat, lng, heading, now)`:
 ### 3.3 카카오내비 핸드오프 (2단)
 - 출발 시: `NaviApi.navigate(destination: 거점, viaList: [앵커 1~2])`
 - 이동 중 "들르기": `NaviApi.navigate(destination: 스팟)` 단건
-- 티맵 보조(SCREENS.md HND 버튼 2번): 딥링크로 **목적지 단건만** 전달. 경유지 미지원
+- 티맵·애플 지도 보조(SCREENS.md HND): 딥링크로 **목적지 단건만** 전달. 경유지 미지원
+  - 애플 지도 `https://maps.apple.com/?daddr={lat},{lng}&dirflg=d` — **좌표로만** 보낸다.
+    이름으로 검색시키면 '중앙시장'처럼 전국에 널린 이름이 엉뚱한 데서 잡힌다
+  - ⚠ **애플 지도를 빼면 심사에서 반려된다** (2026-09-02, Guideline 4 - Design).
+    "내장 지도와 연결되지 않아 서드파티 지도 앱에 묶는다"가 사유였다
+  - ⚠ 경유를 못 넘기므로 이 둘은 **사용자가 누른 그곳**으로 보낸다(`HandoffSheet.singleTarget`).
+    목적지 자리의 거점을 그대로 넘기면 '들르기'를 눌렀는데 숙소로 안내된다
 - 미설치 분기: 스토어 설치 페이지로 이동
 - 핸드오프 직전 스낵바: "내비에서 '무료도로 우선'을 켜면 국도 중심으로 안내돼요"
 - ⚠ 카카오모빌리티 길찾기 REST/내장 SDK는 **원칙적으로 사용 금지** (우리가 내비가 되면 안 됨)
@@ -278,7 +284,7 @@ trip 종료 시:
 | CO-03 스팟 상세 | `/spot/:id` | spot + spot_links + 확신도 문구. **마을/스팟 통합** |
 | CO-06 거점 설정 | `/course/:id/base` · `/base` | 카카오 장소검색 or 지도 핀 → trips(draft).base_* |
 | CO-06b 국도 제안 | (`/base` 확정 후 모달) | §3.7 compare_routes Edge Fn |
-| HND 핸드오프 시트 | (모달) | kakao_flutter_sdk_navi / 티맵 딥링크 |
+| HND 핸드오프 시트 | (모달) | kakao_flutter_sdk_navi / 티맵·애플 지도 딥링크 |
 | DR-00 위치 권한 | (`/radar` 인라인) | 앱 사용 중 허용만 |
 | DR-01 레이더 | `/radar` | discover_nearby RPC, 위치 스트림, rec 로깅 |
 | DR-02 발견 카드 | (레이더 내 전면 카드) | 점수 상위 1건, 액션: 핸드오프/찜/passed |

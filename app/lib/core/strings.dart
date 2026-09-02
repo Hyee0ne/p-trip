@@ -80,6 +80,7 @@ class S {
 
   /// 좌표가 없어 내비로 넘길 수 없을 때. 지어내지 않고 그렇다고 말한다.
   static const handoffNoCoords = '이곳은 위치 정보가 없어 길안내로 넘길 수 없어요';
+  static const handoffNoMap = '지도 앱을 열지 못했어요';
 
   // CO-07 지도 + 바텀시트 (SCREENS.md CO-07, 2026-08-29 확정)
   static const routesNearTitle = '여기서 탈 수 있는 길';
@@ -150,7 +151,14 @@ class S {
   static const handoffTitle = '카카오내비로 안내를 시작해요';
   static const handoffFreeRoad = '내비에서 \'무료도로 우선\'을 켜면 국도 중심으로 안내돼요';
   static const handoffKakao = '카카오내비 열기';
-  static const handoffTmap = '티맵으로(목적지만)';
+  static const handoffTmap = '티맵';
+
+  /// ⚠ **애플 지도를 지우지 말 것.** 없으면 App Store 심사에서 반려된다
+  ///   (2026-09-02, Guideline 4 - Design). SCREENS.md §HND 참조.
+  static const handoffApple = '애플 지도';
+
+  /// 경유가 있을 때만 낸다 — 없으면 굳이 할 말이 아니다.
+  static String handoffDestOnly(String name) => '티맵·애플 지도는 경유를 못 넘겨요 · $name만 안내돼요';
 
   // ── DR-00 권한 ──
   static const permTitle = '레이더가 주변을 살피려면 위치가 필요해요';

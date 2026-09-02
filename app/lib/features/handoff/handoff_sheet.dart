@@ -52,6 +52,13 @@ class HandoffSheet extends StatelessWidget {
 
   List<String> get viaNames => [for (final v in via) v.name];
 
+  /// 경유를 못 넘기는 앱(티맵·애플 지도)이 갈 곳.
+  ///
+  /// ⚠ **사용자가 누른 그곳이다.** 거점이 아니다 — '들르기'에서 목적지 자리에는
+  ///   거점이 들어가고 누른 스팟은 경유로 간다(`visitParams`). 그대로 넘기면
+  ///   "추암 촛대바위 들르기"를 눌렀는데 숙소로 안내된다.
+  HandoffPlace get singleTarget => via.isNotEmpty ? via.first : destination;
+
   /// '무료도로 우선' 안내 — 들르기에선 첫 1회만 (SCREENS.md §HND).
   final bool showFreeRoadTip;
 
@@ -170,23 +177,23 @@ class HandoffSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpace.x2),
-          SizedBox(
-            height: 52,
-            child: OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.ink,
-                side: const BorderSide(color: AppColors.line2),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.button),
-                ),
-              ),
-              onPressed: () => _openTmap(context),
-              child: const Text(
-                S.handoffTmap,
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              ),
-            ),
+          // ⚠ 애플 지도를 빼지 말 것 — 없으면 심사에서 반려된다 (Guideline 4).
+          Row(
+            children: [
+              Expanded(child: _altButton(S.handoffTmap, () => _openTmap(context))),
+              const SizedBox(width: AppSpace.x2),
+              Expanded(child: _altButton(S.handoffApple, () => _openApple(context))),
+            ],
           ),
+          // 경유가 있을 때만 말한다. 없으면 굳이 할 말이 아니다.
+          if (via.isNotEmpty) ...[
+            const SizedBox(height: AppSpace.x2),
+            Text(
+              S.handoffDestOnly(singleTarget.name),
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12, height: 1.5, color: AppColors.ink3),
+            ),
+          ],
           const SizedBox(height: AppSpace.x2),
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -249,13 +256,50 @@ class HandoffSheet extends StatelessWidget {
     await _openStore(kakao: true);
   }
 
+  Widget _altButton(String label, VoidCallback onTap) => SizedBox(
+    height: 52,
+    child: OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.ink,
+        side: const BorderSide(color: AppColors.line2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
+      ),
+      onPressed: onTap,
+      child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+    ),
+  );
+
+  /// 애플 지도 — iOS 기본 지도.
+  ///
+  /// ⚠ **선택지로 반드시 있어야 한다.** 2026-09-02 App Store 반려 사유가
+  ///   "내장 지도와 연결되지 않아 서드파티 지도 앱에 묶는다"였다 (Guideline 4).
+  /// ⚠ 이름을 안 넘기고 **좌표로만** 보낸다. 이름으로 검색시키면 엉뚱한 곳이 잡힌다 —
+  ///   '중앙시장'처럼 전국에 널린 이름이 많다.
+  /// ⚠ 경유지를 못 넘긴다. 공개 URL 스킴에 그런 파라미터가 없다.
+  Future<void> _openApple(BuildContext context) async {
+    final target = singleTarget;
+    if (!target.hasCoords) return _noCoords(context);
+    final nav = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await _launch(
+      Uri.parse('https://maps.apple.com/?daddr=${target.lat},${target.lng}&dirflg=d'),
+    );
+    nav.pop();
+    if (!ok) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text(S.handoffNoMap), duration: AppMotion.toast),
+      );
+    }
+  }
+
   /// 티맵은 공개 딥링크가 목적지 단건 수준이라 보조 지원 (TECH_SPEC §3.3).
   Future<void> _openTmap(BuildContext context) async {
-    if (!destination.hasCoords) return _noCoords(context);
+    final target = singleTarget;
+    if (!target.hasCoords) return _noCoords(context);
     final nav = Navigator.of(context);
     final uri = Uri.parse(
-      'tmap://route?goalname=${Uri.encodeComponent(destination.name)}'
-      '&goalx=${destination.lng}&goaly=${destination.lat}',
+      'tmap://route?goalname=${Uri.encodeComponent(target.name)}'
+      '&goalx=${target.lng}&goaly=${target.lat}',
     );
     final ok = await _launch(uri);
     nav.pop();
