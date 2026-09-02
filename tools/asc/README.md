@@ -34,6 +34,19 @@ python3 tools/asc/review_status.py   # 심사 상태 한 줄로
 2. **버전 레코드와 빌드의 버전 문자열이 같아야 붙는다.**
    ASC가 만들어준 기본값은 `1.0`인데 우리 빌드는 `1.0.0`이었다. 안 맞으면 빌드가 안 붙는다.
 
+## 반려된 뒤 재제출이 막힐 때
+
+반려 건이 `UNRESOLVED_ISSUES` 상태로 **버전을 붙들고 있다.** 그대로 새 제출을 만들면
+`appStoreVersions ... is not in valid state` 로 거부된다 (2026-09-03 실제로 막혔다).
+그 건을 먼저 닫는다:
+
+```python
+a.patch(f'reviewSubmissions/{OLD_ID}', {'data':{'type':'reviewSubmissions','id':OLD_ID,
+  'attributes':{'canceled':True}}})
+```
+
+`CANCELING` → `COMPLETE` 로 바뀐 뒤에 새 묶음을 만들어 제출한다.
+
 ## API로 안 되는 것
 
 **앱 개인정보(App Privacy) 설문은 공개 API에 없다.** 웹에서만 채운다 —
