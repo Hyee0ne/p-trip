@@ -244,6 +244,8 @@ async function main() {
   // 2) 상세를 채우고 점수를 매긴다.
   //    스팟 하나에 3콜이라 순차로 돌리면 1,000건에 15분이 넘는다. 묶어서 동시에 친다.
   const spots: Record<string, unknown>[] = [];
+  /** 적재를 마친 것들. `spots`는 flush 때 비워지므로 보고는 이쪽을 본다. */
+  const kept: Record<string, unknown>[] = [];
   const events: { contentid: string; title: string; start: string; end: string }[] = [];
   let done = 0;
 
@@ -281,6 +283,12 @@ async function main() {
     //   같은 호스트가 https로도 주므로 적재할 때 올려둔다.
     const image = ((item.firstimage || '').trim() || null)?.replace(/^http:\/\//, 'https://') ?? null;
     const openHours = openHoursOf(intro);
+    // 사진 저작권 유형 (공공누리). Type3 = 변경금지 — 사진을 합성·크롭하면 안 된다.
+    // ⚠ **수집할 때 같이 받아야 한다.** 나중에 넣으려면 전국을 다시 받아야 한다.
+    //   지금 앱은 원본 URL을 그대로 띄우니 당장 쓰이지는 않는다 (2026-09-03).
+    const rights = ['Type1', 'Type3'].includes((item.cpyrhtDivCd ?? '').trim())
+      ? (item.cpyrhtDivCd as string).trim()
+      : null;
 
     // 추가사진(10점)은 게이트를 가를 때만 확인한다. 일일 요청 제한을 아껴야 한다.
     const base = trustScore({ image, photoCount: 0, tel, openHours, addr, overview: null });
@@ -305,6 +313,7 @@ async function main() {
       addr,
       tel,
       image_url: image,
+      image_rights: rights,
       photo_count: photoCount,
       // ⚠ overview는 넣지 않는다. null로 upsert하면 이미 채운 개요를 지운다.
       open_hours: openHours,
@@ -333,26 +342,51 @@ async function main() {
   //   4개씩 + 묶음 사이 250ms면 초당 약 16콜이다.
   const LANES = 4;
   const GAP_MS = 250;
-  for (let i = 0; i < targets.length; i += LANES) {
-    // 한 건이 터져도 나머지는 간다.
-    await Promise.all(
-      targets.slice(i, i + LANES).map((t) =>
-        fill(t).catch((e) => {
-          if (e instanceof Error && e.message.startsWith('TourAPI 거부')) throw e;
-          failures++;
-        }),
-      ),
-    );
-    if (i + LANES < targets.length) await new Promise((r) => setTimeout(r, GAP_MS));
-  }
-  if (failures) console.log(`  ⚠ 응답을 못 받은 요청 ${failures}건 — 그만큼 항목이 비어 있을 수 있다`);
 
-  // 3) 적재
-  const { error } = await db
-    .from('spots')
-    .upsert(spots, { onConflict: 'tourapi_contentid' })
-    .select('id, tourapi_contentid');
-  if (error) throw new Error(`spots 적재 실패: ${error.message}`);
+  /**
+   * 받은 만큼 **그때그때 적재한다.**
+   *
+   * ⚠ 전에는 전부 받은 뒤 마지막에 한 번만 upsert했다. 일일 한도에 걸려 예외가 나면
+   *   **그날 받은 게 통째로 날아갔다** — 2026-09-03 강원 시험에서 1,000건을 받고
+   *   0건이 저장됐다. 하루치 할당량을 그냥 태운 셈이다.
+   *   '이미 채운 건 건너뛴다'는 재개 전략도 저장이 돼야 성립한다.
+   */
+  let saved = 0;
+  async function flush() {
+    if (!spots.length) return;
+    const batch = spots.splice(0, spots.length);
+    const { error } = await db
+      .from('spots')
+      .upsert(batch, { onConflict: 'tourapi_contentid' })
+      .select('id');
+    if (error) throw new Error(`spots 적재 실패: ${error.message}`);
+    saved += batch.length;
+    kept.push(...batch);
+  }
+
+  try {
+    for (let i = 0; i < targets.length; i += LANES) {
+      // 한 건이 터져도 나머지는 간다.
+      await Promise.all(
+        targets.slice(i, i + LANES).map((t) =>
+          fill(t).catch((e) => {
+            if (e instanceof Error && e.message.startsWith('TourAPI 거부')) throw e;
+            failures++;
+          }),
+        ),
+      );
+      // 200건마다 내려놓는다. 한도에 걸려도 여기까지는 남는다.
+      if (spots.length >= 200) await flush();
+      if (i + LANES < targets.length) await new Promise((r) => setTimeout(r, GAP_MS));
+    }
+  } catch (e) {
+    // ⚠ **터지기 전에 받아둔 것부터 저장한다.** 그래야 내일 이어받을 수 있다.
+    await flush();
+    console.log(`\n  중단: ${e instanceof Error ? e.message.slice(0, 120) : e}`);
+    console.log(`  여기까지 ${saved}건 저장했다. 한도가 풀리면 같은 명령으로 이어받는다.`);
+  }
+  await flush();
+  if (failures) console.log(`  ⚠ 응답을 못 받은 요청 ${failures}건 — 그만큼 항목이 비어 있을 수 있다`);
 
   // 행사는 spot이 생긴 뒤에 붙인다.
   if (events.length) {
@@ -377,15 +411,22 @@ async function main() {
   }
 
   // 4) 보고 — 게이트 통과율이 M1의 합격선이다.
-  const pass = spots.filter((s) => (s.trust_score as number) >= 60).length;
-  const byType = spots.reduce<Record<string, number>>((m, s) => {
+  const pass = kept.filter((s) => (s.trust_score as number) >= 60).length;
+  const byType = kept.reduce<Record<string, number>>((m, s) => {
     m[s.type as string] = (m[s.type as string] ?? 0) + 1;
     return m;
   }, {});
-  console.log(`\n✓ spots ${spots.length}건 적재`);
+  console.log(`\n✓ spots ${kept.length}건 적재`);
   console.log(`  유형: ${Object.entries(byType).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
-  console.log(`  신뢰도 게이트(60) 통과 ${pass}건 (${Math.round((pass / spots.length) * 100)}%)`);
-  console.log(`  전화 보유 ${spots.filter((s) => s.tel).length}건 · 사진 보유 ${spots.filter((s) => s.image_url).length}건`);
+  console.log(
+    `  신뢰도 게이트(60) 통과 ${pass}건` +
+      (kept.length ? ` (${Math.round((pass / kept.length) * 100)}%)` : ''),
+  );
+  console.log(
+    `  전화 보유 ${kept.filter((s) => s.tel).length}건 · 사진 보유 ${kept.filter((s) => s.image_url).length}건`,
+  );
+  const rightsKnown = kept.filter((s) => s.image_rights).length;
+  console.log(`  사진 저작권 유형 확인 ${rightsKnown}건 (Type3 = 변경금지)`);
   console.log('\n· 개요는 아직 비어 있다 — `npm run fetch:overview`로 게이트 통과분만 채운다.');
   console.log('· exit_frac·detour_min은 별도 단계에서 계산한다.');
 }
