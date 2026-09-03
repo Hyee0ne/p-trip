@@ -266,9 +266,30 @@ async function main() {
   const doneIds = new Set((existing ?? []).map((r) => r.tourapi_contentid as string));
   const reset = process.env.RESET === '1';
 
-  const targets = [...seen].filter(
-    ([id, i]) => TYPE_MAP[i.contenttypeid] && (reset || !doneIds.has(id)),
+  /**
+   * 대표사진이 없으면 **게이트(60)를 넘을 수 없다.**
+   *
+   * 사진 35점이 배점의 최대 항목이다. 없으면 전화15 + 영업시간20 + 주소10 = **45가 천장**이다.
+   * (추가사진 10점은 base 50~59일 때만 조회하니 안 붙고, 개요 10점은 게이트를 통과한
+   *  뒤 `fetch:overview` 단계에서 채운다.)
+   * 60을 못 넘으면 레이더에 영영 안 뜬다 — 상세 콜을 쓸 이유가 없다.
+   * 강원 표본에서 **26%(1,007건)** 가 여기 걸린다 (2026-09-03 실측).
+   *
+   * ⚠ 동승자 모드(DR-05)는 게이트를 안 걸어서 이들도 보여줄 수는 있다. 다만 사진도
+   *   개요도 없는 이름뿐인 카드다 — 할당량이 빠듯한 동안은 안 받는다.
+   *   운영계정이 나오면 `KEEP_NO_PHOTO=1` 로 같이 받는다.
+   */
+  const keepNoPhoto = process.env.KEEP_NO_PHOTO === '1';
+  const hasPhoto = (i: Item) => Boolean((i.firstimage ?? '').trim());
+  
+  const mapped = [...seen].filter(([, i]) => TYPE_MAP[i.contenttypeid]);
+  const skipped = keepNoPhoto ? 0 : mapped.filter(([, i]) => !hasPhoto(i)).length;
+  const targets = mapped.filter(
+    ([id, i]) => (keepNoPhoto || hasPhoto(i)) && (reset || !doneIds.has(id)),
   );
+  if (skipped) {
+    console.log(`  사진 없는 ${skipped}건은 건너뛴다 — 게이트(60)를 넘을 수 없다 (KEEP_NO_PHOTO=1로 포함)`);
+  }
   console.log(
     `  대상 ${targets.length}건` +
       (doneIds.size && !reset ? ` (이미 채운 ${doneIds.size}건 건너뜀 — RESET=1로 재수집)` : ''),
