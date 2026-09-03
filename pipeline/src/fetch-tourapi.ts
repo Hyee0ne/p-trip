@@ -71,6 +71,45 @@ const REGIONS: { name: string; regn: string }[] = [
 ];
 
 /**
+ * 주소로 시도 코드를 되찾는다. 목록 응답에는 시도 코드가 없어서
+ * 캐시에 `_rg`로 심어두는데, 그게 없는 옛 캐시는 주소로 메운다.
+ * ⚠ '경상남/경상북'처럼 앞이 겹치는 게 있어 **긴 것부터** 본다.
+ */
+const ADDR_TO_REGN: [string, string][] = [
+  ['서울', '11'], ['경기', '41'], ['강원', '51'], ['부산', '26'], ['대구', '27'],
+  ['인천', '28'], ['대전', '30'], ['울산', '31'], ['세종', '36110'],
+  ['충청북', '43'], ['충북', '43'], ['충청남', '44'], ['충남', '44'],
+  ['전남광주', '12'], ['전라남', '12'], ['광주', '12'], ['전남', '12'],
+  ['전라북', '52'], ['전북', '52'],
+  ['경상북', '47'], ['경북', '47'], ['경상남', '48'], ['경남', '48'],
+];
+
+function regnOf(i: Item): string {
+  if (i._rg) return i._rg;
+  const a = (i.addr1 ?? '').trim();
+  for (const [pre, rg] of ADDR_TO_REGN) if (a.startsWith(pre)) return rg;
+  return '';
+}
+
+/**
+ * 상세를 받는 **시도 순서** (2026-09-03 결정: 서울 → 경기 → 강원 → 나머지).
+ *
+ * 하루 1,000건씩 며칠에 걸쳐 받으므로 순서가 곧 '언제부터 쓸 수 있느냐'다.
+ * 목록에 없는 시도는 이 뒤에 원래 순서대로 붙는다.
+ * `REGION_ORDER=51,41` 로 바꿀 수 있다.
+ */
+const REGION_ORDER = (process.env.REGION_ORDER ?? '11,41,51')
+  .split(',')
+  .map((x) => x.trim())
+  .filter(Boolean);
+
+const regionRank = (i: Item) => {
+  const rg = regnOf(i);
+  const n = REGION_ORDER.indexOf(rg);
+  return n >= 0 ? n : REGION_ORDER.length;
+};
+
+/**
  * 국도 회랑 반경(km). 이 안쪽 스팟만 상세를 받는다.
  *
  * **3.5km인 이유**: 앱이 쓰는 상한이 거기다 (2026-09-03).
@@ -266,7 +305,7 @@ async function main() {
     if (seen.size) console.log(`  목록 캐시 ${seen.size}건 · 남은 시도 ${todo.length}개`);
 
     /** 회랑 판정 — 실제 노선 선형(`near_routes` RPC). 한 번에 다 던지면 요청이 커서 나눈다. */
-    const keepInCorridor = async (rows: Item[]) => {
+    const keepInCorridor = async (rows: Item[], regn: string) => {
       const CHUNK = 300;
       for (let i = 0; i < rows.length; i += CHUNK) {
         const slice = rows.slice(i, i + CHUNK);
@@ -279,7 +318,9 @@ async function main() {
           const r = slice[row.idx];
           // ⚠ **국도까지의 거리를 실어둔다.** 상세를 가까운 순으로 받기 위해서다 —
           //   할당량이 며칠에 걸쳐 나뉘니 '먼저 받는 것'이 곧 '먼저 쓸 수 있는 것'이다.
-          if (r?.contentid) seen.set(r.contentid, { ...r, _km: String(row.distance_km) });
+          if (r?.contentid) {
+            seen.set(r.contentid, { ...r, _km: String(row.distance_km), _rg: regn });
+          }
         }
       }
     };
@@ -314,7 +355,7 @@ async function main() {
               `ldongCode2 API로 정본 코드를 확인할 것`,
           );
         }
-        await keepInCorridor(ok);
+        await keepInCorridor(ok, rg.regn);
         listed.add(rg.regn);
         save();
       }
@@ -375,12 +416,21 @@ async function main() {
   const targets = mapped
     .filter(
       ([id, i]) =>
-        (keepNoPhoto || hasPhoto(i)) && listScore(i) < 60 && (reset || !doneIds.has(id)),
+        (keepNoPhoto || hasPhoto(i)) &&
+        listScore(i) < 60 &&
+        // ⚠ `REGIONS=51` 은 **상세도** 좁힌다. 전에는 목록만 좁혀서,
+        //   캐시가 이미 전국이면 좁힌 줄 알고 전국을 돌았다.
+        (!ONLY.length || ONLY.includes(regnOf(i))) &&
+        (reset || !doneIds.has(id)),
     )
-    // ⚠ **국도에 가까운 것부터.** 하루 1,000건씩 며칠에 걸쳐 받으므로,
-    //   중간에 멈춰도 길 위에서 실제로 만날 곳이 먼저 채워져 있어야 한다.
+    // ⚠ **시도 순서가 먼저, 그 안에서 국도에 가까운 것부터.**
+    //   하루 1,000건씩 며칠에 걸쳐 받으므로 순서가 곧 '언제부터 쓸 수 있느냐'다.
     //   거리를 모르는 옛 캐시는 뒤로 보낸다 (Infinity).
-    .sort(([, a], [, b]) => (Number(a._km ?? Infinity) - Number(b._km ?? Infinity)) || 0);
+    .sort(
+      ([, a], [, b]) =>
+        regionRank(a) - regionRank(b) ||
+        Number(a._km ?? Infinity) - Number(b._km ?? Infinity),
+    );
   if (dropped) console.log(`  안 받는 유형 ${dropped}건 (쇼핑·문화시설 — TYPE_MAP 주석 참조)`);
   if (noPhoto) {
     console.log(`  사진 없는 ${noPhoto}건은 건너뛴다 — 게이트(60)를 넘을 수 없다 (KEEP_NO_PHOTO=1로 포함)`);
