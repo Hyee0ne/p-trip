@@ -12,13 +12,20 @@
  * 실행: cd pipeline && npm run fetch:markets
  */
 
+import { basename } from 'node:path';
 import { existsSync } from 'node:fs';
 import { supabase } from './lib/supabase.js';
 import { readCsv } from './lib/csv.js';
-import { distToCorridorKm, distMeters } from './lib/corridor.js';
+import { distMeters } from './lib/corridor.js';
 
 const CSV = 'data/markets.csv';
-const CORRIDOR_KM = Number(process.env.CORRIDOR_KM ?? 12);
+/**
+ * 국도 회랑 반경(km). `fetch:spots`와 같은 기준을 쓴다.
+ * ⚠ 전에는 12km였고, 판정도 **손으로 찍은 7번 국도 좌표 7개**로 했다.
+ *   그래서 전국 CSV를 넣고도 삼척-강릉 것만 걸렸다 (11곳).
+ *   이제 `near_routes` RPC가 실제 `routes.geom` 51선으로 판정한다 (2026-09-03).
+ */
+const CORRIDOR_KM = Number(process.env.CORRIDOR_KM ?? 3.5);
 
 /** 기존 스팟으로 인정할 거리. 표준데이터와 TourAPI의 좌표가 정확히 같지는 않다. */
 const MATCH_M = 600;
@@ -84,7 +91,7 @@ async function main() {
   ];
 
   // 1) 회랑 안 시장만
-  const markets = rows
+  const all = rows
     .map((r) => ({
       name: r[iName],
       cycle: normalizeCycle(r[iCycle]),
@@ -95,14 +102,25 @@ async function main() {
       tel: r[iTel] || null,
       kind: r[iType] || null,
     }))
-    .filter(
-      (m) =>
-        m.name &&
-        Number.isFinite(m.lat) &&
-        Number.isFinite(m.lng) &&
-        distToCorridorKm(m.lat, m.lng) <= CORRIDOR_KM,
-    );
-  console.log(`전국 ${rows.length}곳 → 회랑 ${CORRIDOR_KM}km 안 ${markets.length}곳`);
+    .filter((m) => m.name && Number.isFinite(m.lat) && Number.isFinite(m.lng));
+
+  // 회랑 판정은 실제 노선 선형이 한다 (near_routes RPC). 한 번에 다 던지면 요청이 커서 나눈다.
+  const inCorridor: typeof all = [];
+  const CHUNK = 300;
+  for (let i = 0; i < all.length; i += CHUNK) {
+    const slice = all.slice(i, i + CHUNK);
+    const { data, error } = await db.rpc('near_routes', {
+      p_points: slice.map((m) => [m.lat, m.lng]),
+      p_max_km: CORRIDOR_KM,
+    });
+    if (error) throw new Error(`회랑 판정 실패: ${error.message}`);
+    for (const row of (data ?? []) as { idx: number }[]) {
+      const m = slice[row.idx];
+      if (m) inCorridor.push(m);
+    }
+  }
+  const markets = inCorridor;
+  console.log(`전국 ${rows.length}곳 → 좌표 있는 ${all.length}곳 → 회랑 ${CORRIDOR_KM}km 안 ${markets.length}곳`);
 
   // 2) 붙일 수 있는 기존 스팟을 모은다
   const { data: spotRows, error: e1 } = await db
@@ -199,7 +217,17 @@ async function main() {
   }
 }
 
-main().catch((e) => {
-  console.error(e instanceof Error ? e.message : e);
-  process.exit(1);
-});
+/**
+ * ⚠ **직접 실행할 때만 돈다.**
+ *   전에는 최상위에서 그냥 `main()`을 불렀다. 그래서 다른 스크립트가 이 파일에서
+ *   함수 하나(`normalizeCycle`)를 import 하기만 해도 **적재가 통째로 실행됐다** —
+ *   2026-09-03 실제로 전국 시장 1,216건이 그렇게 들어왔다 (되돌렸다).
+ */
+const invokedDirectly =
+  process.argv[1] !== undefined && import.meta.url.endsWith(basename(process.argv[1]));
+if (invokedDirectly) {
+  main().catch((e) => {
+    console.error(e instanceof Error ? e.message : e);
+    process.exit(1);
+  });
+}

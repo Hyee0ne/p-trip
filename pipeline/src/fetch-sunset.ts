@@ -11,6 +11,7 @@
  *       DAYS=60 npm run fetch:sunset
  */
 
+import { basename } from 'node:path';
 import { supabase } from './lib/supabase.js';
 
 const KEY = process.env.DATA_GO_KR_KEY?.trim();
@@ -162,7 +163,17 @@ async function main() {
   if (quotaHit) console.log('\n⚠ 일일 요청 제한에 닿아 멈췄습니다. 다시 돌리면 이어받습니다.');
 }
 
-main().catch((e) => {
-  console.error(e instanceof Error ? e.message : e);
-  process.exit(1);
-});
+/**
+ * ⚠ **직접 실행할 때만 돈다.**
+ *   전에는 최상위에서 그냥 `main()`을 불렀다. 그래서 다른 스크립트가 이 파일에서
+ *   함수 하나(`normalizeCycle`)를 import 하기만 해도 **적재가 통째로 실행됐다** —
+ *   2026-09-03 실제로 전국 시장 1,216건이 그렇게 들어왔다 (되돌렸다).
+ */
+const invokedDirectly =
+  process.argv[1] !== undefined && import.meta.url.endsWith(basename(process.argv[1]));
+if (invokedDirectly) {
+  main().catch((e) => {
+    console.error(e instanceof Error ? e.message : e);
+    process.exit(1);
+  });
+}

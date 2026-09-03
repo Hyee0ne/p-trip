@@ -13,6 +13,7 @@
  *       LIMIT=300 npm run fetch:overview   # 오늘 이만큼만
  */
 
+import { basename } from 'node:path';
 import { supabase } from './lib/supabase.js';
 
 const KEY = process.env.TOURAPI_KEY?.trim();
@@ -98,7 +99,17 @@ async function main() {
   }
 }
 
-main().catch((e) => {
-  console.error(e instanceof Error ? e.message : e);
-  process.exit(1);
-});
+/**
+ * ⚠ **직접 실행할 때만 돈다.**
+ *   전에는 최상위에서 그냥 `main()`을 불렀다. 그래서 다른 스크립트가 이 파일에서
+ *   함수 하나(`normalizeCycle`)를 import 하기만 해도 **적재가 통째로 실행됐다** —
+ *   2026-09-03 실제로 전국 시장 1,216건이 그렇게 들어왔다 (되돌렸다).
+ */
+const invokedDirectly =
+  process.argv[1] !== undefined && import.meta.url.endsWith(basename(process.argv[1]));
+if (invokedDirectly) {
+  main().catch((e) => {
+    console.error(e instanceof Error ? e.message : e);
+    process.exit(1);
+  });
+}
