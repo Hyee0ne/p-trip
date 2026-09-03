@@ -20,7 +20,6 @@ import '../../core/theme.dart';
 import '../../core/trip_log.dart';
 import '../../core/voice.dart';
 import 'catchup_sheet.dart';
-import 'passenger_mode.dart';
 import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/route_badge.dart';
 import '../../core/widgets/spot_image.dart';
@@ -57,12 +56,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
 
   /// 오늘 이 자리의 해·달. 일몰 가중치가 쓴다.
   TodaySky? _sky;
-
-  /// DR-05 동승자 모드. 켜면 레이더 뷰가 카드 덱으로 바뀐다.
-  bool _passengerMode = Env.radarPassenger;
-
-  /// 동승자가 고른 다음 정차지 후보.
-  final _picked = <Spot>[];
 
   /// 정차 시 몰아보기(DR-03)를 띄우기 위한 스쳐간 목록
   final _passed = <Discovery>[];
@@ -445,18 +438,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
           child: queueAsync.maybeWhen(
             orElse: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
             data: (queue) {
-              if (_passengerMode) {
-                return PassengerMode(
-                  lat: drive.lat ?? 37.5245,
-                  lng: drive.lng ?? 129.1143,
-                  headingDeg: drive.headingDeg,
-                  picked: _picked,
-                  onExit: () => setState(() => _passengerMode = false),
-                  onPick: (s) => setState(() {
-                    if (!_picked.any((p) => p.id == s.id)) _picked.add(s);
-                  }),
-                );
-              }
               // DR-00 — 실주행인데 위치를 못 받는다. 레이더는 위치가 전부라
               // 빈 화면을 보여주느니 이유를 말하고 길을 둘 다 열어둔다.
               if (drive.needsLocation) return _needsLocation();
@@ -675,15 +656,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
               setState(() => _voiceOn = !_voiceOn);
               if (!_voiceOn) ref.read(voiceProvider).stop();
             },
-          ),
-          IconButton(
-            icon: Icon(
-              _passengerMode ? Icons.people : Icons.people_outline,
-              color: _passengerMode ? AppColors.routeBlue : AppColors.darkInk2,
-              size: 20,
-            ),
-            // ⚠ 모드를 바꿔도 주행·기록은 그대로 돈다 (SCREENS.md DR-05).
-            onPressed: () => setState(() => _passengerMode = !_passengerMode),
           ),
         ],
       ),

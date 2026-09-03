@@ -331,30 +331,6 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
 
   static String _pad(int n) => n.toString().padLeft(2, '0');
 
-  @override
-  Future<List<Spot>> discoverAhead({
-    required double lat,
-    required double lng,
-    double? headingDeg,
-    double km = 20,
-  }) async {
-    final rows =
-        await _db.rpc(
-              'discover_ahead',
-              params: {'p_lat': lat, 'p_lng': lng, 'p_heading': headingDeg, 'p_km': km},
-            )
-            as List<dynamic>;
-    if (rows.isEmpty) return const [];
-    final order = [for (final r in rows) (r as Map<String, dynamic>)['id'] as String];
-    final spots = await _db.from('spot_cards').select().inFilter('id', order);
-    final byId = {for (final s in spots) s['id'] as String: _spot(s)};
-    // RPC가 준 순서(가까운 순)를 지킨다.
-    return [
-      for (final id in order)
-        if (byId[id] != null) byId[id]!,
-    ];
-  }
-
   // ── 레이더 ──────────────────────────────────────────────
   @override
   Future<List<Discovery>> radarQueue({

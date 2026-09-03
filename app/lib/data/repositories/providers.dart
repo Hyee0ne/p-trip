@@ -115,14 +115,6 @@ final todaySkyProvider = FutureProvider.family<TodaySky?, ({double lat, double l
   (ref, p) => ref.watch(discoverRepositoryProvider).todaySky(lat: p.lat, lng: p.lng),
 );
 
-/// DR-05 동승자 모드 — 앞쪽을 넓게. 게이트 미적용.
-final aheadProvider =
-    FutureProvider.family<List<Spot>, ({double lat, double lng, double? heading, double km})>(
-      (ref, p) => ref
-          .watch(discoverRepositoryProvider)
-          .discoverAhead(lat: p.lat, lng: p.lng, headingDeg: p.heading, km: p.km),
-    );
-
 /// DR-01/02 레이더 — **현 위치 + 진행 방향 반경**. 노선·코스를 보지 않는다 (원칙 2).
 ///
 /// ⚠ 주행 좌표를 그대로 키로 쓰면 안 된다. 10m마다 바뀌어 family가 매번 새 provider를

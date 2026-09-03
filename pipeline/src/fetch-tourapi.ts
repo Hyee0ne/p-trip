@@ -47,6 +47,9 @@ const COMMON = `MobileOS=ETC&MobileApp=PTrip&_type=json`;
  *   위치기반(locationBasedList2)도 같은 이유로 묵호등대를 안 준다 — 그래서 안 쓴다.
  */
 const REGIONS: { name: string; regn: string }[] = [
+  // ⚠ **제주는 없다** (2026-09-03). `routes` 51선은 본토 기준이라 제주 노선이 없고,
+  //   회랑 판정이 2,144건을 전부 버린다. 목록 콜만 태우는 셈이라 아예 안 돈다.
+  //   제주 국도가 생기면 `{ name: '제주특별자치도', regn: '50' }` 를 되살린다.
   { name: '서울특별시', regn: '11' },
   { name: '부산광역시', regn: '26' },
   { name: '대구광역시', regn: '27' },
@@ -63,18 +66,25 @@ const REGIONS: { name: string; regn: string }[] = [
   { name: '전남광주통합특별시', regn: '12' },
   { name: '경상북도', regn: '47' },
   { name: '경상남도', regn: '48' },
-  { name: '제주특별자치도', regn: '50' },
   { name: '강원특별자치도', regn: '51' },
   { name: '전북특별자치도', regn: '52' },
 ];
 
 /**
  * 국도 회랑 반경(km). 이 안쪽 스팟만 상세를 받는다.
+ *
+ * **3.5km인 이유**: 앱이 쓰는 상한이 거기다 (2026-09-03).
+ * `detour_min = ceil(km / 40 * 60) * 2` 이고 레이더·코스·훑어보기가 전부
+ * `detour_min <= 10` 으로 거른다 → `km <= 3.33`. 그 밖은 받아도 화면에 안 뜬다.
+ * 0.17km는 선형 오차 여유다.
+ *
+ * ⚠ 전에는 10이었다. 반경 20km를 훑던 동승자 모드(DR-05) 때문이었는데
+ *   그 기능을 지웠다 (2026-09-03). 이제 넓게 받을 이유가 없다.
  * ⚠ 상세는 **1건당 1콜**이다. 회랑 밖까지 받으면 할당량이 몇 배로 든다.
  * ⚠ 판정은 `near_routes` RPC가 한다 — 손으로 찍은 좌표선을 전국에 쓸 수는 없다.
  *   실제 `routes.geom` 51선을 쓴다.
  */
-const CORRIDOR_KM = Number(process.env.CORRIDOR_KM ?? 10);
+const CORRIDOR_KM = Number(process.env.CORRIDOR_KM ?? 3.5);
 
 /** 좁혀 돌 때. `REGIONS=51,47 npm run fetch:spots` */
 const ONLY = (process.env.REGIONS ?? '')
@@ -197,9 +207,28 @@ async function main() {
   const regions = ONLY.length ? REGIONS.filter((r) => ONLY.includes(r.regn)) : REGIONS;
   const seen = new Map<string, Item>();
 
-  const cached = !process.env.RELIST && existsSync(CACHE)
-    ? (JSON.parse(readFileSync(CACHE, 'utf-8')) as Record<string, Item>)
+  /**
+   * 캐시는 **회랑 폭까지 같이 적는다.**
+   *
+   * ⚠ 캐시는 이미 회랑으로 걸러진 결과다. `CORRIDOR_KM`을 바꾸고 옛 캐시를 그대로 쓰면
+   *   조용히 옛 기준으로 돈다 — 10km로 받아둔 걸 3.5km인 줄 알고 쓰게 된다.
+   *   폭이 다르면 캐시를 버리고 다시 받는다.
+   */
+  type Cache = { corridorKm: number; items: Record<string, Item> };
+  const raw = !process.env.RELIST && existsSync(CACHE)
+    ? (JSON.parse(readFileSync(CACHE, 'utf-8')) as Cache | Record<string, Item>)
     : null;
+  const cached =
+    raw && 'items' in raw && typeof (raw as Cache).corridorKm === 'number'
+      ? (raw as Cache).corridorKm === CORRIDOR_KM
+        ? (raw as Cache).items
+        : (console.log(
+            `  목록 캐시가 ${(raw as Cache).corridorKm}km 기준이다 (지금 ${CORRIDOR_KM}km) — 다시 받는다`,
+          ),
+          null)
+      : raw
+        ? (console.log('  목록 캐시에 회랑 폭이 없다 (옛 형식) — 다시 받는다'), null)
+        : null;
 
   if (cached) {
     for (const [id, it] of Object.entries(cached)) seen.set(id, it);
@@ -246,7 +275,8 @@ async function main() {
         if (r?.contentid) seen.set(r.contentid, r);
       }
     }
-    writeFileSync(CACHE, JSON.stringify(Object.fromEntries(seen), null, 0), 'utf-8');
+    const out: Cache = { corridorKm: CORRIDOR_KM, items: Object.fromEntries(seen) };
+    writeFileSync(CACHE, JSON.stringify(out, null, 0), 'utf-8');
     console.log(`  회랑 안 ${seen.size}건 (목록 캐시에 남겼다)`);
   }
 
@@ -275,9 +305,7 @@ async function main() {
    * 60을 못 넘으면 레이더에 영영 안 뜬다 — 상세 콜을 쓸 이유가 없다.
    * 강원 표본에서 **26%(1,007건)** 가 여기 걸린다 (2026-09-03 실측).
    *
-   * ⚠ 동승자 모드(DR-05)는 게이트를 안 걸어서 이들도 보여줄 수는 있다. 다만 사진도
-   *   개요도 없는 이름뿐인 카드다 — 할당량이 빠듯한 동안은 안 받는다.
-   *   운영계정이 나오면 `KEEP_NO_PHOTO=1` 로 같이 받는다.
+   * ⚠ 게이트를 안 거는 화면이 생기면 이들도 필요해진다. 그때는 `KEEP_NO_PHOTO=1`.
    */
   const keepNoPhoto = process.env.KEEP_NO_PHOTO === '1';
   const hasPhoto = (i: Item) => Boolean((i.firstimage ?? '').trim());

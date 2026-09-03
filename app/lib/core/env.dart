@@ -65,10 +65,6 @@ class Env {
 
   static const driveScale = int.fromEnvironment('DRIVE_SCALE', defaultValue: 20) * 1.0;
 
-  /// 레이더를 동승자 모드로 시작한다. `--dart-define=RADAR_MODE=passenger`
-  /// START_AT·SHEET_AT과 같은 용도 — 스크린샷과 시연 리허설.
-  static const radarPassenger = String.fromEnvironment('RADAR_MODE') == 'passenger';
-
   /// 카카오 지도 키가 붙었는지. 없으면 CO-07은 지도 자리를 비워둔다.
   ///
   /// ⚠ 2026-08-29 네이티브 SDK(kakao_map_sdk)로 전환하면서 **네이티브 앱 키**를 본다.

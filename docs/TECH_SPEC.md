@@ -110,7 +110,7 @@ saves: user_id, spot_id(nullable), course_id(nullable), route_id(nullable),
        -- ⚠ 앱은 **국도(route)도 찜한다** (MY '찜한 국도', core/saves.dart). 셋 중 하나만 채운다.
        -- CHECK (num_nonnulls(spot_id, course_id, route_id) = 1)
        -- UNIQUE 부분 인덱스 3개 (대상별로 user_id+kind 유일)
-       -- passed = 스쳐간 발견 (자동 적립). ⚠ DR-05 동승자 브라우징의 '넘기기'는 적립하지 않는다
+       -- passed = 스쳐간 발견 (자동 적립).
 
 -- 여행
 trips: id, user_id, status('draft'|'active'|'ended'),
@@ -132,7 +132,8 @@ Supabase RPC `discover_nearby(lat, lng, heading, now)`:
    - ⚠ **정차·저속 시 방향 필터 해제**: speed < 2m/s 이면 heading이 노이즈이므로 360° 전방향
    - heading 값이 없으면 최근 trip_points 3개의 이동벡터로 대체 산출
 2. `detour_min <= 10` 필터
-3. `trust_score >= 60` — 푸시/카드 후보는 검증 스팟만 (DR-05 동승자 브라우징은 이 게이트 미적용)
+3. `trust_score >= 60` — 푸시/카드 후보는 검증 스팟만. **게이트를 안 거는 화면은 이제 없다**
+   (DR-05 동승자 모드 삭제, 2026-09-03)
 4. 점수 = 사진 보유 + 태그 매칭 + **타이밍 가중치**
    (11–14시 음식점 ×2, 일몰-60분~-20분 뷰포인트 ×2, 장날인 시장 ×3)
 5. **노출 범위 — 현 위치 반경** (2026-08-30 개정):
@@ -142,7 +143,7 @@ Supabase RPC `discover_nearby(lat, lng, heading, now)`:
      실기기에서 43번 국도를 달리는데 삼척(7번) 스팟이 떴다
    - ⚠ ~~3~7분 구간~~ → 폐기. 속도를 타서 막히면 코앞만, 뻥 뚫리면 한참 먼 게 떴다
    - **경로가 아니라 현 위치 기준이다** (원칙 2). 코스를 벗어나도 그대로 돈다
-   - 신뢰도 ≥60, 우회 ≤10분은 **레이더에만** 건다. 동승자 모드(DR-05)는 안 건다
+   - 신뢰도 ≥60, 우회 ≤10분을 건다. 이 상한이 **수집 회랑 3.5km의 근거**다
    - ⚠ 라우팅 API를 쓰지 않는다. PostGIS 거리·방위만 쓴다
 6. 중복 억제: **같은 곳을 두 번 말하지 않는 것뿐** (클라이언트 `_shown`).
    ~~같은 type 연속 노출 금지, 30분당 최대 2회~~ → **폐기 (2026-08-30).**
@@ -289,7 +290,7 @@ trip 종료 시:
 | DR-01 레이더 | `/radar` | discover_nearby RPC, 위치 스트림, rec 로깅 |
 | DR-02 발견 카드 | (레이더 내 전면 카드) | 점수 상위 1건, 액션: 핸드오프/찜/passed |
 | DR-03 몰아보기 | (레이더 내 오버레이) | passed 스팟 2~4건 |
-| DR-05 동승자 | (`/radar` 서브모드) | discover_ahead RPC(반경 20km, 게이트 미적용) |
+| ~~DR-05 동승자~~ | **삭제됨 (2026-09-03)** | `discover_ahead` RPC는 레이더가 물려받았다 |
 | DR-06 백그라운드 | (권한 유도 + OS 알림) | 백그라운드 위치 + 로컬 알림. **iOS 기준** (2026-08-29) |
 | MY-02 여행기 | `/trip/:id` | trips/stops/photos, 공유 카드 |
 | MY-01/03 마이 | `/my` | saves(like/passed), 국도 수집 진행률, 설정 |

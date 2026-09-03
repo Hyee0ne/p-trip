@@ -73,16 +73,6 @@ abstract interface class DiscoverRepository {
   /// 그날 밤의 사실 (MY-02 §3). 데이터가 없으면 null — 없는 밤을 지어내지 않는다.
   Future<NightSky?> nightSkyOn({required double lat, required double lng, required DateTime date});
 
-  /// DR-05 동승자 모드 — 진행 방향 앞쪽을 넓게 훑는다.
-  /// ⚠ **신뢰도 게이트를 걸지 않는다.** 얕은 데이터는 알림엔 안 태우되 브라우징엔 보여준다.
-  /// ⚠ 경로가 아니라 **현재 위치+방향** 기준이다 (원칙 2).
-  Future<List<Spot>> discoverAhead({
-    required double lat,
-    required double lng,
-    double? headingDeg,
-    double km = 20,
-  });
-
   /// 레이더 발견 큐 (DR-01/02) — **현 위치 + 진행 방향 반경** 기준.
   ///
   /// ⚠ 2026-08-30 개정. 전에는 인자가 없었고 `exit_frac` 순으로 전 DB에서 30건을 집어왔다.
