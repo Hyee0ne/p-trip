@@ -140,16 +140,30 @@ async function api(path: string, params: string, tries = 3): Promise<Item[]> {
   return [];
 }
 
-/** 목록 — 시군구 전체. 페이지를 끝까지 넘긴다. */
-async function listRegion(regn: string): Promise<Item[]> {
+/**
+ * 목록 — 시도 전체. 페이지를 끝까지 넘긴다.
+ *
+ * ⚠ 전에는 `page <= 40`으로 잘렸다. 100건씩이라 **시도당 4,000건이 상한**이었고,
+ *   서울(8,007)·경기(9,472)·강원(4,762)에서 **10,241건(22%)이 조용히 빠졌다**.
+ *   주석은 '끝까지 넘긴다'고 되어 있었다 (2026-09-03 발견).
+ *   이제 마지막 페이지까지 간다 — 끝은 `rows.length < 100`이 알려준다.
+ * ⚠ 폭주 방어로 상한은 남겨두되, **닿으면 알린다.** 조용히 자르지 않는다.
+ */
+const MAX_PAGES = 500;
+
+async function listRegion(name: string, regn: string): Promise<Item[]> {
   const out: Item[] = [];
-  for (let page = 1; page <= 40; page++) {
+  let page = 1;
+  for (; page <= MAX_PAGES; page++) {
     const rows = await api(
       'areaBasedList2',
       `lDongRegnCd=${regn}&numOfRows=100&pageNo=${page}`,
     );
     out.push(...rows);
     if (rows.length < 100) break;
+  }
+  if (page > MAX_PAGES) {
+    console.log(`  ⚠ ${name}(${regn}) ${MAX_PAGES}페이지 상한에 닿았다 — 뒤가 잘렸을 수 있다`);
   }
   return out;
 }
@@ -214,70 +228,85 @@ async function main() {
    *   조용히 옛 기준으로 돈다 — 10km로 받아둔 걸 3.5km인 줄 알고 쓰게 된다.
    *   폭이 다르면 캐시를 버리고 다시 받는다.
    */
-  type Cache = { corridorKm: number; items: Record<string, Item> };
+  type Cache = { corridorKm: number; regions: string[]; items: Record<string, Item> };
   const raw = !process.env.RELIST && existsSync(CACHE)
-    ? (JSON.parse(readFileSync(CACHE, 'utf-8')) as Cache | Record<string, Item>)
+    ? (JSON.parse(readFileSync(CACHE, 'utf-8')) as Partial<Cache>)
     : null;
-  const cached =
-    raw && 'items' in raw && typeof (raw as Cache).corridorKm === 'number'
-      ? (raw as Cache).corridorKm === CORRIDOR_KM
-        ? (raw as Cache).items
-        : (console.log(
-            `  목록 캐시가 ${(raw as Cache).corridorKm}km 기준이다 (지금 ${CORRIDOR_KM}km) — 다시 받는다`,
-          ),
-          null)
-      : raw
-        ? (console.log('  목록 캐시에 회랑 폭이 없다 (옛 형식) — 다시 받는다'), null)
-        : null;
+  const usable = Boolean(raw?.items) && raw?.corridorKm === CORRIDOR_KM;
+  if (raw && !usable) {
+    console.log(
+      raw.corridorKm
+        ? `  목록 캐시가 ${raw.corridorKm}km 기준이다 (지금 ${CORRIDOR_KM}km) — 다시 받는다`
+        : '  목록 캐시에 회랑 폭이 없다 (옛 형식) — 다시 받는다',
+    );
+  }
+  /** 이미 목록을 받아둔 시도. **시도 단위로 이어받는다.** */
+  const listed = new Set<string>(usable ? (raw!.regions ?? []) : []);
+  if (usable) for (const [id, it] of Object.entries(raw!.items!)) seen.set(id, it);
 
-  if (cached) {
-    for (const [id, it] of Object.entries(cached)) seen.set(id, it);
-    console.log(`  목록 캐시 ${seen.size}건 (다시 받으려면 RELIST=1)`);
+  const todo = regions.filter((rg) => !listed.has(rg.regn));
+  if (!todo.length) {
+    console.log(`  목록 캐시 ${seen.size}건 · 시도 ${listed.size}개 (다시 받으려면 RELIST=1)`);
   } else {
-    const candidates: Item[] = [];
-    for (const rg of regions) {
-      const rows = await listRegion(rg.regn);
-      let ok = 0;
-      for (const r of rows) {
-        if (!r.contentid || candidates.some((c) => c.contentid === r.contentid)) continue;
-        const lat = Number(r.mapy);
-        const lng = Number(r.mapx);
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-        candidates.push(r);
-        ok++;
-      }
-      console.log(`  ${rg.name}(${rg.regn}): ${rows.length}건`);
-      // ⚠ **0건이면 멈춘다.** 시도 코드가 바뀌면 그 지역이 통째로 비는데,
-      //   경고만 찍고 넘어가면 아무도 안 본다. 실제로 광주·전남·세종 3,896건이
-      //   그렇게 빠져 있었다 (2026-09-03).
-      //   코드는 `ldongCode2` API가 정본을 준다.
-      if (ok === 0) {
-        throw new Error(
-          `${rg.name}(${rg.regn}) 0건 — 시도 코드가 바뀌었을 수 있다. ` +
-            `ldongCode2 API로 정본 코드를 확인할 것`,
-        );
-      }
-    }
+    if (seen.size) console.log(`  목록 캐시 ${seen.size}건 · 남은 시도 ${todo.length}개`);
 
-    // 회랑 판정은 실제 노선 선형으로 한다 (near_routes RPC).
-    // 한 번에 다 던지면 요청이 너무 커서 나눠 보낸다.
-    console.log(`\n  후보 ${candidates.length}건 → 국도 ${CORRIDOR_KM}km 회랑 판정…`);
-    const CHUNK = 500;
-    for (let i = 0; i < candidates.length; i += CHUNK) {
-      const slice = candidates.slice(i, i + CHUNK);
-      const { data, error } = await db.rpc('near_routes', {
-        p_points: slice.map((r) => [Number(r.mapy), Number(r.mapx)]),
-        p_max_km: CORRIDOR_KM,
-      });
-      if (error) throw new Error(`회랑 판정 실패: ${error.message}`);
-      for (const row of (data ?? []) as { idx: number }[]) {
-        const r = slice[row.idx];
-        if (r?.contentid) seen.set(r.contentid, r);
+    /** 회랑 판정 — 실제 노선 선형(`near_routes` RPC). 한 번에 다 던지면 요청이 커서 나눈다. */
+    const keepInCorridor = async (rows: Item[]) => {
+      const CHUNK = 300;
+      for (let i = 0; i < rows.length; i += CHUNK) {
+        const slice = rows.slice(i, i + CHUNK);
+        const { data, error } = await db.rpc('near_routes', {
+          p_points: slice.map((r) => [Number(r.mapy), Number(r.mapx)]),
+          p_max_km: CORRIDOR_KM,
+        });
+        if (error) throw new Error(`회랑 판정 실패: ${error.message}`);
+        for (const row of (data ?? []) as { idx: number }[]) {
+          const r = slice[row.idx];
+          if (r?.contentid) seen.set(r.contentid, r);
+        }
       }
+    };
+
+    /**
+     * ⚠ **시도 하나가 끝날 때마다 캐시를 쓴다.**
+     *   전에는 전부 받은 뒤 마지막에 한 번만 썼다 — 중간에 한도에 걸리면 그때까지 받은
+     *   목록이 통째로 날아간다. 상세 단계에서 실제로 그 사고를 겪었다 (2026-09-03).
+     */
+    const save = () => {
+      const out: Cache = {
+        corridorKm: CORRIDOR_KM,
+        regions: [...listed],
+        items: Object.fromEntries(seen),
+      };
+      writeFileSync(CACHE, JSON.stringify(out, null, 0), 'utf-8');
+    };
+
+    try {
+      for (const rg of todo) {
+        const rows = await listRegion(rg.name, rg.regn);
+        const ok = rows.filter(
+          (r) => r.contentid && Number.isFinite(Number(r.mapy)) && Number.isFinite(Number(r.mapx)),
+        );
+        console.log(`  ${rg.name}(${rg.regn}): ${rows.length}건`);
+        // ⚠ **0건이면 멈춘다.** 시도 코드가 바뀌면 그 지역이 통째로 비는데, 경고만 찍고
+        //   넘어가면 아무도 안 본다. 광주·전남·세종 3,896건이 그렇게 빠져 있었다 (2026-09-03).
+        //   코드는 `ldongCode2` API가 정본을 준다.
+        if (!ok.length) {
+          throw new Error(
+            `${rg.name}(${rg.regn}) 0건 — 시도 코드가 바뀌었을 수 있다. ` +
+              `ldongCode2 API로 정본 코드를 확인할 것`,
+          );
+        }
+        await keepInCorridor(ok);
+        listed.add(rg.regn);
+        save();
+      }
+    } catch (e) {
+      save();
+      console.log(`\n  목록 중단: ${e instanceof Error ? e.message.slice(0, 120) : e}`);
+      console.log(`  시도 ${listed.size}/${regions.length}개까지 남겼다. 같은 명령으로 이어받는다.`);
     }
-    const out: Cache = { corridorKm: CORRIDOR_KM, items: Object.fromEntries(seen) };
-    writeFileSync(CACHE, JSON.stringify(out, null, 0), 'utf-8');
-    console.log(`  회랑 안 ${seen.size}건 (목록 캐시에 남겼다)`);
+    console.log(`  회랑 ${CORRIDOR_KM}km 안 ${seen.size}건 (목록 캐시에 남겼다)`);
   }
 
   console.log(`\n합계 ${seen.size}건. 상세를 채웁니다…`);
