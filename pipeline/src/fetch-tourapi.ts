@@ -102,13 +102,28 @@ const CACHE = join(import.meta.dirname, 'data', 'candidates.json');
 /** TourAPI contenttypeid → 우리 spot_type. 25(여행코스)는 우리 코스와 겹쳐서 버린다. */
 const TYPE_MAP: Record<string, string> = {
   '12': 'attraction', // 관광지 — cat1이 A01(자연)이면 아래에서 view로 바꾼다
-  '14': 'culture',    // 문화시설
   '15': 'attraction', // 축제공연행사 — events 행도 같이 만든다
-  '28': 'attraction', // 레포츠
-  '32': 'stay',       // 숙박
-  '38': 'attraction', // 쇼핑 — ⚠ 전통시장은 표준데이터가 정본이라 여기서 market으로 만들지 않는다
+  '28': 'attraction', // 레포츠 — 캠핑장·낚시터·패러글라이딩
+  '32': 'stay',       // 숙박 — CO-06 거점 후보
   '39': 'food',       // 음식점
 };
+
+/**
+ * 안 받는 유형 (2026-09-03 결정). 지우지 말고 **왜 뺐는지** 남긴다 —
+ * 되살릴 때 같은 판단을 다시 하게 하려고.
+ *
+ * - `38` 쇼핑 (10,743건, 전체의 33%)
+ *   실체가 **백화점·아울렛 안의 개별 브랜드 매장**이었다.
+ *   "올리브영 송리단길점" · "펜디 현대백화점 압구정본점" · "다이소 대구산격유통단지점".
+ *   아울렛 25% · 백화점 15% · 마트 5%. "지나치기엔 아까운 것들"이 아니다.
+ *   ⚠ 전통시장은 여기서 안 와도 된다 — 표준데이터(`markets`)가 정본이다.
+ *
+ * - `14` 문화시설 (2,161건)
+ *   박물관·미술관이 47%로 남길 만했지만 **빼기로 했다**.
+ *   나머지는 도서관·구청 수련관·대학 체육관이다.
+ *   되살리려면 `'14': 'culture'` 한 줄이면 된다.
+ */
+const DROPPED_TYPES = ['38', '14'] as const;
 
 type Item = Record<string, string>;
 
@@ -338,15 +353,32 @@ async function main() {
    */
   const keepNoPhoto = process.env.KEEP_NO_PHOTO === '1';
   const hasPhoto = (i: Item) => Boolean((i.firstimage ?? '').trim());
-  
+
+  /**
+   * 목록 데이터만으로 매긴 점수. 사진35 + 전화15 + 번지주소10.
+   * **이미 60이면 상세를 받을 이유가 없다** — 게이트를 이미 넘었다.
+   * 축제공연행사는 목록에 전화가 들어와서 89%가 여기 걸린다 (2026-09-03 실측).
+   */
+  const listScore = (i: Item) =>
+    (hasPhoto(i) ? 35 : 0) +
+    ((i.tel ?? '').trim() ? 15 : 0) +
+    (/\d/.test((i.addr1 ?? '').trim()) ? 10 : 0);
+
+  const dropped = [...seen].filter(([, i]) =>
+    (DROPPED_TYPES as readonly string[]).includes(i.contenttypeid),
+  ).length;
   const mapped = [...seen].filter(([, i]) => TYPE_MAP[i.contenttypeid]);
-  const skipped = keepNoPhoto ? 0 : mapped.filter(([, i]) => !hasPhoto(i)).length;
+  const noPhoto = keepNoPhoto ? 0 : mapped.filter(([, i]) => !hasPhoto(i)).length;
+  const enough = mapped.filter(([, i]) => hasPhoto(i) && listScore(i) >= 60).length;
   const targets = mapped.filter(
-    ([id, i]) => (keepNoPhoto || hasPhoto(i)) && (reset || !doneIds.has(id)),
+    ([id, i]) =>
+      (keepNoPhoto || hasPhoto(i)) && listScore(i) < 60 && (reset || !doneIds.has(id)),
   );
-  if (skipped) {
-    console.log(`  사진 없는 ${skipped}건은 건너뛴다 — 게이트(60)를 넘을 수 없다 (KEEP_NO_PHOTO=1로 포함)`);
+  if (dropped) console.log(`  안 받는 유형 ${dropped}건 (쇼핑·문화시설 — TYPE_MAP 주석 참조)`);
+  if (noPhoto) {
+    console.log(`  사진 없는 ${noPhoto}건은 건너뛴다 — 게이트(60)를 넘을 수 없다 (KEEP_NO_PHOTO=1로 포함)`);
   }
+  if (enough) console.log(`  목록만으로 60점인 ${enough}건은 상세를 안 받는다`);
   console.log(
     `  대상 ${targets.length}건` +
       (doneIds.size && !reset ? ` (이미 채운 ${doneIds.size}건 건너뜀 — RESET=1로 재수집)` : ''),
