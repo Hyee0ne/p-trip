@@ -51,14 +51,16 @@ const REGIONS: { name: string; regn: string }[] = [
   { name: '부산광역시', regn: '26' },
   { name: '대구광역시', regn: '27' },
   { name: '인천광역시', regn: '28' },
-  { name: '광주광역시', regn: '29' },
   { name: '대전광역시', regn: '30' },
   { name: '울산광역시', regn: '31' },
-  { name: '세종특별자치시', regn: '36' },
+  // ⚠ 세종만 **5자리**다. '36'은 0건을 준다.
+  { name: '세종특별자치시', regn: '36110' },
   { name: '경기도', regn: '41' },
   { name: '충청북도', regn: '43' },
   { name: '충청남도', regn: '44' },
-  { name: '전라남도', regn: '46' },
+  // ⚠ 광주(29)와 전라남도(46)가 **통합돼 코드가 12로 바뀌었다** (2026-09-03 확인).
+  //   옛 코드는 둘 다 0건을 준다 — 3,692건이 통째로 빠져 있었다.
+  { name: '전남광주통합특별시', regn: '12' },
   { name: '경상북도', regn: '47' },
   { name: '경상남도', regn: '48' },
   { name: '제주특별자치도', regn: '50' },
@@ -215,8 +217,17 @@ async function main() {
         candidates.push(r);
         ok++;
       }
-      // ⚠ 0건이면 시도 코드가 틀린 것이다. 조용히 넘어가면 그 지역이 통째로 빈다.
-      console.log(`  ${rg.name}(${rg.regn}): ${rows.length}건${ok === 0 ? '  ⚠ 0건 — 코드 확인' : ''}`);
+      console.log(`  ${rg.name}(${rg.regn}): ${rows.length}건`);
+      // ⚠ **0건이면 멈춘다.** 시도 코드가 바뀌면 그 지역이 통째로 비는데,
+      //   경고만 찍고 넘어가면 아무도 안 본다. 실제로 광주·전남·세종 3,896건이
+      //   그렇게 빠져 있었다 (2026-09-03).
+      //   코드는 `ldongCode2` API가 정본을 준다.
+      if (ok === 0) {
+        throw new Error(
+          `${rg.name}(${rg.regn}) 0건 — 시도 코드가 바뀌었을 수 있다. ` +
+            `ldongCode2 API로 정본 코드를 확인할 것`,
+        );
+      }
     }
 
     // 회랑 판정은 실제 노선 선형으로 한다 (near_routes RPC).
