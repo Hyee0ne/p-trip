@@ -275,9 +275,11 @@ async function main() {
           p_max_km: CORRIDOR_KM,
         });
         if (error) throw new Error(`회랑 판정 실패: ${error.message}`);
-        for (const row of (data ?? []) as { idx: number }[]) {
+        for (const row of (data ?? []) as { idx: number; distance_km: number }[]) {
           const r = slice[row.idx];
-          if (r?.contentid) seen.set(r.contentid, r);
+          // ⚠ **국도까지의 거리를 실어둔다.** 상세를 가까운 순으로 받기 위해서다 —
+          //   할당량이 며칠에 걸쳐 나뉘니 '먼저 받는 것'이 곧 '먼저 쓸 수 있는 것'이다.
+          if (r?.contentid) seen.set(r.contentid, { ...r, _km: String(row.distance_km) });
         }
       }
     };
@@ -370,10 +372,15 @@ async function main() {
   const mapped = [...seen].filter(([, i]) => TYPE_MAP[i.contenttypeid]);
   const noPhoto = keepNoPhoto ? 0 : mapped.filter(([, i]) => !hasPhoto(i)).length;
   const enough = mapped.filter(([, i]) => hasPhoto(i) && listScore(i) >= 60).length;
-  const targets = mapped.filter(
-    ([id, i]) =>
-      (keepNoPhoto || hasPhoto(i)) && listScore(i) < 60 && (reset || !doneIds.has(id)),
-  );
+  const targets = mapped
+    .filter(
+      ([id, i]) =>
+        (keepNoPhoto || hasPhoto(i)) && listScore(i) < 60 && (reset || !doneIds.has(id)),
+    )
+    // ⚠ **국도에 가까운 것부터.** 하루 1,000건씩 며칠에 걸쳐 받으므로,
+    //   중간에 멈춰도 길 위에서 실제로 만날 곳이 먼저 채워져 있어야 한다.
+    //   거리를 모르는 옛 캐시는 뒤로 보낸다 (Infinity).
+    .sort(([, a], [, b]) => (Number(a._km ?? Infinity) - Number(b._km ?? Infinity)) || 0);
   if (dropped) console.log(`  안 받는 유형 ${dropped}건 (쇼핑·문화시설 — TYPE_MAP 주석 참조)`);
   if (noPhoto) {
     console.log(`  사진 없는 ${noPhoto}건은 건너뛴다 — 게이트(60)를 넘을 수 없다 (KEEP_NO_PHOTO=1로 포함)`);
