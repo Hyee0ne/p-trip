@@ -698,6 +698,53 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     );
   }
 
+  /// 레이더에 아무것도 없을 때의 한 줄.
+  ///
+  /// 반경 30km에 스팟이 하나도 없으면 **아직 안 모은 지역**이고,
+  /// 있는데 안 잡히면 **지금 조용한** 것이다. 둘은 다른 말을 해야 한다.
+  Widget _emptyNote() {
+    final drive = ref.watch(driveProvider);
+    if (!drive.hasFix) return const SizedBox.shrink();
+
+    final covered = ref.watch(coverageProvider(coverageKey(drive.lat!, drive.lng!)));
+    // 아직 모르는 동안은 아무 말도 하지 않는다. 섣불리 '준비 중'이라 하면 거짓말이 된다.
+    final hasData = covered.value;
+    if (hasData == null) return const SizedBox.shrink();
+
+    return IgnorePointer(
+      // ⚠ 정가운데는 **내 위치 점 자리**다. 거기 두면 글자가 점에 겹쳐 읽히지 않는다.
+      //   점 아래로 살짝 내린다.
+      child: Align(
+        alignment: const Alignment(0, 0.42),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                hasData ? S.radarQuiet : S.radarNotYet,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.darkInk,
+                ),
+              ),
+              if (!hasData) ...[
+                const SizedBox(height: 6),
+                Text(
+                  S.radarNotYetSub,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13, height: 1.45, color: AppColors.darkInk2),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _radar(List<Discovery> queue) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -719,6 +766,10 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
               //   레이더는 목록이 아니라 "주변을 살피는 중"이라는 시각화다.
               child: RadarView(blips: _aheadSpots(queue)),
             ),
+            // 아무것도 안 잡힐 때. 원만 도는 화면은 고장으로 읽힌다.
+            // ⚠ '아직 안 모은 지역'과 '지금 조용한 것'을 반드시 가른다 —
+            //   데이터가 다 찬 길에서 '준비 중'이 뜨면 앱이 미완성으로 보인다.
+            if (queue.isEmpty) Positioned.fill(child: _emptyNote()),
             // 기록 칩 — 붉은 점
             Positioned(
               top: 12,

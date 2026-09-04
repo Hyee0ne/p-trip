@@ -127,6 +127,19 @@ final radarQueueProvider =
           .radarQueue(lat: p.lat, lng: p.lng, headingDeg: p.heading, km: p.km),
     );
 
+/// 이 자리에 **데이터가 있기는 한가** (DR-01 빈 상태).
+///
+/// 아직 안 모은 지역과 '지금 근처에 없는' 것을 가른다.
+/// ⚠ 키를 **0.25도 격자**로 뭉갠다 (약 25km). 반경 30km 판정이라 그보다 촘촘할 이유가 없고,
+///   주행 중 좌표를 그대로 넣으면 10m마다 새 조회가 나간다.
+final coverageProvider = FutureProvider.family<bool, ({double lat, double lng})>(
+  (ref, p) => ref.watch(discoverRepositoryProvider).hasSpotsNear(lat: p.lat, lng: p.lng, km: 30),
+);
+
+/// 좌표를 [coverageProvider] 키로 뭉갠다. 화면에서 이걸 거쳐 부른다.
+({double lat, double lng}) coverageKey(double lat, double lng) =>
+    (lat: (lat * 4).round() / 4, lng: (lng * 4).round() / 4);
+
 /// 여행기는 **기기 안**에서 온다 (core/trip_log.dart). 서버가 아니다.
 /// 화면은 이 provider만 보므로 출처가 바뀌어도 손대지 않는다.
 final tripsProvider = FutureProvider<List<Trip>>(

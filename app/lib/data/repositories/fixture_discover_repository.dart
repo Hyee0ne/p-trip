@@ -225,12 +225,20 @@ class FixtureDiscoverRepository implements DiscoverRepository {
   Future<List<RouteLine>> routes() async => _routes;
 
   /// 노선 선형(GeoJSON)이 아직 없어서 거리 계산을 못 한다 (M1 `build-routes.ts`).
+  /// 픽스처는 데모 구간(삼척-강릉)만 갖고 있다. 그 밖은 정말로 아무것도 없다.
+  @override
+  Future<bool> hasSpotsNear({required double lat, required double lng, double km = 30}) async =>
+      _inDemoArea(lat, lng);
+
+  static bool _inDemoArea(double lat, double lng) =>
+      lat >= 37.30 && lat <= 37.85 && lng >= 128.85 && lng <= 129.45;
+
   /// 그전까지는 **데모 구간에서 실제로 만나는 국도만** 손으로 적어둔다 —
   /// 7번(동해안 종단) · 38번(동해–제천) · 42번(동해–인천). 전부 실존 노선이다.
   /// 거리는 지어내지 않고 null로 둔다. 구간 밖이면 빈 리스트.
   @override
   Future<NearbyResult> nearbyRoutes({required double lat, required double lng}) async {
-    final inDemoArea = lat >= 37.30 && lat <= 37.85 && lng >= 128.85 && lng <= 129.45;
+    final inDemoArea = _inDemoArea(lat, lng);
     // 구간 밖은 '국도가 없다'가 아니라 '아직 안 모았다'다. 섞으면 거짓말이 된다.
     if (!inDemoArea) return const NearbyResult.uncovered();
     const ids = [7, 38, 42];

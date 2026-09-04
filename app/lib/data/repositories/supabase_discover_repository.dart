@@ -47,6 +47,19 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
     ], covered: true);
   }
 
+  @override
+  Future<bool> hasSpotsNear({required double lat, required double lng, double km = 30}) async {
+    // `discover_ahead` 를 방향 없이 부른다 — 전방향 반경 조회가 된다.
+    // 한 건만 확인하면 되니 결과는 세지 않고 비었는지만 본다.
+    final rows =
+        await _db.rpc(
+              'discover_ahead',
+              params: {'p_lat': lat, 'p_lng': lng, 'p_heading': null, 'p_km': km},
+            )
+            as List<dynamic>;
+    return rows.isNotEmpty;
+  }
+
   // ── 스팟 ────────────────────────────────────────────────
   @override
   Future<List<Spot>> spots({CurationAxis? axis, int? routeId}) async {

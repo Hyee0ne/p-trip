@@ -87,6 +87,13 @@ abstract interface class DiscoverRepository {
     double km,
   });
 
+  /// 이 자리 반경 [km] 안에 **스팟이 하나라도 있는가.**
+  ///
+  /// 데이터를 아직 안 모은 지역과 '지금 근처에 없는' 것을 가르는 데만 쓴다.
+  /// ⚠ 게이트·우회 조건을 걸지 않는다 — 여기서 묻는 건 '있느냐'지 '보여줄 만하냐'가 아니다.
+  /// ⚠ 노선 선형은 전국이 다 들어와 있어서 노선으로는 이 판정을 못 한다. 스팟으로 봐야 한다.
+  Future<bool> hasSpotsNear({required double lat, required double lng, double km});
+
   // ⚠ 여행기는 여기 없다. **기기 안에** 둔다 (core/trip_log.dart, CLAUDE.md 원칙 5).
   //   로그인을 넣지 않기로 했고, 사진도 기기 안 식별자로만 갖는다.
   //   서버 trips 테이블과 RLS는 남겨뒀다 — 계정이 생기는 날 올려 동기화한다.

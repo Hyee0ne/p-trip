@@ -178,6 +178,17 @@ class S {
   static const radarOpenSettings = '설정 열기';
   static const radarUseDemo = '데모 모드로 보기';
 
+  /// DR-01 — 그 자리 반경 30km에 **스팟이 하나도 없을 때.**
+  ///
+  /// ⚠ '지금 근처에 없다'와 반드시 구분한다. 데이터가 다 찬 7번 국도에서 잠깐 조용할 때
+  ///   '준비 중'이 뜨면 앱이 미완성으로 보인다 — 그건 거짓말이다.
+  /// ⚠ **기한을 암시하지 않는다.** 언제 채워질지 모르는데 '곧'이라고 하면 지키지 못할 약속이다.
+  static const radarNotYet = '이 지역은 아직 준비 중이에요';
+  static const radarNotYetSub = '길은 있지만 아직 볼 것을 다 모으지 못했어요';
+
+  /// 데이터는 있는데 지금 반경 안에 걸리는 게 없을 때. 위와 다르다.
+  static const radarQuiet = '이 근처는 지금 조용해요';
+
   static const radarSolo = '혼자 운전 중이라면 말로 하세요 — "응, 들를래" / "찜해줘". 대답이 없으면 조용히 스쳐간 발견에 담아둘게요.';
   static const radarFinish = '오늘 여행 마치기 → 여행기 만들기';
 
@@ -204,11 +215,6 @@ class S {
 
   // ── DR-03 몰아보기 ──
   static const passedTitle = '아까 스쳐간 곳들';
-
-  static const companionSub = '앞쪽에 뭐가 있는지 대신 봐주세요';
-  static const companionBack = '레이더로 돌아가기';
-  static const companionEmpty = '이 앞은 잠시 조용해요';
-  static String companionNext(String spot) => '다음 정차지 제안: $spot';
 
   // ── DR-06 백그라운드 알림 ──
   static const bgOptInTitle = '앱을 꺼둬도 알려드릴까요?';
