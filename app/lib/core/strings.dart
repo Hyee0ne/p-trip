@@ -200,6 +200,10 @@ class S {
   static const catchupDrop = '지우기';
 
   static String radarRecording(String route, num km) => '$route ${km}km 기록 중';
+
+  /// 국도를 아직 모를 때. **번호를 지어내지 않는다** — 여행기의 국도는
+  /// 나중에 실제 궤적으로 맵매칭한다 (`setRouteKm`).
+  static String radarRecordingNoRoute(num km) => '${km}km 기록 중';
   static String baseChipSet(String name) => '오늘 밤 $name — 낮은 마음껏 새어나가세요';
   static const baseChipNone = '오늘 밤 거점 없음 — 그래도 레이더는 돌아가요';
 

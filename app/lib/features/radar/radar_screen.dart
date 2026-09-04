@@ -86,7 +86,15 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     // ⚠ 탭 셸이 IndexedStack이라 이 화면은 다른 탭에 있어도 살아 있다.
     //   TickerMode를 보고 실제로 보일 때만 주행을 돌린다.
     //   안 그러면 발견 탭에 있는 동안에도 GPS 로깅이 도는 셈이 된다.
-    _setRunning(TickerMode.valuesOf(context).enabled);
+    // ⚠ **여기서 provider를 바로 건드리면 안 된다.** `_setRunning` 이 drive·tripLog 를
+    //   수정하는데, didChangeDependencies 는 위젯 생애주기라 Riverpod 이 막는다
+    //   ("Tried to modify a provider while the widget tree was building").
+    //   전에는 코스를 불러오는 `.then()` 안이라 우연히 비켜 갔고, 코스 없이 바로
+    //   시작하도록 고치자 화면이 통째로 빨간 오류가 됐다 (2026-09-04).
+    final enabled = TickerMode.valuesOf(context).enabled;
+    Future.microtask(() {
+      if (mounted) _setRunning(enabled);
+    });
   }
 
   /// 앱이 뒤에 있는가. 알림을 켠 사람만 뒤에서도 주행이 돈다.
@@ -145,7 +153,22 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
       return;
     }
 
-    // 아무것도 안 고르고 레이더 탭을 바로 누른 사람 — 데모 코스가 돈다.
+    // 아무것도 안 고르고 레이더 탭을 바로 누른 사람.
+    //
+    // ⚠ **실주행이면 데모 코스를 태우지 않는다** (2026-09-04).
+    //   전에는 여기서도 삼척-강릉 코스를 불러 "7번 국도 0km 기록 중 · 남은 65km"를
+    //   띄웠다. 가평에서 그 문구가 나오면 그냥 거짓말이다.
+    //   레이더는 코스 없이도 돈다 — 그게 원칙 2다.
+    //   여행기의 국도는 나중에 `setRouteKm` 이 실제 궤적으로 맵매칭한다. 지어낼 필요가 없다.
+    if (!demo) {
+      _begin(const [], demo);
+      ref
+          .read(tripLogProvider.notifier)
+          .start(routeId: 0, routeName: '', startName: '', endName: '');
+      return;
+    }
+
+    // 데모 모드는 시연이 목적이라 데모 코스를 그대로 돌린다.
     ref.read(courseGeometryProvider(_demoCourseId).future).then((path) {
       if (!mounted || path.length < 2) return;
       _begin(path, demo);
@@ -543,9 +566,15 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     ),
   );
 
-  /// 지금 달리는 노선 번호. 기록 중인 여행에서 가져온다 —
-  /// 화면에 7을 박아두면 어느 길을 달려도 7번 국도라고 말하게 된다.
-  int get _routeNo => ref.watch(tripLogProvider).active?.routeId ?? 7;
+  /// 지금 달리는 노선 번호. 기록 중인 여행에서 가져온다.
+  ///
+  /// ⚠ **모르면 null이다. 7을 박지 않는다.** 전에는 `?? 7` 이라 코스를 안 고르고
+  ///   레이더를 켜면 가평에서도 "7번 국도"라고 말했다 (2026-09-04).
+  ///   `routeId: 0` 은 trip_log 의 '모름' 값이다.
+  int? get _routeNo {
+    final id = ref.watch(tripLogProvider).active?.routeId;
+    return (id == null || id == 0) ? null : id;
+  }
 
   /// DR-06a 유도 화면. **조건부 1회** — 여기가 유일하게 권한을 묻는 자리다.
   Future<void> _askBackground() async {
@@ -625,8 +654,11 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
       padding: const EdgeInsets.fromLTRB(18, 2, 12, 0),
       child: Row(
         children: [
-          RouteBadge('$_routeNo', size: BadgeSize.sm),
-          const SizedBox(width: 10),
+          // 노선을 모르면 뱃지를 비운다. 번호를 지어내면 거짓말이 된다.
+          if (_routeNo != null) ...[
+            RouteBadge('$_routeNo', size: BadgeSize.sm),
+            const SizedBox(width: 10),
+          ],
           const Expanded(
             child: Text(
               S.radarScanning,
@@ -787,7 +819,13 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
                   const SizedBox(width: 6),
                   Text(
                     // ⚠ 숫자를 지어내지 않는다. 모의 주행이든 실주행이든 실제 누적 거리다.
-                    S.radarRecording('$_routeNo번 국도', ref.watch(driveProvider).distanceKm.round()),
+                    // 노선을 모르면 번호 없이 거리만 말한다.
+                    _routeNo == null
+                        ? S.radarRecordingNoRoute(ref.watch(driveProvider).distanceKm.round())
+                        : S.radarRecording(
+                            '$_routeNo번 국도',
+                            ref.watch(driveProvider).distanceKm.round(),
+                          ),
                     style: const TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w700,
@@ -797,26 +835,28 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
                 ],
               ),
             ),
-            Positioned(
-              top: 12,
-              right: 14,
-              child: Row(
-                children: [
-                  const Icon(Icons.cabin_outlined, size: 12, color: Color(0xFFB79BE0)),
-                  const SizedBox(width: 5),
-                  Text(
-                    // ⚠ 거점까지 거리는 아직 계산하지 않는다. 18km는 지어낸 값이었다.
-                    //   코스 진행률로 남은 거리는 알 수 있으니 그걸 말한다.
-                    '남은 ${(ref.watch(driveProvider).courseKm - ref.watch(driveProvider).distanceKm).toStringAsFixed(0)}km',
-                    style: const TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFFB79BE0),
+            // ⚠ 코스가 없으면 '남은 거리'가 없다. 0에서 뺀 음수를 보여주면 거짓말이다.
+            if (ref.watch(driveProvider).courseKm > 0)
+              Positioned(
+                top: 12,
+                right: 14,
+                child: Row(
+                  children: [
+                    const Icon(Icons.cabin_outlined, size: 12, color: Color(0xFFB79BE0)),
+                    const SizedBox(width: 5),
+                    Text(
+                      // ⚠ 거점까지 거리는 아직 계산하지 않는다. 18km는 지어낸 값이었다.
+                      //   코스 진행률로 남은 거리는 알 수 있으니 그걸 말한다.
+                      '남은 ${(ref.watch(driveProvider).courseKm - ref.watch(driveProvider).distanceKm).toStringAsFixed(0)}km',
+                      style: const TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFB79BE0),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),
