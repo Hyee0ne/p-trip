@@ -13,18 +13,70 @@
  *       BASE_YM=202606,202603 npm run fetch:related
  */
 
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { basename, join } from 'node:path';
 import { supabase } from './lib/supabase.js';
 
 const KEY = process.env.TOURAPI_KEY?.trim();
 const URL = 'https://apis.data.go.kr/B551011/TarRlteTarService1/areaBasedList1';
 const COMMON = 'MobileOS=ETC&MobileApp=PTrip&_type=json';
 
-/** 강원특별자치도(51) · 데모 구간 시군구. signguCd는 5자리 법정동 코드다. */
-const SIGUNGU = [
-  { name: '삼척시', areaCd: '51', signguCd: '51230' },
-  { name: '동해시', areaCd: '51', signguCd: '51170' },
-  { name: '강릉시', areaCd: '51', signguCd: '51150' },
+/**
+ * 시군구 목록. **`ldongCode2` 가 정본을 준다** — 손으로 적지 않는다.
+ *
+ * ⚠ 전에는 삼척·동해·강릉 셋만 박혀 있었다. 스팟이 서울로 들어와도
+ *   연관관광지는 강원만 봤다 (2026-09-04). `fetch:spots` 가 시도 코드에서
+ *   같은 실수를 했던 것과 같은 종류다.
+ * ⚠ `signguCd` 는 **시도(2자리) + 시군구(3자리)** 다. ldongCode2 는 뒤 3자리만 준다.
+ *
+ * 순서는 `fetch:spots` 와 같다 — 스팟이 차는 순서를 따라가야 링크가 붙는다.
+ */
+const REGION_ORDER = (process.env.REGION_ORDER ?? '11,41,51')
+  .split(',')
+  .map((x) => x.trim())
+  .filter(Boolean);
+
+const REGNS = [
+  '11', '26', '27', '28', '30', '31', '36110', '41',
+  '43', '44', '12', '47', '48', '51', '52',
 ];
+
+type Sigungu = { name: string; areaCd: string; signguCd: string };
+
+/** 처리한 (시군구, baseYm) 을 남긴다. 한도에 걸려도 다음 날 이어받는다. */
+const DONE = join(import.meta.dirname, 'data', 'related-done.json');
+
+async function sigunguList(): Promise<Sigungu[]> {
+  const out: Sigungu[] = [];
+  for (const regn of REGNS) {
+    const url =
+      `https://apis.data.go.kr/B551011/KorService2/ldongCode2?serviceKey=${KEY}&${COMMON}` +
+      `&numOfRows=100&pageNo=1&lDongRegnCd=${regn}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(20_000) });
+    const text = await res.text();
+    if (/LIMITED_NUMBER/i.test(text)) throw new Error('일일 요청 제한 초과 (ldongCode2)');
+    let items: { code?: string; name?: string }[] = [];
+    try {
+      const it = JSON.parse(text)?.response?.body?.items?.item;
+      items = it ? (Array.isArray(it) ? it : [it]) : [];
+    } catch {
+      items = [];
+    }
+    // 세종(36110)처럼 시도 코드가 5자리면 시군구가 자기 자신 하나다.
+    const area = regn.slice(0, 2);
+    for (const i of items) {
+      const c = (i.code ?? '').trim();
+      if (!c) continue;
+      out.push({ name: i.name ?? c, areaCd: area, signguCd: c.length >= 5 ? c : `${area}${c}` });
+    }
+  }
+  // 스팟이 차는 순서대로. 나머지는 뒤에 붙는다.
+  const rank = (s: Sigungu) => {
+    const n = REGION_ORDER.indexOf(s.areaCd);
+    return n >= 0 ? n : REGION_ORDER.length;
+  };
+  return out.sort((a, b) => rank(a) - rank(b));
+}
 
 type Row = {
   baseYm: string;
@@ -54,19 +106,35 @@ async function page(areaCd: string, signguCd: string, baseYm: string, pageNo: nu
   }
 }
 
-async function collect(baseYm: string): Promise<Row[]> {
+/**
+ * ⚠ 한도에 걸리면 **받아둔 것을 들고 멈춘다.** 던지고 끝내면 그날 받은 게 통째로 날아간다 —
+ *   `fetch:spots` 에서 실제로 그렇게 하루치를 잃었다 (2026-09-03).
+ */
+async function collect(
+  baseYm: string,
+  list: Sigungu[],
+  done: Set<string>,
+): Promise<{ rows: Row[]; stopped: boolean }> {
   const out: Row[] = [];
-  for (const sg of SIGUNGU) {
+  for (const sg of list) {
+    const key = `${sg.signguCd}|${baseYm}`;
+    if (done.has(key)) continue;
     let n = 0;
-    for (let p = 1; p <= 30; p++) {
-      const rows = await page(sg.areaCd, sg.signguCd, baseYm, p);
-      out.push(...rows);
-      n += rows.length;
-      if (rows.length < 100) break;
+    try {
+      for (let p = 1; p <= 30; p++) {
+        const rows = await page(sg.areaCd, sg.signguCd, baseYm, p);
+        out.push(...rows);
+        n += rows.length;
+        if (rows.length < 100) break;
+      }
+    } catch (e) {
+      console.log(`\n    중단: ${e instanceof Error ? e.message : e}`);
+      return { rows: out, stopped: true };
     }
-    console.log(`    ${sg.name} ${n}건`);
+    done.add(key);
+    if (n) console.log(`    ${sg.name} ${n}건`);
   }
-  return out;
+  return { rows: out, stopped: false };
 }
 
 async function main() {
@@ -82,12 +150,23 @@ async function main() {
   for (const s of spotRows ?? []) byName.set(norm(s.name as string), s.id as string);
   console.log(`스팟 ${spotRows?.length ?? 0}건으로 이름 색인`);
 
+  const list = await sigunguList();
+  const done = new Set<string>(
+    existsSync(DONE) ? (JSON.parse(readFileSync(DONE, 'utf-8')) as string[]) : [],
+  );
+  console.log(`시군구 ${list.length}곳 · 이미 받은 (시군구,월) ${done.size}건`);
+
   const links: Record<string, unknown>[] = [];
   const rankByMonth = new Map<string, Map<string, number>>(); // baseYm → 'from|to' → rank
+  let stopped = false;
 
   for (const ym of months) {
+    if (stopped) break;
     console.log(`\n${ym}:`);
-    const rows = await collect(ym);
+    const got = await collect(ym, list, done);
+    const rows = got.rows;
+    stopped = got.stopped;
+    writeFileSync(DONE, JSON.stringify([...done], null, 0), 'utf-8');
     const ranks = new Map<string, number>();
     let hit = 0;
     for (const r of rows) {
@@ -142,7 +221,10 @@ async function main() {
   }
 }
 
-main().catch((e) => {
-  console.error(e instanceof Error ? e.message : e);
-  process.exit(1);
-});
+/** ⚠ 직접 실행할 때만 돈다 — import 만으로 적재가 도는 사고를 막는다 (2026-09-03). */
+if (process.argv[1] !== undefined && import.meta.url.endsWith(basename(process.argv[1]))) {
+  main().catch((e) => {
+    console.error(e instanceof Error ? e.message : e);
+    process.exit(1);
+  });
+}
