@@ -212,9 +212,17 @@ class NearbyResult {
 /// 현 위치에서 탈 수 있는 노선 하나.
 /// 노선에 붙는 한 줄의 근거 (CO-01 재설계).
 ///
-/// ⚠ **절대량 인기가 아니다** (원칙 3). 오늘 장이 서거나, 요즘 사람들이 더 도는 곳이
-///   그 길에 있다는 사실뿐이다. 근거가 없는 노선에는 아예 줄이 없다.
-enum RouteNoteKind { marketToday, rising }
+/// 노선 한 줄의 근거. 근거가 없는 노선에는 아예 줄이 없다.
+///
+/// - [marketToday] 오늘 그 길에 장이 선다
+/// - [rising] 두 시점 사이에 **순위가 오른** 곳이 있다 — 관찰한 변화다
+/// - [popular] 변화는 못 쟀지만 **이동 흔적**이 많다 (2026-09-04 추가)
+///
+/// ⚠ [popular] 도 별점·후기가 아니다. 연관관광지는 '여기 간 사람이 저기도 갔다'는
+///   흔적이다 (원칙 3 — 별점·후기는 여전히 없다).
+/// ⚠ [rising] 과 [popular] 를 한 문구로 말하지 않는다. 절대 순위로 뽑힌 길은
+///   '요즘 더' 도는 게 아니다 — 그렇게 쓰면 거짓말이 된다.
+enum RouteNoteKind { marketToday, rising, popular }
 
 class RouteNote {
   const RouteNote(this.kind, this.spots);

@@ -697,6 +697,7 @@ class _RouteRow extends ConsumerWidget {
     final sub = switch (note?.kind) {
       RouteNoteKind.marketToday => S.routeNoteMarket(note!.spots),
       RouteNoteKind.rising => S.routeNoteRising,
+      RouteNoteKind.popular => S.routeNotePopular,
       null => distanceKm != null ? '${distanceKm!.round()}km' : route.fromTo,
     };
 
@@ -739,6 +740,8 @@ class _RouteRow extends ConsumerWidget {
                         color: switch (note?.kind) {
                           RouteNoteKind.marketToday => AppColors.marketRed,
                           RouteNoteKind.rising => AppColors.sun,
+                          // 흔적은 변화보다 조용한 색으로. 같은 무게가 아니다.
+                          RouteNoteKind.popular => AppColors.fieldGreen,
                           null => AppColors.ink2,
                         },
                       ),

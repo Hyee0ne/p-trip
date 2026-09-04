@@ -237,10 +237,11 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
     final rows = await _db.rpc('route_notes') as List<dynamic>;
     return {
       for (final r in rows.cast<Map<String, dynamic>>())
-        (r['route_id'] as num).toInt(): RouteNote(
-          r['kind'] == 'market_today' ? RouteNoteKind.marketToday : RouteNoteKind.rising,
-          (r['spots'] as num?)?.toInt() ?? 0,
-        ),
+        (r['route_id'] as num).toInt(): RouteNote(switch (r['kind']) {
+          'market_today' => RouteNoteKind.marketToday,
+          'popular' => RouteNoteKind.popular,
+          _ => RouteNoteKind.rising,
+        }, (r['spots'] as num?)?.toInt() ?? 0),
     };
   }
 

@@ -167,15 +167,20 @@ class _DepartSheetState extends ConsumerState<DepartSheet> {
                     if (note != null) ...[
                       const SizedBox(height: 3),
                       Text(
-                        note.kind == RouteNoteKind.marketToday
-                            ? S.routeNoteMarket(note.spots)
-                            : S.routeNoteRising,
+                        switch (note.kind) {
+                          RouteNoteKind.marketToday => S.routeNoteMarket(note.spots),
+                          RouteNoteKind.rising => S.routeNoteRising,
+                          RouteNoteKind.popular => S.routeNotePopular,
+                        },
                         style: TextStyle(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w600,
-                          color: note.kind == RouteNoteKind.marketToday
-                              ? AppColors.marketRed
-                              : AppColors.sun,
+                          color: switch (note.kind) {
+                            RouteNoteKind.marketToday => AppColors.marketRed,
+                            RouteNoteKind.rising => AppColors.sun,
+                            // 흔적은 변화보다 조용한 색으로. 같은 무게가 아니다.
+                            RouteNoteKind.popular => AppColors.fieldGreen,
+                          },
                         ),
                       ),
                     ],

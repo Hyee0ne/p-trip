@@ -59,6 +59,11 @@ class S {
   static String routeNoteMarket(int n) => n == 1 ? '오늘 이 길에 장이 서요' : '오늘 이 길에 장이 $n곳 서요';
   static const routeNoteRising = '요즘 이 길로 더 도네요';
 
+  /// 변화를 못 쟀지만 흔적이 많은 길 (2026-09-04).
+  /// ⚠ '뜬다'고 하지 않는다 — 절대 순위로 뽑힌 길은 요즘 더 도는 게 아니다.
+  /// ⚠ 별점이 아니라 **이동 흔적**이다. '다녀간' 이 그걸 그대로 말한다.
+  static const routeNotePopular = '이 길로 다녀간 사람이 많아요';
+
   /// 코스 진입 — 주인공이 아니라 안전망이라는 게 문장에 있어야 한다.
   static const routesCourseHint = '처음이라 걱정되면, 짜여진 코스로';
 

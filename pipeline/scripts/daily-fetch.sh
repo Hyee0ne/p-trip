@@ -38,10 +38,31 @@ if ! "$NPM" run --silent guard >> "$LOG" 2>&1; then
   exit 1
 fi
 
+# ── 1) 스팟 상세 ─────────────────────────────────────────
+# detailIntro2 한도(하루 약 1,000건)에 걸리면 스스로 멈추고 받아둔 것까지 저장한다.
 "$NPM" run --silent fetch:spots >> "$LOG" 2>&1
 CODE=$?
 
+# ── 2) 국도 진출점 ───────────────────────────────────────
+# ⚠ **이걸 빼먹으면 하루치를 받고도 레이더에 하나도 안 뜬다.**
+#   route_id·detour_min 이 비면 `detour_min <= 10` 필터에 걸린다.
+#   2026-09-04 에 실제로 999건이 하루 동안 그렇게 묻혀 있었다.
+# ⚠ API 를 쓰지 않는다 — DB 계산이라 한도와 무관하다. 1) 이 실패해도 돈다.
+echo "" >> "$LOG"
+echo "  ── 진출점 계산 ──" >> "$LOG"
+"$NPM" run --silent compute:exits >> "$LOG" 2>&1
+
+# ── 3) 연관 관광지 ───────────────────────────────────────
+# ⚠ **다른 오퍼레이션이라 한도가 따로다.** 1) 이 소진돼도 이건 돈다.
+#   큐레이션 한 줄('요즘 이 길로 더 도네요')의 근거다.
+echo "" >> "$LOG"
+echo "  ── 연관 관광지 ──" >> "$LOG"
+"$NPM" run --silent fetch:related >> "$LOG" 2>&1
+
 # 오늘 성과를 한 줄로 남긴다. 로그를 끝까지 안 읽어도 보이게.
 SAVED=$(grep -oE '✓ spots [0-9,]+건 적재' "$LOG" | tail -1)
-echo "  [종료 $CODE] ${SAVED:-저장 요약 없음}" >> "$LOG"
+EXITS=$(grep -oE '✓ 진출점 [0-9,]+건 계산' "$LOG" | tail -1)
+LINKS=$(grep -oE '✓ spot_links [0-9,]+건 적재' "$LOG" | tail -1)
+echo "" >> "$LOG"
+echo "  [종료 $CODE] ${SAVED:-저장 요약 없음} · ${EXITS:-진출점 없음} · ${LINKS:-링크 없음}" >> "$LOG"
 exit $CODE
