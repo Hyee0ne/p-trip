@@ -14,6 +14,7 @@
 
 import { basename } from 'node:path';
 import { existsSync } from 'node:fs';
+import { pageAll } from './lib/page.js';
 import { supabase } from './lib/supabase.js';
 import { readCsv } from './lib/csv.js';
 import { distMeters } from './lib/corridor.js';
@@ -123,12 +124,11 @@ async function main() {
   console.log(`전국 ${rows.length}곳 → 좌표 있는 ${all.length}곳 → 회랑 ${CORRIDOR_KM}km 안 ${markets.length}곳`);
 
   // 2) 붙일 수 있는 기존 스팟을 모은다
-  const { data: spotRows, error: e1 } = await db
-    .from('spots')
-    .select('id, name, lat, lng, type')
-    .limit(5000);
-  if (e1) throw new Error(`스팟 조회 실패: ${e1.message}`);
-  const spots = (spotRows ?? []) as Spot[];
+  // ⚠ 이 목록이 잘리면 붙일 수 있는 스팟을 못 찾아 **같은 시장을 새로 만든다.**
+  //   PostgREST 는 서버가 1,000행에서 끊는다 — limit 으로 못 넘는다.
+  const spots = await pageAll<Spot>((from, to) =>
+    db.from('spots').select('id, name, lat, lng, type').range(from, to),
+  );
 
   let matched = 0;
   let created = 0;

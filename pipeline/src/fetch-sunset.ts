@@ -12,6 +12,7 @@
  */
 
 import { basename } from 'node:path';
+import { pageAll } from './lib/page.js';
 import { supabase } from './lib/supabase.js';
 
 const KEY = process.env.DATA_GO_KR_KEY?.trim();
@@ -99,13 +100,19 @@ async function main() {
     d.setDate(d.getDate() + i);
     return d;
   });
-  const { data: have } = await db
-    .from('sun_moon')
-    .select('locdate, grid_lat, grid_lng')
-    .gte('locdate', iso(dates[0]))
-    .lte('locdate', iso(dates[dates.length - 1]));
+  // ⚠ 이 목록이 잘리면 **이미 받은 격자를 다시 받는다.** 격자 × 45일이라 전국이면
+  //   금방 수만 행이고, PostgREST 는 서버가 1,000행에서 끊는다 (limit 으로 못 넘는다).
+  //   `fetch:spots` 가 같은 함정에 빠져 이틀치 2,000콜을 날렸다 (2026-09-06).
+  const have = await pageAll<{ locdate: string; grid_lat: number; grid_lng: number }>((from, to) =>
+    db
+      .from('sun_moon')
+      .select('locdate, grid_lat, grid_lng')
+      .gte('locdate', iso(dates[0]))
+      .lte('locdate', iso(dates[dates.length - 1]))
+      .range(from, to),
+  );
   const done = new Set(
-    (have ?? []).map((r) => `${r.locdate}|${Number(r.grid_lat).toFixed(1)},${Number(r.grid_lng).toFixed(1)}`),
+    have.map((r) => `${r.locdate}|${Number(r.grid_lat).toFixed(1)},${Number(r.grid_lng).toFixed(1)}`),
   );
 
   const jobs: { date: Date; key: string; lat: number; lng: number }[] = [];

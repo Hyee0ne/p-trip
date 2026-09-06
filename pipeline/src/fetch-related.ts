@@ -15,6 +15,7 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
+import { pageAll } from './lib/page.js';
 import { supabase } from './lib/supabase.js';
 
 const KEY = process.env.TOURAPI_KEY?.trim();
@@ -45,6 +46,15 @@ type Sigungu = { name: string; areaCd: string; signguCd: string };
 
 /** 처리한 (시군구, baseYm) 을 남긴다. 한도에 걸려도 다음 날 이어받는다. */
 const DONE = join(import.meta.dirname, 'data', 'related-done.json');
+
+/**
+ * 이미 받은 기록을 지우고 처음부터 다시 받는다. `REDO=1`
+ *
+ * ⚠ 스팟이 크게 늘었으면 다시 받아야 한다. 연관관광지는 **받을 때의 스팟 이름 색인**으로
+ *   맞춰 붙이므로, 색인이 작았을 때 받은 건 붙을 것도 안 붙은 채로 '받음'으로 남는다.
+ *   2026-09-06: 색인이 1,000개로 잘린 채 267곳을 다 받아 9만 건 중 300건만 붙었다.
+ */
+const REDO = process.env.REDO === '1';
 
 async function sigunguList(): Promise<Sigungu[]> {
   const out: Sigungu[] = [];
@@ -144,15 +154,18 @@ async function main() {
   // 기본은 최근 확보된 달과 그 3개월 전. 변화를 보려면 시점이 둘 필요하다.
   const months = (process.env.BASE_YM ?? '202606,202603').split(',').map((s) => s.trim());
 
-  const { data: spotRows, error } = await db.from('spots').select('id, name').limit(5000);
-  if (error) throw new Error(`스팟 조회 실패: ${error.message}`);
+  // ⚠ 이름 색인이 잘리면 **받은 연관관광지가 우리 스팟과 안 맞는다.**
+  //   2026-09-06 까지 1,000개만 색인해서 9만 건을 받고 300건만 붙었다.
+  const spotRows = await pageAll<{ id: string; name: string }>((from, to) =>
+    db.from('spots').select('id, name').range(from, to),
+  );
   const byName = new Map<string, string>();
   for (const s of spotRows ?? []) byName.set(norm(s.name as string), s.id as string);
-  console.log(`스팟 ${spotRows?.length ?? 0}건으로 이름 색인`);
+  console.log(`스팟 ${spotRows.length}건으로 이름 색인`);
 
   const list = await sigunguList();
   const done = new Set<string>(
-    existsSync(DONE) ? (JSON.parse(readFileSync(DONE, 'utf-8')) as string[]) : [],
+    !REDO && existsSync(DONE) ? (JSON.parse(readFileSync(DONE, 'utf-8')) as string[]) : [],
   );
   console.log(`시군구 ${list.length}곳 · 이미 받은 (시군구,월) ${done.size}건`);
 
@@ -213,7 +226,7 @@ async function main() {
     if (now < then) risen.push({ key, from: then, to: now }); // 숫자가 작을수록 상위
   }
   risen.sort((x, y) => y.from - y.to - (x.from - x.to));
-  const nameById = new Map((spotRows ?? []).map((s) => [s.id as string, s.name as string]));
+  const nameById = new Map(spotRows.map((s) => [s.id as string, s.name as string]));
   console.log(`\n순위가 오른 연결 ${risen.length}건 — 상위 8건:`);
   for (const r of risen.slice(0, 8)) {
     const [f, t] = r.key.split('|');

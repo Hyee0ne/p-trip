@@ -32,6 +32,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
+import { pageAll } from './lib/page.js';
 import { supabase } from './lib/supabase.js';
 
 const KEY = process.env.TOURAPI_KEY?.trim();
@@ -379,8 +380,21 @@ async function main() {
 
   // ⚠ TourAPI는 **일일 요청 제한**이 있다. 스팟 하나에 2~3콜이라 1,000건이면 금방 닿는다.
   //   이미 채운 건 건너뛰어 다음 날 이어받는다. RESET=1이면 전부 다시 받는다.
-  const { data: existing } = await db.from('spots').select('tourapi_contentid').gt('trust_score', 0);
-  const doneIds = new Set((existing ?? []).map((r) => r.tourapi_contentid as string));
+  //
+  // ⚠ **PostgREST 는 기본 1,000행만 준다.** 그냥 select 하면 2,000건 중 1,000건만 와서
+  //   나머지를 '아직 안 받았다'고 보고 **매일 밤 다시 받는다.**
+  //   2026-09-06 에 실제로 그랬다 — 09-05·09-06 이틀치 2,000콜이 이미 있는 스팟에 쓰였고
+  //   스팟 수가 2,042 에서 한 건도 안 늘었다. 로그에는 '1000건 적재'로 찍혀 멀쩡해 보였다.
+  //   range() 로 끝까지 넘긴다.
+  const doneRows = await pageAll<{ tourapi_contentid: string }>((from, to) =>
+    db
+      .from('spots')
+      .select('tourapi_contentid')
+      .gt('trust_score', 0)
+      .not('tourapi_contentid', 'is', null)
+      .range(from, to),
+  );
+  const doneIds = new Set(doneRows.map((r) => r.tourapi_contentid));
   const reset = process.env.RESET === '1';
 
   /**
