@@ -283,11 +283,6 @@ class _Body extends ConsumerWidget {
     );
   }
 
-  /// 그날 밤의 사실 한 줄. **점수도 등급도 아니다** (TECH_SPEC §3.8).
-  ///
-  /// 좌표가 없는 전국 공통 값이지만 여행기에서는 그게 약점이 아니다 —
-  /// 그날의 사실이면 충분하다.
-
   Widget _actions(BuildContext context, List<TripPoint> path, int meals) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 22),

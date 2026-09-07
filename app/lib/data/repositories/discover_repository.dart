@@ -36,7 +36,7 @@ abstract interface class DiscoverRepository {
   /// 「한 곳씩」 덱 — 스팟·코스·노선이 섞여 흐른다.
   Future<List<CurationCard>> curationDeck();
 
-  /// 오늘 이 자리의 해·달. 일몰 타이밍 가중치(§3.1)와 별 보기 좋은 밤(§3.8)이 쓴다.
+  /// 오늘 이 자리의 일몰. 레이더 일몰 카드(§3.1 타이밍 가중치)가 쓴다.
   Future<TodaySky?> todaySky({required double lat, required double lng});
 
   /// 지금 여기서 이 국도를 타고 고른 방향으로 뻗은 선형 (CO-08 길 떠나기).

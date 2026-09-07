@@ -2,7 +2,7 @@
  * 천문연 출몰시각 → sun_moon (좌표 격자 × 날짜 캐시).
  *
  * 일몰만 받는 게 아니다. **월출·월몰·박명 3종을 한 응답에 같이 준다**(2026-08-29 실측).
- * 일몰은 §3.1 타이밍 가중치(뷰포인트 ×2)에, 월출·월몰·천문박명은 §3.8 별 보기 좋은 밤에 쓴다.
+ * ⚠ **앱이 읽는 건 일몰뿐이다** (§3.8 삭제, 2026-09-07). 나머지는 받아만 둔다.
  *
  * ⚠ 격자는 **스팟이 실제로 있는 칸만** 만든다. 빈 바다·산을 채울 이유가 없다.
  * ⚠ 이동 중에 다시 조회하지 않는다. 파이프라인이 미리 채워두고 앱은 읽기만 한다.
@@ -83,15 +83,20 @@ async function main() {
   const db = supabase();
 
   // 1) 스팟이 있는 격자만 추린다.
-  const { data: spots, error } = await db.from('spots').select('lat, lng').limit(5000);
-  if (error) throw new Error(`스팟 조회 실패: ${error.message}`);
+  // ⚠ `.limit(5000)` 이었다 → **PostgREST 가 서버에서 1,000행에 끊는다.** limit 으로 못 넘는다.
+  //   스팟이 1,000건을 넘어간 뒤로 앞의 1,000건이 사는 격자만 만들어졌다 —
+  //   서울·경기 전망 스팟이 격자 밖이라 **일몰 카드가 통째로 안 떴다** (2026-09-07 발견).
+  //   `fetch:spots` 가 같은 함정에 빠져 이틀치를 날렸는데(2026-09-06) 여기만 남아 있었다.
+  const spots = await pageAll<{ lat: number; lng: number }>((from, to) =>
+    db.from('spots').select('lat, lng').not('lat', 'is', null).not('lng', 'is', null).range(from, to),
+  );
   const grids = new Map<string, { lat: number; lng: number }>();
-  for (const s of spots ?? []) {
-    const lat = round1(s.lat as number);
-    const lng = round1(s.lng as number);
+  for (const s of spots) {
+    const lat = round1(s.lat);
+    const lng = round1(s.lng);
     grids.set(`${lat.toFixed(1)},${lng.toFixed(1)}`, { lat, lng });
   }
-  console.log(`스팟 ${spots?.length ?? 0}건 → 격자 ${grids.size}칸`);
+  console.log(`스팟 ${spots.length}건 → 격자 ${grids.size}칸`);
 
   // 2) 이미 있는 (날짜, 격자)는 건너뛴다. 하루 한도를 아껴 이어받는다.
   const today = new Date();
