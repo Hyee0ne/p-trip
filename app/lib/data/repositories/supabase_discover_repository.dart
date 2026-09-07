@@ -30,10 +30,30 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
     return [for (final r in rows) _route(r)];
   }
 
+  /// 서버로 나가는 좌표는 **언제나 여기를 거쳐 격자로 뭉갠다** (2026-09-07).
+  ///
+  /// 0.01도 = 위도 1.11km · 경도 0.88km. 이 앱이 좌표를 쓰는 용도는 전부 이보다 굵다 —
+  /// 레이더 반경 5km, 국도 탐색 30km, 앞길 선형 120km, 장소 검색은 근접 정렬 힌트다.
+  ///
+  /// ⚠ **정확한 GPS 좌표는 기기를 떠나지 않는다.** 위치정보 문의(2026-09-07) 답변이
+  ///   "사업자가 보유한 다른 정보와 결합해 특정 개인을 식별할 수 있는지"를 기준으로 든다.
+  ///   우리는 식별자를 함께 보내지 않고 저장도 안 하지만, **보내는 값 자체를 뭉개면**
+  ///   쿼리가 실패해 인프라 로그에 파라미터가 찍히는 최악의 경우에도
+  ///   남는 건 한 사람의 위치가 아니라 격자 한 칸이다.
+  ///   로그 설정은 우리가 못 바꾼다 — 보내는 값이 우리가 쥔 유일한 손잡이다.
+  ///
+  /// ⚠ 레이더는 이미 조회 키를 0.01도로 뭉개서 넘긴다(`radar_screen._queueKey`).
+  ///   여기서 한 번 더 거쳐도 값이 바뀌지 않는다 — 그게 맞다. **빠짐없이** 거치는 게 요점이다.
+  static double _cell(double v) => (v * 100).roundToDouble() / 100;
+  static double? _cellOrNull(double? v) => v == null ? null : _cell(v);
+
   @override
   Future<NearbyResult> nearbyRoutes({required double lat, required double lng}) async {
     final rows =
-        await _db.rpc('nearby_routes', params: {'p_lat': lat, 'p_lng': lng, 'p_max_km': 30})
+        await _db.rpc(
+              'nearby_routes',
+              params: {'p_lat': _cell(lat), 'p_lng': _cell(lng), 'p_max_km': 30},
+            )
             as List<dynamic>;
 
     // 노선 선형은 전국이 다 들어와 있다. 비었으면 데이터가 없는 게 아니라
@@ -54,7 +74,7 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
     final rows =
         await _db.rpc(
               'discover_ahead',
-              params: {'p_lat': lat, 'p_lng': lng, 'p_heading': null, 'p_km': km},
+              params: {'p_lat': _cell(lat), 'p_lng': _cell(lng), 'p_heading': null, 'p_km': km},
             )
             as List<dynamic>;
     return rows.isNotEmpty;
@@ -191,7 +211,8 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
   @override
   Future<TodaySky?> todaySky({required double lat, required double lng}) async {
     final rows =
-        await _db.rpc('sun_moon_today', params: {'p_lat': lat, 'p_lng': lng}) as List<dynamic>;
+        await _db.rpc('sun_moon_today', params: {'p_lat': _cell(lat), 'p_lng': _cell(lng)})
+            as List<dynamic>;
     if (rows.isEmpty) return null;
     final r = rows.first as Map<String, dynamic>;
     String? hm(String k) {
@@ -215,8 +236,8 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
               'route_path_ahead',
               params: {
                 'p_route_id': routeId,
-                'p_lat': lat,
-                'p_lng': lng,
+                'p_lat': _cell(lat),
+                'p_lng': _cell(lng),
                 'p_north_or_east': northOrEast,
                 'p_max_km': maxKm,
               },
@@ -246,7 +267,8 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
     try {
       final res = await _db.functions.invoke(
         'search_places',
-        body: {'query': query.trim(), 'lat': ?lat, 'lng': ?lng},
+        // ⚠ 카카오로 나가는 값도 뭉갠다. 근접 정렬 힌트라 1km 차이는 순서를 바꾸지 않는다.
+        body: {'query': query.trim(), 'lat': ?_cellOrNull(lat), 'lng': ?_cellOrNull(lng)},
       );
       final d = res.data as Map<String, dynamic>?;
       if (d == null || d['ok'] != true) return const [];
@@ -277,8 +299,8 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
       final res = await _db.functions.invoke(
         'compare_routes',
         body: {
-          'from': [fromLat, fromLng],
-          'to': [toLat, toLng],
+          'from': [_cell(fromLat), _cell(fromLng)],
+          'to': [_cell(toLat), _cell(toLng)],
         },
       );
       final d = res.data as Map<String, dynamic>?;
@@ -327,7 +349,12 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
     final rows =
         await _db.rpc(
               'discover_ahead',
-              params: {'p_lat': lat, 'p_lng': lng, 'p_heading': headingDeg, 'p_km': km},
+              params: {
+                'p_lat': _cell(lat),
+                'p_lng': _cell(lng),
+                'p_heading': headingDeg,
+                'p_km': km,
+              },
             )
             as List<dynamic>;
     if (rows.isEmpty) return const [];
