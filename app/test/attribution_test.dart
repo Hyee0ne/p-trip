@@ -38,7 +38,9 @@ void main() {
   });
 
   test('관광공사가 출처에 있다 — 사진과 개요를 그대로 쓴다', () {
-    expect(S.sources.map((s) => s.org), contains('한국관광공사'));
+    // ⚠ 표기가 '출처: ©한국관광공사' 로 바뀌었다 (공사 가이드라인, 2026-09-07).
+    //   기관명이 들어 있는지로 본다 — 형식 자체는 아래 테스트가 잠근다.
+    expect(S.sources.any((s) => s.org.contains('한국관광공사')), isTrue);
   });
 
   testWidgets('설정에 「데이터 출처」가 있고, 누르면 기관들이 나온다', (tester) async {
@@ -70,6 +72,27 @@ void main() {
         findsOneWidget,
         reason: '「$label」 행에 onTap이 없다 — 애플이 비활성 요소로 반려한다',
       );
+    }
+  });
+
+  test('한국관광공사는 공사 가이드라인 형식을 그대로 쓴다', () {
+    final kto = S.sources.firstWhere((s) => s.org.contains('한국관광공사'));
+    // [O] 출처: ©한국관광공사
+    expect(kto.org, '출처: ©한국관광공사');
+  });
+
+  test('API 서비스명(TourAPI)을 사용자에게 단독으로 보이지 않는다', () {
+    // [X] TourAPI — 공사가 명시적으로 금지한 표기다.
+    for (final s in S.sources) {
+      expect(s.org, isNot(contains('TourAPI')));
+      expect(s.what, isNot(contains('TourAPI')));
+    }
+  });
+
+  test('다른 기관에는 ©를 임의로 붙이지 않는다 — 각자 기준이 다르다', () {
+    for (final s in S.sources) {
+      if (s.org.contains('한국관광공사')) continue;
+      expect(s.org, isNot(contains('©')));
     }
   });
 }
