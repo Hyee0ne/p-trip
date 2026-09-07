@@ -59,6 +59,7 @@ class _Body extends ConsumerWidget {
                 nightSkyProvider((lat: path.first.lat, lng: path.first.lng, date: path.first.at)),
               )
               .value;
+    final meals = trip.unplannedMeals(planned);
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.only(bottom: 32),
@@ -74,8 +75,13 @@ class _Body extends ConsumerWidget {
             _photoDenied(),
             const SizedBox(height: AppSpace.x5),
           ],
-          _statChips(photos?.photos.length ?? 0, trip.unplannedMeals(planned)),
-          const SizedBox(height: AppSpace.x8),
+          // ⚠ 남길 게 없으면 줄 자체를 그리지 않는다. '들른 발견'과 '사진 N장'은 뺐다 —
+          //   들른 곳은 바로 아래 타임라인에, 사진 장수는 스트립에 이미 있다 (2026-09-07).
+          if (trip.skunked > 0 || meals > 0) ...[
+            _statChips(meals),
+            const SizedBox(height: AppSpace.x8),
+          ] else
+            const SizedBox(height: AppSpace.x3),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 22),
             child: SectionLabel(S.tripTimeline),
@@ -87,11 +93,8 @@ class _Body extends ConsumerWidget {
             _photoNote(photos.photos.length),
             const SizedBox(height: AppSpace.x3),
           ],
-          _footer(),
-          // ⚠ 없으면 줄을 그리지 않는다. 밤하늘은 있으면 얹는 것이지 채우는 칸이 아니다.
-          if (sky?.line != null) _nightSky(sky!.line!),
           const SizedBox(height: AppSpace.x6),
-          _actions(context, path, sky?.line, trip.unplannedMeals(planned)),
+          _actions(context, path, sky?.line, meals),
         ],
       ),
     );
@@ -262,7 +265,10 @@ class _Body extends ConsumerWidget {
   );
 
   /// 통계는 표가 아니라 칩으로 조용히. 허탕도 같은 크기로 담담하게.
-  Widget _statChips(int photoCount, int unplannedMeals) {
+  /// ⚠ 이 줄에 남는 건 **'계획에 없던 밥'과 '허탕'뿐이다** (2026-09-07).
+  ///   '들른 발견'은 바로 아래 타임라인이 곧 그 목록이고, '사진 N장'은 스트립과 캡션이
+  ///   같은 숫자를 두 번 더 말하고 있었다. 셋이 같은 걸 말하면 둘은 군더더기다.
+  Widget _statChips(int unplannedMeals) {
     // ⚠ width 없는 Container에 alignment를 주면 폭이 최대까지 팽창한다 → Row(min)
     Widget chip(String label, Color bg, Color fg) => Container(
       height: 32,
@@ -285,7 +291,6 @@ class _Body extends ConsumerWidget {
         spacing: 7,
         runSpacing: 7,
         children: [
-          chip('${S.statVisited} ${trip.visited}', AppColors.tintGreen, AppColors.onTintGreen),
           // ⚠ 허탕이 있으면 '계획에 없던 밥' **자리를 대신한다** (SCREENS.md MY-02).
           //   부정이 아니라 담담한 톤 — 같은 크기, 같은 모양이다.
           if (trip.skunked > 0)
@@ -296,7 +301,6 @@ class _Body extends ConsumerWidget {
               AppColors.tintGreen,
               AppColors.onTintGreen,
             ),
-          if (photoCount > 0) chip('사진 $photoCount장', AppColors.fill, AppColors.ink2),
         ],
       ),
     );
@@ -339,36 +343,6 @@ class _Body extends ConsumerWidget {
   ///
   /// 좌표가 없는 전국 공통 값이지만 여행기에서는 그게 약점이 아니다 —
   /// 그날의 사실이면 충분하다.
-  Widget _nightSky(String line) => Padding(
-    padding: const EdgeInsets.fromLTRB(22, AppSpace.x6, 22, 0),
-    child: Row(
-      children: [
-        const Icon(Icons.nightlight_outlined, size: 15, color: AppColors.ink3),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Text(
-            line,
-            style: const TextStyle(
-              fontSize: 14.5,
-              height: 1.6,
-              color: AppColors.ink2,
-              letterSpacing: -0.2,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _footer() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 22),
-      child: Text(
-        S.tripFooter(trip.distanceKm),
-        style: const TextStyle(fontSize: 12.5, color: AppColors.ink2, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
 
   Widget _actions(BuildContext context, List<TripPoint> path, String? sky, int meals) {
     return Padding(
