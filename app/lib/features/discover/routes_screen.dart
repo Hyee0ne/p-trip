@@ -690,7 +690,7 @@ class _RouteRow extends ConsumerWidget {
     final title = drivable
         ? (route.name.isEmpty ? '${route.id}번 국도' : route.name)
         : S.routeUndrivable;
-    // ⚠ 보조 줄의 우선순위: **오늘 장날 > 요즘 더 도는 길 > 거리/구간**.
+    // ⚠ 보조 줄의 우선순위: **오늘 장날 > 발길이 는 길 > 다녀간 길 > 거리/구간**.
     //   큐레이션을 홈의 섹션으로 세우지 않고 길에 붙인다 (CO-01 재설계) —
     //   목록이 아니라 길의 속성이라 무엇이 있는지는 안 밝힌다.
     final note = ref.watch(routeNotesProvider).value?[route.id];
