@@ -63,3 +63,6 @@ tools/asc/.last_review_state
 
 # golden 비교 실패 시 자동 생성되는 디버그 이미지 (리포에 넣지 않는다)
 app/test/failures/
+
+# Playwright MCP 가 남기는 스냅샷·콘솔 로그 (리포에 넣지 않는다)
+.playwright-mcp/
