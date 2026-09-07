@@ -87,16 +87,29 @@ async function main() {
   //   스팟이 1,000건을 넘어간 뒤로 앞의 1,000건이 사는 격자만 만들어졌다 —
   //   서울·경기 전망 스팟이 격자 밖이라 **일몰 카드가 통째로 안 떴다** (2026-09-07 발견).
   //   `fetch:spots` 가 같은 함정에 빠져 이틀치를 날렸는데(2026-09-06) 여기만 남아 있었다.
-  const spots = await pageAll<{ lat: number; lng: number }>((from, to) =>
-    db.from('spots').select('lat, lng').not('lat', 'is', null).not('lng', 'is', null).range(from, to),
-  );
+  // ⚠ **전망(view) 스팟이 있는 칸만** 채운다 (2026-09-07). 일몰 카드는 전망에만 붙는다
+  //   (`core/sunset.dart`: `d.spot.type != SpotType.view` 면 그냥 통과). 전체 스팟으로
+  //   격자를 만들면 107칸인데 전망만 보면 34칸이다 — 하루 한도가 빠듯한 개발계정에서
+  //   3,285콜(×45일)을 아낀다.
+  // ⚠ 성기게 채우는 대신 `sun_moon_today()` 가 **가장 가까운 칸**을 찾는다
+  //   (20260907010000). 일몰 시각은 40km 안에서 3분 안쪽이라 ±20~60분 창에 영향이 없다.
+  // ⚠ 다른 곳에서 해·달이 필요해지면 `ALL_GRIDS=1`.
+  const onlyViews = process.env.ALL_GRIDS !== '1';
+  const spots = await pageAll<{ lat: number; lng: number }>((from, to) => {
+    let q = db.from('spots').select('lat, lng').not('lat', 'is', null).not('lng', 'is', null);
+    if (onlyViews) q = q.eq('type', 'view');
+    return q.range(from, to);
+  });
   const grids = new Map<string, { lat: number; lng: number }>();
   for (const s of spots) {
     const lat = round1(s.lat);
     const lng = round1(s.lng);
     grids.set(`${lat.toFixed(1)},${lng.toFixed(1)}`, { lat, lng });
   }
-  console.log(`스팟 ${spots.length}건 → 격자 ${grids.size}칸`);
+  console.log(
+    `${onlyViews ? '전망' : '전체'} 스팟 ${spots.length}건 → 격자 ${grids.size}칸` +
+      (onlyViews ? ' (전체가 필요하면 ALL_GRIDS=1)' : ''),
+  );
 
   // 2) 이미 있는 (날짜, 격자)는 건너뛴다. 하루 한도를 아껴 이어받는다.
   const today = new Date();

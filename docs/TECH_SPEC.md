@@ -243,7 +243,7 @@ trip 종료 시:
 |---|---|---|---|
 | TourAPI (국문관광정보/사진/연관관광지/고캠핑/두루누비/수요강도) | 스팟 수집 | data.go.kr | pipeline + Edge Fn |
 | 전국전통시장표준데이터 | 장날 | data.go.kr | pipeline |
-| 천문연 출몰시각 | 일몰 (레이더 일몰 카드). 월출·월몰·박명도 받지만 **앱이 읽지 않는다** | data.go.kr | pipeline |
+| 천문연 출몰시각 | 일몰 (레이더 일몰 카드). **전망 스팟이 있는 격자만** 채운다 (약 40칸). 월출·월몰·박명은 받아만 둔다 | data.go.kr | pipeline |
 | 카카오내비 SDK | 핸드오프 | developers.kakao.com | 앱 |
 | 카카오맵 **네이티브 SDK v2** | 지도 표시 (kakao_map_sdk) | developers.kakao.com | 앱 — **네이티브 앱 키**, 내비와 공용 |
 | 천문연 천문현상 정보 | 유성우·월식·슈퍼문 — **앱에서 읽는 곳 없음** (§3.8 삭제). 테이블만 남겨둔다 | data.go.kr (B090041) | pipeline |

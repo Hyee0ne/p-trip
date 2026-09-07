@@ -421,6 +421,16 @@ async function main() {
     ((i.tel ?? '').trim() ? 15 : 0) +
     (/\d/.test((i.addr1 ?? '').trim()) ? 10 : 0);
 
+  /**
+   * 목록만으로 판별되는 **전망(view)**. `cat1 = A01`(자연) + 관광지(12)가 view가 된다
+   * (아래 `finalType`과 같은 규칙). 상세 콜을 쓰지 않고 알 수 있다.
+   *
+   * ⚠ **전망을 맨 앞으로 당긴다** (2026-09-07). 레이더 일몰 카드가 붙는 유일한 유형인데
+   *   전국 63곳(신뢰 통과)뿐이라 서울·경기 말고는 카드가 거의 안 떴다.
+   *   후보 37,922건 중 전망은 1,145건 — 하루 이틀이면 다 받고 원래 시도 순서로 돌아온다.
+   */
+  const isView = (i: Item) => i.contenttypeid === '12' && (i.cat1 ?? '') === 'A01';
+
   const dropped = [...seen].filter(([, i]) =>
     (DROPPED_TYPES as readonly string[]).includes(i.contenttypeid),
   ).length;
@@ -437,11 +447,12 @@ async function main() {
         (!ONLY.length || ONLY.includes(regnOf(i))) &&
         (reset || !doneIds.has(id)),
     )
-    // ⚠ **시도 순서가 먼저, 그 안에서 국도에 가까운 것부터.**
+    // ⚠ **전망이 먼저, 그다음 시도 순서, 그 안에서 국도에 가까운 것부터.**
     //   하루 1,000건씩 며칠에 걸쳐 받으므로 순서가 곧 '언제부터 쓸 수 있느냐'다.
     //   거리를 모르는 옛 캐시는 뒤로 보낸다 (Infinity).
     .sort(
       ([, a], [, b]) =>
+        Number(isView(b)) - Number(isView(a)) ||
         regionRank(a) - regionRank(b) ||
         Number(a._km ?? Infinity) - Number(b._km ?? Infinity),
     );
@@ -450,6 +461,8 @@ async function main() {
     console.log(`  사진 없는 ${noPhoto}건은 건너뛴다 — 게이트(60)를 넘을 수 없다 (KEEP_NO_PHOTO=1로 포함)`);
   }
   if (enough) console.log(`  목록만으로 60점인 ${enough}건은 상세를 안 받는다`);
+  const views = targets.filter(([, i]) => isView(i)).length;
+  if (views) console.log(`  전망(view) ${views}건을 맨 앞으로 — 일몰 카드가 붙는 유일한 유형이다`);
   console.log(
     `  대상 ${targets.length}건` +
       (doneIds.size && !reset ? ` (이미 채운 ${doneIds.size}건 건너뜀 — RESET=1로 재수집)` : ''),
