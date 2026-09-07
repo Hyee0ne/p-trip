@@ -176,8 +176,10 @@ class _Body extends ConsumerWidget {
     );
   }
 
+  /// ⚠ 사진 위에 **아무것도 얹지 않는다** (2026-09-07). 스팟명·시각 라벨이 있었는데,
+  ///   규칙(300m 안에 들른 곳이 있으면 이름, 없으면 시각)이 화면에 드러나 보였다.
+  ///   내 사진이 규칙의 결과물처럼 보이면 그건 여행기가 아니다. 사진은 사진으로 둔다.
   Widget _photoTile(BuildContext context, WidgetRef ref, TripPhoto p) {
-    final label = p.spotName ?? _hhmm(p.at);
     final isCover = trip.coverPhotoId == p.asset.id;
     return GestureDetector(
       onTap: () {
@@ -202,30 +204,6 @@ class _Body extends ConsumerWidget {
                 builder: (_, snap) => snap.data == null
                     ? const SizedBox.shrink()
                     : Image.memory(snap.data!, fit: BoxFit.cover),
-              ),
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.center,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0x00000000), Color(0xB3000000)],
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 8,
-                right: 8,
-                bottom: 7,
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
               ),
               if (isCover)
                 Positioned(
@@ -282,9 +260,6 @@ class _Body extends ConsumerWidget {
       ),
     ),
   );
-
-  static String _hhmm(DateTime d) =>
-      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
   /// 통계는 표가 아니라 칩으로 조용히. 허탕도 같은 크기로 담담하게.
   Widget _statChips(int photoCount, int unplannedMeals) {
