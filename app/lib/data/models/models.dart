@@ -366,7 +366,6 @@ class TripStop {
     this.lat,
     this.lng,
     this.note = '',
-    this.stayMin,
   });
 
   final String spotId;
@@ -383,8 +382,10 @@ class TripStop {
   final double? lng;
 
   /// 자동 생성 한 줄. "'오늘이 마침 장날' 알림에 핸들을 꺾음"
+  ///
+  /// ⚠ 체류 시간(`stayMin`)이 있었다 → **폐기 (2026-09-07).** 채우는 코드가 없어
+  ///   실제로는 언제나 null 이었다 — 화면에 한 번도 안 뜬 칸이다.
   final String note;
-  final int? stayMin;
 }
 
 /// 주행 중 찍은 점 하나. **시각이 좌표만큼 중요하다** —

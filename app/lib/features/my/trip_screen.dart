@@ -75,13 +75,7 @@ class _Body extends ConsumerWidget {
             _photoDenied(),
             const SizedBox(height: AppSpace.x5),
           ],
-          // ⚠ 남길 게 없으면 줄 자체를 그리지 않는다. '들른 발견'과 '사진 N장'은 뺐다 —
-          //   들른 곳은 바로 아래 타임라인에, 사진 장수는 스트립에 이미 있다 (2026-09-07).
-          if (trip.skunked > 0 || meals > 0) ...[
-            _statChips(meals),
-            const SizedBox(height: AppSpace.x8),
-          ] else
-            const SizedBox(height: AppSpace.x3),
+          const SizedBox(height: AppSpace.x3),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 22),
             child: SectionLabel(S.tripTimeline),
@@ -264,48 +258,6 @@ class _Body extends ConsumerWidget {
     ),
   );
 
-  /// 통계는 표가 아니라 칩으로 조용히. 허탕도 같은 크기로 담담하게.
-  /// ⚠ 이 줄에 남는 건 **'계획에 없던 밥'과 '허탕'뿐이다** (2026-09-07).
-  ///   '들른 발견'은 바로 아래 타임라인이 곧 그 목록이고, '사진 N장'은 스트립과 캡션이
-  ///   같은 숫자를 두 번 더 말하고 있었다. 셋이 같은 걸 말하면 둘은 군더더기다.
-  Widget _statChips(int unplannedMeals) {
-    // ⚠ width 없는 Container에 alignment를 주면 폭이 최대까지 팽창한다 → Row(min)
-    Widget chip(String label, Color bg, Color fg) => Container(
-      height: 32,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadius.chip)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: fg),
-          ),
-        ],
-      ),
-    );
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 22),
-      child: Wrap(
-        spacing: 7,
-        runSpacing: 7,
-        children: [
-          // ⚠ 허탕이 있으면 '계획에 없던 밥' **자리를 대신한다** (SCREENS.md MY-02).
-          //   부정이 아니라 담담한 톤 — 같은 크기, 같은 모양이다.
-          if (trip.skunked > 0)
-            chip('${S.statSkunked} ${trip.skunked}번', AppColors.tintSun, AppColors.onTintSun)
-          else if (unplannedMeals > 0)
-            chip(
-              '${S.statUnplannedMeal} $unplannedMeals',
-              AppColors.tintGreen,
-              AppColors.onTintGreen,
-            ),
-        ],
-      ),
-    );
-  }
-
   Widget _timeline() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -453,11 +405,6 @@ class _StopRow extends StatelessWidget {
                 ],
               ),
             ),
-            if (stop.stayMin != null)
-              Text(
-                '${stop.stayMin}분',
-                style: const TextStyle(fontSize: 11.5, color: AppColors.ink3),
-              ),
           ],
         ),
       ),

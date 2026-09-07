@@ -274,7 +274,6 @@ class TripLogNotifier extends Notifier<TripLog> {
           'lat': s.lat,
           'lng': s.lng,
           'note': s.note,
-          'stayMin': s.stayMin,
         },
     ],
   };
@@ -327,7 +326,6 @@ class TripLogNotifier extends Notifier<TripLog> {
               orElse: () => StopKind.visited,
             ),
             note: (s['note'] as String?) ?? '',
-            stayMin: (s['stayMin'] as num?)?.toInt(),
           ),
     ],
   );
