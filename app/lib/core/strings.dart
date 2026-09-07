@@ -115,38 +115,8 @@ class S {
   static const courseDiscoveries = '경로 위의 발견';
   static const courseOrder = '지나는 순서';
   static const courseStart = '이 코스로 출발';
-  static const courseStartWithoutBase = '거점 없이도 출발할 수 있어요';
-
-  /// CO-06 보조 버튼. 거점은 선택사항이라 나가는 길이 반드시 있어야 한다.
-  static const baseSkipAndStart = '건너뛰고 출발';
-
-  // ── 거점 (CO-06) ──
-  static const baseTitle = '오늘 밤 거점';
-  static const baseIntro = '거점은 숙소가 아니라 \'위치\'예요. 어디서 예약했든 상관없어요 — 핀 하나만 찍으면 레이더의 기준점이 됩니다.';
-  static const baseSearchHint = '예약한 숙소·주소 검색';
-  static const basePinOnMap = '지도에서 핀 찍기';
-  static const baseCandidates = '종점 근처 참고 후보';
-  static const baseCandidatesSub = '정보만 · 예약은 외부';
-
-  /// CO-02 배너 — 거점을 이미 정한 상태. 문구는 아래 baseSetSub(승인된 카피)를 쓴다.
-  static const baseChange = '바꾸기 ›';
-  static const basePick = '정하기 ›';
-  static const baseWithout = '거점 없이 출발해도 레이더는 돌아가요.';
-  static const baseCta = '이 위치를 오늘 밤 거점으로';
-  static const baseNone = '오늘 밤 거점이 아직 없어요';
-  static const baseNoneSub = '잘 곳 하나만 정해두면, 가는 길이 자유로워져요';
-  static String baseSet(String name) => '오늘 밤 거점: $name';
-  static const baseSetSub = '계획 끝. 이제 가는 길은 비워둬도 돼요';
-  static const baseConfirmed = '확정됨';
-  static const baseMapUnavailable = '지도를 불러오지 못했어요 — 검색이나 아래 후보로 정할 수 있어요';
   static String kmAway(double km) =>
       km < 1 ? '${(km * 1000).round()}m' : '${km.toStringAsFixed(1)}km';
-  static const basePinChange = '지도에서 다시 찍기';
-  static const basePinHere = '여기로 정할래요';
-  static const basePickedOnMap = '지도에 찍은 위치';
-  static const baseToastNoCoord = '이 후보는 위치를 몰라요. 다른 곳을 골라주세요.';
-  static const baseToastExternal = '예약은 외부에서 — 여기선 위치만 받아요';
-  static const baseToastPickFirst = '거점을 먼저 골라주세요';
 
   // ── CO-03 스팟 상세 ──
   static const trustNotice = '영업·개장 정보는 공공데이터 기준이에요. 방문 전 확인을 권해요';
@@ -197,10 +167,6 @@ class S {
   /// 데이터는 있는데 지금 반경 안에 걸리는 게 없을 때. 위와 다르다.
   static const radarQuiet = '이 근처는 지금 조용해요';
 
-  /// ⚠ 대답이 없으면 **아무 일도 안 일어난다** (2026-09-07). 예전엔 '스쳐간 발견'으로
-  ///   자동 적립했는데, 담은 적 없는 목록이 불어나 정작 찜을 밀어냈다.
-  ///   문구가 동작을 그대로 말해야 한다 — 화면이 거짓말하지 않게.
-  static const radarSolo = '혼자 운전 중이라면 말로 하세요 — "응, 들를래" / "찜해줘". 대답이 없으면 그냥 지나갑니다.';
   static const radarFinish = '오늘 여행 마치기 → 여행기 만들기';
 
   static String radarRecording(String route, num km) => '$route ${km}km 기록 중';
@@ -208,8 +174,6 @@ class S {
   /// 국도를 아직 모를 때. **번호를 지어내지 않는다** — 여행기의 국도는
   /// 나중에 실제 궤적으로 맵매칭한다 (`setRouteKm`).
   static String radarRecordingNoRoute(num km) => '${km}km 기록 중';
-  static String baseChipSet(String name) => '오늘 밤 $name — 낮은 마음껏 새어나가세요';
-  static const baseChipNone = '오늘 밤 거점 없음 — 그래도 레이더는 돌아가요';
 
   // ── DR-02 발견 카드 ──
   static const cardVerified = '영업정보·사진이 확인된 발견만 알려드려요';

@@ -20,7 +20,7 @@ class AppColors {
   /// 밥집 · 일몰.
   static const sun = Color(0xFFE8A13D);
 
-  /// 거점 전용. 스팟 유형색이 아니라 다른 층위다.
+  /// 다른 층위의 강조색. 스팟 유형색이 아니다.
   static const violet = Color(0xFF6D4AA8);
 
   // ── 라이트 표면 ──

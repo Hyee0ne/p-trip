@@ -5,7 +5,7 @@ import '../theme.dart';
 ///
 /// ⚠ 지도 SDK를 쓰지 않는다. `kakao_map_plugin` 0.4.0은 M0.5 스파이크에서
 /// 아직 검증되지 않았고, 이 화면이 플러그인 때문에 죽으면 안 된다.
-/// 실제 지도는 위치를 **골라야 하는** 화면(CO-06 거점 설정)에서만 쓴다.
+/// 실제 지도는 홈에서만 쓴다.
 /// M1에서 course.geom이 들어오면 [points]를 실제 좌표로 그린다.
 class RoutePreview extends StatelessWidget {
   const RoutePreview({super.key, required this.routeId, this.height = 150});

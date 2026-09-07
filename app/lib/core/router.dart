@@ -6,7 +6,6 @@ import '../features/my/my_screen.dart';
 import '../features/my/trip_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/radar/radar_screen.dart';
-import '../features/discover/base_screen.dart';
 import '../features/discover/course_screen.dart';
 import '../features/discover/routes_screen.dart';
 import '../features/discover/search_screen.dart';
@@ -50,9 +49,6 @@ GoRouter buildRouter() {
         ],
       ),
 
-      // ── 거점 역진입: 코스 없이 진입 (TECH_SPEC §3.7) ──
-      GoRoute(path: '/base', builder: (_, _) => const BaseScreen()),
-
       // ── 3탭 셸 ──
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => _TabScaffold(shell: shell),
@@ -70,12 +66,7 @@ GoRouter buildRouter() {
                   GoRoute(
                     path: 'course/:id',
                     builder: (_, s) => CourseScreen(courseId: s.pathParameters['id']!),
-                    routes: [
-                      GoRoute(
-                        path: 'base',
-                        builder: (_, s) => BaseScreen(courseId: s.pathParameters['id']),
-                      ),
-                    ],
+                    routes: [],
                   ),
                   GoRoute(
                     path: 'spot/:id',

@@ -4,8 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/saves.dart';
-import '../../core/base_camp.dart';
-import '../../core/trip_log.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/cards.dart';
@@ -339,21 +337,13 @@ class _Body extends ConsumerWidget {
               backgroundColor: AppColors.routeBlue,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
             ),
-            onPressed: () {
-              // 달리는 중이면 거점을 지키고 경유지로 넘긴다.
-              // 둘러보다 누른 거면 지킬 목적지가 없다 — 그냥 그 곳으로 간다.
-              final p = HandoffSheet.visitParams(
-                spot: HandoffPlace(spot.name, spot.lat, spot.lng),
-                base: ref.read(baseCampProvider),
-                driving: ref.read(tripLogProvider).active != null,
-              );
-              HandoffSheet.show(
-                context,
-                mode: HandoffMode.visit,
-                destination: p.destination,
-                via: p.via,
-              );
-            },
+            // ⚠ 거점을 없앴다 (2026-09-07). 전에는 달리는 중이면 거점을 목적지로 두고
+            //   누른 곳을 경유지로 넘겼다. 이제 **누른 곳이 목적지다.** 지킬 잘 곳이 없다.
+            onPressed: () => HandoffSheet.show(
+              context,
+              mode: HandoffMode.visit,
+              destination: HandoffPlace(spot.name, spot.lat, spot.lng),
+            ),
             icon: const Icon(Icons.near_me, size: 18),
             label: const Text(
               S.spotNavigate,

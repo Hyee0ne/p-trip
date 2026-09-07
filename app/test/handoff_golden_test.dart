@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:p_trip/core/base_camp.dart';
 import 'package:p_trip/core/theme.dart';
 import 'package:p_trip/features/handoff/handoff_sheet.dart';
 
@@ -42,13 +41,16 @@ void main() {
   }
 
   const spot = HandoffPlace('추암 촛대바위', 37.4520, 129.1720);
-  const camp = BaseCamp(name: '동해 숙소', lat: 37.5245, lng: 129.1143);
 
-  testWidgets('들르기 — 거점 경유가 있을 때', (tester) async {
-    final p = HandoffSheet.visitParams(spot: spot, base: camp, driving: true);
+  /// ⚠ 거점을 없앴다 (2026-09-07). 경유 자리는 남아 있으니 그 모양은 계속 지킨다.
+  testWidgets('들르기 — 경유가 있을 때', (tester) async {
     await pump(
       tester,
-      HandoffSheet(mode: HandoffMode.visit, destination: p.destination, via: p.via),
+      const HandoffSheet(
+        mode: HandoffMode.visit,
+        destination: HandoffPlace('묵호항', 37.5500, 129.1000),
+        via: [spot],
+      ),
       'goldens/handoff_via.png',
       const Size(393, 852),
     );

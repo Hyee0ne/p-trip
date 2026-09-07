@@ -117,7 +117,7 @@ trips: id, user_id, status('draft'|'active'|'ended'),
        course_id(nullable), route_id(nullable),      -- 진입로 ②·③은 코스도 노선도 없이 시작
        started_at(nullable), ended_at(nullable),      -- draft 단계엔 아직 출발 전
        distance_km, base_name, base_lat, base_lng     -- 거점(위치 입력값)
-       -- CO-06에서 거점만 저장한 시점 = status 'draft'. 레이더 진입 시 'active' + started_at 기록
+       -- ⚠ 거점(base_*)은 안 쓴다. 개념을 없앴다 (2026-09-07). 컬럼은 남겨 둔다
 trip_points: trip_id, seq, lat, lng, ts             -- GPS 로그 (5~10초)
 trip_stops: trip_id, spot_id, arrived_at, kind('visited'|'passed'|'skunked')
             -- skunked = 허탕
@@ -178,7 +178,7 @@ Supabase RPC `discover_nearby(lat, lng, heading, now)`:
 - 미설치 분기: 스토어 설치 페이지로 이동
 - 핸드오프 직전 스낵바: "내비에서 '무료도로 우선'을 켜면 국도 중심으로 안내돼요"
 - ⚠ 카카오모빌리티 길찾기 REST/내장 SDK는 **원칙적으로 사용 금지** (우리가 내비가 되면 안 됨)
-  → 유일한 예외는 §3.7. 그 외 어떤 화면에서도 호출 경로를 만들지 않는다
+  → **예외 없음** (§3.7 삭제, 2026-09-07). 어떤 화면에서도 호출 경로를 만들지 않는다
 
 ### 3.4 경로 기록 & 맵매칭
 - 레이더 모드 중에만: geolocator stream, distanceFilter 30m or 8초 간격
@@ -204,23 +204,13 @@ trip 종료 시:
 - flutter_tts로 카드 낭독. MVP 음성 인식은 스코프 아웃 —
   대신 "무응답 15초 → 자동 찜(passed 적립)"만 구현. STT는 2차.
 
-### 3.7 거점 역진입 — 국도 제안 (CO-06b)
-진입로 ②(숙소 먼저 예약한 유저)의 전환점. 화면 정의는 SCREENS.md §CO-06b.
+### 3.7 거점 역진입 — **삭제 (2026-09-07)**
 
-호출 시점: `/base`에서 **거점을 확정한 직후 딱 1회**. 그 외 어디서도 호출하지 않는다.
+거점을 확정한 직후 고속도로↔국도 소요시간을 1회 비교해 "빠른 길 대신 재밌는 길"을
+권하던 절이다. **거점 개념을 없애면서 함께 지웠다** (`compare_routes` Edge Function 포함).
 
-1. Edge Function `compare_routes(origin, base)` — 카카오모빌리티 길찾기 REST 2회
-   - `priority=RECOMMEND` → 고속도로 기준 소요시간 A
-   - 무료도로 우선 옵션 → 국도 기준 소요시간 B
-2. 결과를 `(origin_grid, base_grid, date)` 키로 캐시. 같은 조합 재조회 금지
-3. base 인근을 지나는 route/course 조회 → 경로변 spots 개수 N, 오늘 장날·행사·일몰 앵커 추출
-4. **앵커가 0건이면 모달을 반환하지 않는다** (설득 근거 없이 40분을 더 쓰라고 하지 않는다)
-
-⚠ 원칙 경계 — 이 예외가 §3.3을 무효화하지 않도록 구조로 막는다:
-- 키는 Edge Function 뒤에만 존재. 앱 번들에 길찾기 키를 넣지 않는다
-- 레이더(DR-*) 코드에서 이 Edge Function을 import하지 않는다 — 호출 경로 자체를 만들지 않음
-- 반환된 A·B는 **비교 근거**일 뿐 ETA가 아니다. 도착 시각 환산·이동 중 갱신 금지
-- 거절 시 아무 일도 일어나지 않고, 다시 묻지 않는다
+⚠ 이건 **원칙 1(비내비)의 유일한 예외**였다. 이제 길찾기 REST 를 부르는 코드가
+  앱에도 서버에도 없다 — 원칙 1은 예외 없이 절대적이다.
 
 ### 3.8 별 보기 좋은 밤 — **삭제 (2026-09-07)**
 
@@ -248,7 +238,6 @@ trip 종료 시:
 | 카카오맵 **네이티브 SDK v2** | 지도 표시 (kakao_map_sdk) | developers.kakao.com | 앱 — **네이티브 앱 키**, 내비와 공용 |
 | 천문연 천문현상 정보 | 유성우·월식·슈퍼문 — **앱에서 읽는 곳 없음** (§3.8 삭제). 테이블만 남겨둔다 | data.go.kr (B090041) | pipeline |
 | 한국관광 데이터랩 (검색·방문 변화율) | CO-01 "조용히 뜨는 길" | datalab.visitkorea.or.kr | pipeline |
-| 카카오모빌리티 길찾기 REST | **§3.7 전용** (고속도로↔국도 비교 1회) | developers.kakaomobility.com | Edge Fn **전용** |
 | Supabase | BaaS | supabase.com | 전체 |
 
 ⚠ 기상청 단기예보(우천 시 실내 가중치)는 **스코프 아웃** — 기획문서 §10에 있으나 MVP에서 쓰지 않는다.
@@ -269,8 +258,6 @@ trip 종료 시:
 | CO-07 국도 선택 | `/routes` | routes 51행, drivable 구분 |
 | CO-02 코스 상세 | `/course/:id` | course.geom + 경로변 spots, RouteBadge |
 | CO-03 스팟 상세 | `/spot/:id` | spot + spot_links + 확신도 문구. **마을/스팟 통합** |
-| CO-06 거점 설정 | `/course/:id/base` · `/base` | 카카오 장소검색 or 지도 핀 → trips(draft).base_* |
-| CO-06b 국도 제안 | (`/base` 확정 후 모달) | §3.7 compare_routes Edge Fn |
 | HND 핸드오프 시트 | (모달) | kakao_flutter_sdk_navi / 티맵·애플 지도 딥링크 |
 | DR-00 위치 권한 | (`/radar` 인라인) | 앱 사용 중 허용만 |
 | DR-01 레이더 | `/radar` | discover_nearby RPC, 위치 스트림, rec 로깅 |
@@ -284,7 +271,7 @@ trip 종료 시:
 ## 6. 스코프 아웃 (구현 금지·보류)
 
 - 금지: 턴바이턴/ETA/경로재탐색, 별점·후기, 예약·결제, 절대량 인기 랭킹
-  - 길찾기 REST의 **유일한 예외는 §3.7**(거점 역진입 비교 1회, Edge Fn 뒤). 그 외 전면 금지
+  - 길찾기 REST **전면 금지, 예외 없음** (§3.7 삭제, 2026-09-07)
 - 2차 보류: STT 음성 응답, **동승자 모드 실시간 동기화**(단말 2대 — MVP는 1대 모드 전환),
   국도 색칠 지도 렌더링(진행률 숫자까지만 MVP), 숏폼 영상, 찜 재소환 추천,
   마을 상세 분리(CO-03 통합으로 대체), 기상청 우천 가중치

@@ -19,8 +19,7 @@ import '../handoff/handoff_sheet.dart';
 /// ⚠ 거리·소요시간·도착지를 묻지 않는다. 그건 내비의 질문이다 (원칙 1).
 /// ⚠ 이 길에 발견이 몇 곳인지 **개수는 보여줘도 목록은 보여주지 않는다** —
 ///   안심의 근거이지 계획표가 아니다 (CO-01 재설계).
-/// ⚠ 거점을 여기서 묻지 않는다 (2026-08-30 결정). 잘 곳은 가면서 정한다 —
-///   레이더 상단 거점 칩이 그 자리다.
+/// ⚠ 잘 곳을 묻지 않는다. 거점 개념 자체를 없앴다 (2026-09-07) — 이 앱은 숙소 앱이 아니다.
 class DepartSheet extends ConsumerStatefulWidget {
   const DepartSheet({super.key, required this.route, this.note});
 

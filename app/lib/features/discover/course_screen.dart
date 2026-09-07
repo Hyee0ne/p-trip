@@ -2,17 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/base_camp.dart';
+import '../../core/geo.dart';
 import '../../core/journey.dart';
+import '../../core/location.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
-import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/cards.dart';
 import '../../core/widgets/route_badge.dart';
 import '../../core/widgets/route_preview.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/providers.dart';
 import '../handoff/handoff_sheet.dart';
+
+/// 이미 코스 위라고 볼 거리. CO-08 `depart_sheet` 와 같은 값이다.
+const _entryThresholdKm = 0.3;
+
+/// 출발할 때 위치를 기다려 주는 시간. 넘으면 안내 없이 그냥 달린다.
+const _locWait = Duration(seconds: 3);
 
 /// CO-02 코스 상세 (SCREENS.md CO-02).
 ///
@@ -59,7 +65,6 @@ class _Body extends ConsumerWidget {
             const SizedBox(height: AppSpace.x4),
             _stats(),
             const SizedBox(height: AppSpace.x3),
-            _baseBanner(context, ref),
             const SizedBox(height: AppSpace.x6),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
@@ -157,67 +162,6 @@ class _Body extends ConsumerWidget {
     );
   }
 
-  /// 거점 배너. **정했으면 정했다고 보여준다** (SCREENS.md CO-06 인터랙션).
-  /// ⚠ 그전엔 상태를 안 읽어서, 거점을 정하고 돌아와도 계속 '정해주세요'로 보였다.
-  Widget _baseBanner(BuildContext context, WidgetRef ref) {
-    final base = ref.watch(baseCampProvider);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
-      child: GestureDetector(
-        onTap: () => context.push('/course/${course.id}/base'),
-        child: Container(
-          padding: const EdgeInsets.all(15),
-          decoration: BoxDecoration(
-            color: AppColors.tintViolet,
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            border: Border.all(
-              color: const Color(0x6B6D4AA8),
-              width: 1.5,
-              strokeAlign: BorderSide.strokeAlignInside,
-            ),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.cabin_outlined, size: 20, color: AppColors.violet),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      // 승인된 카피를 쓴다 — 이름만 덩그러니 두지 않는다.
-                      base == null ? S.baseNone : S.baseSet(base.name),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.onTintViolet,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      base == null ? S.baseNoneSub : S.baseSetSub,
-                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF6B5292)),
-                    ),
-                  ],
-                ),
-              ),
-              Text(
-                base == null ? S.basePick : S.baseChange,
-                style: const TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.violet,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   /// 「한 곳씩」 — 발견을 가로 캐러셀 전면 카드로.
 
   /// 「훑어보기」 — 리스트 행으로 한 화면에 모두.
@@ -275,32 +219,40 @@ class _Body extends ConsumerWidget {
         );
   }
 
-  /// 거점 미설정이면 CO-06으로 유도(강제하지 않는다), 설정됐으면 HND 시트.
+  /// 코스 진입점까지 데려다주고 레이더로 넘긴다.
+  ///
+  /// ⚠ 거점을 없앴다 (2026-09-07). 전에는 거점이 목적지였고, 없으면 CO-06으로 유도했다.
+  ///   이제 노선 출발(CO-08 `depart_sheet`)과 **같은 문법**이다 — 목적지는 그 길의 진입점이다.
+  /// ⚠ 코스 끝을 목적지로 잡으면 카카오내비가 최단 경로로 안내해 **고속도로로 빠진다.**
+  ///   국도를 타려고 켠 내비가 국도를 벗어나게 만드는 셈이다. 짧게 끊어야 그 일이 안 생긴다.
+  /// ⚠ 위치를 모르거나 이미 코스 위면 안내할 게 없다. 막지 않고 그냥 달린다.
   Future<void> _onDepart(BuildContext context) async {
     final container = ProviderScope.containerOf(context);
-    final base = container.read(baseCampProvider);
-
-    // ⚠ **거점은 선택사항이다.** 없다고 출발을 막지 않는다 (원칙 4).
-    //   권하기만 하고, 그 화면에서 '건너뛰고 출발'로 바로 레이더에 들어갈 수 있다.
-    if (base == null) {
-      showAppToast(context, S.courseStartWithoutBase);
-      await _setJourney(container, course);
-      if (!context.mounted) return;
-      context.push('/course/${course.id}/base');
-      return;
-    }
-
-    // 출발 = 거점이 목적지. 경유는 코스 위 '오늘의 앵커'인데, 아직 앵커 선정 로직이
-    // 없어서 비워 둔다 — 없는 경유지를 지어내지 않는다 (TECH_SPEC §3.3).
-    await HandoffSheet.show(
-      context,
-      mode: HandoffMode.depart,
-      destination: HandoffPlace(base.name, base.lat, base.lng),
-    );
     // 레이더가 **이 코스**를 달린다. 안 넘기면 무슨 코스를 골랐든 데모 코스가 돈다.
     await _setJourney(container, course);
-    // 내비를 켰든 취소했든 우리 앱은 레이더로 넘어간다 (SCREENS.md CO-02 → DR-01).
-    if (context.mounted) context.go('/radar');
+    if (!context.mounted) return;
+
+    final path = await container.read(courseGeometryProvider(course.id).future);
+    // ⚠ **위치를 기다리느라 출발을 붙잡지 않는다.** GPS 를 못 잡으면 getCurrentPosition 이
+    //   8초까지 버티는데, 그동안 버튼을 누른 사람은 아무 반응 없는 화면을 본다.
+    //   못 받으면 안내를 못 붙일 뿐이다 — 달리는 건 막지 않는다.
+    final fix = await container
+        .read(currentLocationProvider.future)
+        .timeout(_locWait, onTimeout: () => const LocFix(LocStatus.unavailable));
+    if (!context.mounted) return;
+
+    if (path.isNotEmpty && fix.hasFix) {
+      final entry = path.first;
+      if (roughKm(fix.lat!, fix.lng!, entry.lat, entry.lng) > _entryThresholdKm) {
+        await HandoffSheet.show(
+          context,
+          mode: HandoffMode.depart,
+          destination: HandoffPlace(course.startName, entry.lat, entry.lng),
+        );
+        if (!context.mounted) return;
+      }
+    }
+    context.go('/radar');
   }
 
   Widget _cta(BuildContext context) {

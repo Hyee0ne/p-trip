@@ -52,20 +52,6 @@ abstract interface class DiscoverRepository {
   /// 노선별 한 줄의 근거. 근거 없는 노선은 아예 안 담긴다 (CO-01 재설계).
   Future<Map<int, RouteNote>> routeNotes();
 
-  /// 거점으로 삼을 장소 검색 (CO-06). 위치를 주면 가까운 순으로 정렬만 한다 —
-  /// **범위를 막지 않는다.** "어디서 예약했든 상관없어요"가 이 화면의 안내문이다.
-  Future<List<PlaceHit>> searchPlaces(String query, {double? lat, double? lng});
-
-  /// 고속도로 ↔ 국도 소요시간 비교 (TECH_SPEC §3.7). **거점 확정 직후 1회.**
-  /// ⚠ 길찾기 키는 Edge Function 뒤에 있다. 앱은 분 두 개만 받는다.
-  /// ⚠ 비교가 성립하지 않으면(키 없음·경로 없음·국도가 더 빠름) null — 모달을 안 띄운다.
-  Future<RouteCompare?> compareRoutes({
-    required double fromLat,
-    required double fromLng,
-    required double toLat,
-    required double toLng,
-  });
-
   /// 지나온 점들을 노선에 붙여 **노선별 km**를 낸다 (51선 수집).
   /// ⚠ 길안내가 아니다 — 지나온 뒤 어디였는지 셀 뿐이다 (원칙 1).
   Future<Map<int, int>> matchRouteKm(List<TripPoint> points);

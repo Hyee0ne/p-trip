@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/base_camp.dart';
 import '../../core/drive.dart';
 import '../../core/demo.dart';
 import '../../core/env.dart';
@@ -387,7 +386,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
   @override
   Widget build(BuildContext context) {
     final drive = ref.watch(driveProvider);
-    final base = ref.watch(baseCampProvider);
     // ⚠ 위치를 잡기 전에는 물어볼 좌표가 없다. 그렇다고 **스피너로 덮지 않는다** —
     //   아래 data 분기가 DR-00('위치를 못 받는다')을 이미 말해준다.
     //   덮으면 이유도 모른 채 도는 원만 보인다.
@@ -429,13 +427,11 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
                     padding: const EdgeInsets.only(bottom: 40),
                     children: [
                       _topBar(),
-                      _baseChip(base),
                       const SizedBox(height: AppSpace.x4),
                       _radar(queue),
                       const SizedBox(height: AppSpace.x5),
                       _notRouteNotice(),
                       const SizedBox(height: AppSpace.x4),
-                      _soloLine(),
                       const SizedBox(height: AppSpace.x5),
                       _finishButton(),
                     ],
@@ -444,18 +440,16 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
                     _DiscoveryCard(
                       discovery: current,
                       onVisit: () {
-                        // 거점이 있으면 **거점을 목적지로 두고 이 발견을 경유지로** 넘긴다.
-                        // 그전엔 목적지를 발견으로 바꿔서 오늘 밤 잘 곳이 사라졌다.
-                        final p = HandoffSheet.visitParams(
-                          spot: HandoffPlace(current.spot.name, current.spot.lat, current.spot.lng),
-                          base: ref.read(baseCampProvider),
-                          driving: true,
-                        );
+                        // ⚠ 거점을 없앴다 (2026-09-07). **누른 곳이 목적지다.**
+                        //   전에는 거점을 목적지로 두고 이 발견을 경유지로 넘겼다.
                         HandoffSheet.show(
                           context,
                           mode: HandoffMode.visit,
-                          destination: p.destination,
-                          via: p.via,
+                          destination: HandoffPlace(
+                            current.spot.name,
+                            current.spot.lat,
+                            current.spot.lng,
+                          ),
                         );
                         // 들르러 갔으니 잠깐 멈춘다. 정차가 DR-03 몰아보기의 조건이다.
                         ref.read(driveProvider.notifier).pause();
@@ -652,42 +646,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     );
   }
 
-  /// ⚠ **탭하면 거점을 정하러 간다.** CO-08에서 거점을 빼면서(2026-08-30)
-  ///   거점 진입로가 코스뿐이 됐다 — 주 흐름에서 닿을 데가 없어진다.
-  ///   잘 곳은 가면서 정하는 게 이 앱의 결에도 맞다.
-  /// ⚠ 거점이 없으면 「들르기」가 목적지를 발견으로 바꿔버려 경유지가 안 걸린다.
-  Widget _baseChip(BaseCamp? base) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18),
-      child: GestureDetector(
-        onTap: () => context.push('/base'),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 11),
-          decoration: BoxDecoration(
-            color: const Color(0x14F0EDE6),
-            borderRadius: BorderRadius.circular(AppRadius.chip),
-            border: Border.all(color: AppColors.darkLine),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.cabin_outlined, size: 15, color: Color(0xFFB79BE0)),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Text(
-                  base == null ? S.baseChipNone : S.baseChipSet(base.name),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12.5, color: AppColors.darkInk2),
-                ),
-              ),
-              const Icon(Icons.chevron_right, size: 16, color: AppColors.darkInk2),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   /// 레이더에 아무것도 없을 때의 한 줄.
   ///
   /// 반경 30km에 스팟이 하나도 없으면 **아직 안 모은 지역**이고,
@@ -827,33 +785,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
       child: Text(
         S.radarNotRoute,
         style: TextStyle(fontSize: 13, height: 1.7, color: AppColors.darkInk2),
-      ),
-    );
-  }
-
-  Widget _soloLine() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0x0FF0EDE6),
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          border: Border.all(color: AppColors.darkLine),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Icon(Icons.mic_none, size: 15, color: Color(0xFF93A6B6)),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                S.radarSolo,
-                style: TextStyle(fontSize: 12.5, height: 1.6, color: AppColors.darkInk2),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

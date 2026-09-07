@@ -279,17 +279,6 @@ class FixtureDiscoverRepository implements DiscoverRepository {
   }) async => const [];
 
   @override
-  Future<List<PlaceHit>> searchPlaces(String query, {double? lat, double? lng}) async => const [];
-
-  @override
-  Future<RouteCompare?> compareRoutes({
-    required double fromLat,
-    required double fromLng,
-    required double toLat,
-    required double toLng,
-  }) async => null;
-
-  @override
   Future<Spot?> spot(String id) async => _spots.where((s) => s.id == id).firstOrNull;
 
   @override

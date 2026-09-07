@@ -45,7 +45,6 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
   /// ⚠ 레이더는 이미 조회 키를 0.01도로 뭉개서 넘긴다(`radar_screen._queueKey`).
   ///   여기서 한 번 더 거쳐도 값이 바뀌지 않는다 — 그게 맞다. **빠짐없이** 거치는 게 요점이다.
   static double _cell(double v) => (v * 100).roundToDouble() / 100;
-  static double? _cellOrNull(double? v) => v == null ? null : _cell(v);
 
   @override
   Future<NearbyResult> nearbyRoutes({required double lat, required double lng}) async {
@@ -259,60 +258,6 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
           _ => RouteNoteKind.rising,
         }, (r['spots'] as num?)?.toInt() ?? 0),
     };
-  }
-
-  @override
-  Future<List<PlaceHit>> searchPlaces(String query, {double? lat, double? lng}) async {
-    if (query.trim().isEmpty) return const [];
-    try {
-      final res = await _db.functions.invoke(
-        'search_places',
-        // ⚠ 카카오로 나가는 값도 뭉갠다. 근접 정렬 힌트라 1km 차이는 순서를 바꾸지 않는다.
-        body: {'query': query.trim(), 'lat': ?_cellOrNull(lat), 'lng': ?_cellOrNull(lng)},
-      );
-      final d = res.data as Map<String, dynamic>?;
-      if (d == null || d['ok'] != true) return const [];
-      return [
-        for (final p in (d['places'] as List<dynamic>).cast<Map<String, dynamic>>())
-          PlaceHit(
-            name: p['name'] as String,
-            addr: (p['addr'] as String?) ?? '',
-            lat: (p['lat'] as num).toDouble(),
-            lng: (p['lng'] as num).toDouble(),
-            distanceM: (p['distanceM'] as num?)?.toInt(),
-          ),
-      ];
-    } catch (_) {
-      // 못 물어봤으면 결과가 없는 것이다. 화면은 '없음'을 보여준다.
-      return const [];
-    }
-  }
-
-  @override
-  Future<RouteCompare?> compareRoutes({
-    required double fromLat,
-    required double fromLng,
-    required double toLat,
-    required double toLng,
-  }) async {
-    try {
-      final res = await _db.functions.invoke(
-        'compare_routes',
-        body: {
-          'from': [_cell(fromLat), _cell(fromLng)],
-          'to': [_cell(toLat), _cell(toLng)],
-        },
-      );
-      final d = res.data as Map<String, dynamic>?;
-      if (d == null || d['ok'] != true) return null;
-      return RouteCompare(
-        highwayMin: (d['highwayMin'] as num).toInt(),
-        routeMin: (d['routeMin'] as num).toInt(),
-      );
-    } catch (_) {
-      // 못 물어봤으면 비교가 없는 것이다. 지어내지 않는다.
-      return null;
-    }
   }
 
   @override

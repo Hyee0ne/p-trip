@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:kakao_flutter_sdk_navi/kakao_flutter_sdk_navi.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../core/base_camp.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 
@@ -13,7 +12,7 @@ import '../../core/theme.dart';
 /// ⚠ 우리가 내비가 되지 않는다 (CLAUDE.md 원칙 1). 길안내는 외부 앱에 넘긴다.
 /// 카카오내비가 주. 티맵은 **목적지 단건만** 보조 지원(경유지 미지원).
 enum HandoffMode {
-  /// 출발 시 — 목적지=거점, 경유=오늘의 앵커 1~2
+  /// 출발 시 — 목적지=그 길의 진입점
   depart,
 
   /// 이동 중 '들르기' — 스팟 단건
@@ -54,33 +53,12 @@ class HandoffSheet extends StatelessWidget {
 
   /// 경유를 못 넘기는 앱(티맵·애플 지도)이 갈 곳.
   ///
-  /// ⚠ **사용자가 누른 그곳이다.** 거점이 아니다 — '들르기'에서 목적지 자리에는
-  ///   거점이 들어가고 누른 스팟은 경유로 간다(`visitParams`). 그대로 넘기면
-  ///   "추암 촛대바위 들르기"를 눌렀는데 숙소로 안내된다.
+  /// ⚠ 거점을 없애면서(2026-09-07) '들르기'의 목적지는 **언제나 누른 그곳**이 됐다.
+  ///   경유지는 남겨 둔다 — 코스 앵커 같은 다른 쓰임이 생길 수 있고, 있으면 그게 먼저다.
   HandoffPlace get singleTarget => via.isNotEmpty ? via.first : destination;
 
   /// '무료도로 우선' 안내 — 들르기에선 첫 1회만 (SCREENS.md §HND).
   final bool showFreeRoadTip;
-
-  /// 발견 한 곳에 들를 때 내비로 넘길 값.
-  ///
-  /// **달리는 중이고 거점이 있으면 거점을 목적지로 두고 발견을 경유지로 넘긴다.**
-  /// 그전에는 목적지를 발견으로 바꿔버려서 **오늘 밤 잘 곳이 사라졌다.**
-  ///
-  /// ⚠ 이건 경로 편집이 아니다. 돌고 있는 카카오내비 세션에 경유지를 꽂는 API는 없다 —
-  ///   내비가 새로 열려 현재 위치에서 다시 계산한다. 다만 거점을 잃지 않는다.
-  /// ⚠ 달리는 중이 아니면(둘러보다 누른 경우) 지킬 목적지가 없다. 그냥 그 곳으로 간다.
-  /// ⚠ 티맵은 경유지를 못 받는다 — 버튼 문구가 '목적지만'인 이유다.
-  static ({HandoffPlace destination, List<HandoffPlace> via}) visitParams({
-    required HandoffPlace spot,
-    required BaseCamp? base,
-    required bool driving,
-  }) {
-    if (!driving || base == null) return (destination: spot, via: const []);
-    final camp = HandoffPlace(base.name, base.lat, base.lng);
-    if (!camp.hasCoords) return (destination: spot, via: const []);
-    return (destination: camp, via: [spot]);
-  }
 
   static Future<void> show(
     BuildContext context, {
@@ -124,7 +102,7 @@ class HandoffSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpace.x5),
-          // 들르기인데 경유가 있으면 **사용자가 누른 그 곳**이 제목이다. 목적지(거점)가 아니라.
+          // 들르기인데 경유가 있으면 **사용자가 누른 그 곳**이 제목이다.
           Text(
             mode == HandoffMode.depart
                 ? S.handoffTitle

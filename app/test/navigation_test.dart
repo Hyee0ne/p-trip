@@ -236,41 +236,21 @@ void main() {
     expect(find.byIcon(Icons.favorite), findsWidgets);
   });
 
-  testWidgets('거점 없이 출발하면 강제하지 않고 CO-06으로 유도한다', (tester) async {
+  /// ⚠ 거점을 없앴다 (2026-09-07). 전에는 출발이 거점 화면(CO-06)으로 새고,
+  ///   거점이 목적지였다. 이제 코스 출발은 **노선 출발과 같은 문법**이다 —
+  ///   진입점까지 데려다주고 레이더로 넘긴다.
+  testWidgets('코스 출발 — 거점을 거치지 않고 바로 레이더로 간다', (tester) async {
     await pumpApp(tester);
     await toRoutes(tester);
     await toCourse(tester);
 
     await tester.tap(find.text(S.courseStart));
-    await tester.pumpAndSettle();
-
-    expect(find.text(S.baseTitle), findsOneWidget);
-    expect(find.text(S.baseIntro), findsOneWidget);
-
-    // ⚠ 거점은 **선택사항**이다 (원칙 4). 여기서 나가는 길이 반드시 있어야 한다.
-    //   이 버튼이 없으면 거점을 안 정한 사람은 영영 출발을 못 한다.
-    expect(find.text(S.baseSkipAndStart), findsOneWidget);
-    await tester.tap(find.text(S.baseSkipAndStart));
-    // 레이더는 스윕이 계속 돌아 pumpAndSettle이 끝나지 않는다.
-    for (var i = 0; i < 8; i++) {
+    // 레이더는 스윕이 계속 돌아 pumpAndSettle 이 끝나지 않는다.
+    // 위치 대기(3초)를 넘긴 뒤 레이더로 간다. 레이더는 스윕이 돌아 pumpAndSettle 이 안 끝난다.
+    for (var i = 0; i < 60; i++) {
       await tester.pump(const Duration(milliseconds: 80));
     }
-    expect(find.text(S.radarFinish), findsWidgets, reason: '거점 없이도 레이더로 들어가야 한다');
-  });
-
-  testWidgets('거점은 위치만 받는다 — 예약 버튼은 외부 링크', (tester) async {
-    await pumpApp(tester);
-    await toRoutes(tester);
-    await toCourse(tester);
-    await tester.tap(find.text(S.baseNone));
-    await tester.pumpAndSettle();
-
-    expect(find.text(S.baseCandidatesSub), findsOneWidget);
-    expect(find.text(S.baseWithout), findsOneWidget);
-    // 아무것도 안 고르고 확정하면 막는다
-    await tester.tap(find.text(S.baseCta));
-    await tester.pumpAndSettle();
-    expect(find.text(S.baseToastPickFirst), findsOneWidget);
+    expect(find.text(S.radarFinish), findsWidgets, reason: '출발하면 레이더다');
   });
 
   testWidgets('스팟 길 안내 → HND 시트. 무료도로 안내가 있다', (tester) async {

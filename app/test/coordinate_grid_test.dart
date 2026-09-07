@@ -25,15 +25,14 @@ void main() {
     expect(bad, isEmpty, reason: '격자를 안 거치고 나가는 좌표가 있다: $bad');
   });
 
-  test('길찾기로 나가는 좌표쌍도 격자를 거친다', () {
-    // compare_routes 는 `'from': [lat, lng]` 꼴이라 위 정규식에 안 걸린다.
-    for (final key in ["'from'", "'to'"]) {
-      final m = RegExp('$key: \\[([^\\]]*)\\]').firstMatch(src);
-      expect(m, isNotNull, reason: '$key 를 못 찾았다 — 테스트가 낡았다');
+  test('좌표쌍을 배열로 보내는 곳이 있으면 그것도 격자를 거친다', () {
+    // ⚠ `'from': [lat, lng]` 꼴은 위 정규식에 안 걸린다. 지금은 그런 호출이 없지만
+    //   (거점과 함께 compare_routes 를 지웠다, 2026-09-07) 생기면 여기서 걸린다.
+    for (final m in RegExp(r"'(from|to)':\s*\[([^\]]*)\]").allMatches(src)) {
       expect(
-        m!.group(1)!.split(',').every((v) => v.trim().startsWith('_cell(')),
+        m.group(2)!.split(',').every((v) => v.trim().startsWith('_cell(')),
         isTrue,
-        reason: '$key 의 좌표가 격자를 안 거친다: ${m.group(0)}',
+        reason: '좌표쌍이 격자를 안 거친다: ${m.group(0)}',
       );
     }
   });
