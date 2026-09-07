@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:share_plus/share_plus.dart';
@@ -14,14 +15,84 @@ import '../../data/models/models.dart';
 
 /// 여행기 공유 카드 (SCREENS.md MY-02 §4).
 ///
-/// **보여주고 나서 보낸다.** 무엇이 나가는지 눈으로 확인한 뒤 공유하게 한다 —
-/// 경로가 담긴 이미지라 더 그렇다.
+/// **누르면 바로 보낸다** (2026-09-07). 예전엔 카드를 시트로 먼저 띄우고 한 번 더 누르게 했다.
+/// 무엇이 나가는지 확인시키려는 의도였는데, 실제로는 같은 버튼을 두 번 누르는 일이 됐다.
 ///
-/// ⚠ 시작·끝 300m는 **아예 잘라낸다** (core/geo.dart `trimEnds`). 집·숙소가 찍히면 안 된다.
+/// ⚠ 확인을 없앤 대신 **보호는 코드가 한다.** 시작·끝 300m는 `trimEnds`가 언제나 잘라낸다 —
+///   사용자가 무엇을 보든 안 보든 집·숙소는 이미지에 들어가지 않는다.
+///   무엇이 가려지는지는 버튼 아래 문장으로 계속 적어 둔다 (토스트로 흘리지 않는다).
 /// ⚠ 지도는 우리가 그린다. 카카오맵은 플랫폼 뷰라 `RepaintBoundary`에 **안 잡힌다** —
 ///   캡처하면 빈 자리가 나온다. 실제 GPS 점으로 선을 그리는 게 정확하기도 하다.
-class ShareCardSheet extends StatefulWidget {
-  const ShareCardSheet({
+Future<void> shareTripCard(
+  BuildContext context, {
+  required Trip trip,
+  required List<TripPoint> path,
+  String? nightSky,
+  int unplannedMeals = 0,
+}) async {
+  // 예전 시트의 카드 폭(화면 폭 - 좌우 22)을 그대로 쓴다. 아주 큰 화면에서만 묶는다.
+  final width = math.min(MediaQuery.of(context).size.width - 44, 420.0);
+  final bytes = await renderCardOffscreen(
+    context,
+    ShareCard(trip: trip, path: path, nightSky: nightSky, unplannedMeals: unplannedMeals),
+    width,
+  );
+  if (bytes == null) return;
+
+  final file = File('${Directory.systemTemp.path}/ptrip-${trip.id}.png');
+  await file.writeAsBytes(bytes);
+  await SharePlus.instance.share(
+    ShareParams(files: [XFile(file.path)], subject: S.tripTitle(trip.routeName)),
+  );
+}
+
+/// 화면에 띄우지 않고 카드를 PNG로 뜬다.
+///
+/// ⚠ `Offstage`·`Opacity(0)`은 **아예 그리지 않는다** — 캡처하면 빈 이미지가 나온다.
+///   그래서 화면 밖으로 밀어 두되 페인트는 하게 둔다. `RepaintBoundary`는 제 레이어만
+///   합성하므로 조상의 클립과 무관하게 온전히 잡힌다.
+@visibleForTesting
+Future<Uint8List?> renderCardOffscreen(BuildContext context, Widget card, double width) async {
+  final overlay = Overlay.of(context, rootOverlay: true);
+  final key = GlobalKey();
+  final entry = OverlayEntry(
+    builder: (_) => Positioned(
+      left: 0,
+      top: 0,
+      child: Transform.translate(
+        offset: const Offset(-20000, 0),
+        child: RepaintBoundary(
+          key: key,
+          // Material 을 씌워야 기본 텍스트 스타일이 화면과 같아진다.
+          child: Material(
+            type: MaterialType.transparency,
+            child: SizedBox(width: width, child: card),
+          ),
+        ),
+      ),
+    ),
+  );
+  overlay.insert(entry);
+  try {
+    // 붙자마자는 레이아웃도 안 됐다. 실제로 한 번 그려질 때까지 기다린다.
+    for (var i = 0; i < 3 && key.currentContext == null; i++) {
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    await WidgetsBinding.instance.endOfFrame;
+    final obj = key.currentContext?.findRenderObject();
+    if (obj is! RenderRepaintBoundary) return null;
+    // 3배로 뜬다. 공유된 이미지가 흐리면 카드를 만든 의미가 없다.
+    final image = await obj.toImage(pixelRatio: 3);
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    return data?.buffer.asUint8List();
+  } finally {
+    entry.remove();
+  }
+}
+
+/// 공유되는 그림 그 자체. 화면에 띄우지 않고 캡처만 한다.
+class ShareCard extends StatelessWidget {
+  const ShareCard({
     super.key,
     required this.trip,
     required this.path,
@@ -34,122 +105,9 @@ class ShareCardSheet extends StatefulWidget {
   final String? nightSky;
   final int unplannedMeals;
 
-  static Future<void> show(
-    BuildContext context, {
-    required Trip trip,
-    required List<TripPoint> path,
-    String? nightSky,
-    int unplannedMeals = 0,
-  }) {
-    return showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => ShareCardSheet(
-        trip: trip,
-        path: path,
-        nightSky: nightSky,
-        unplannedMeals: unplannedMeals,
-      ),
-    );
-  }
-
+  /// ⚠ 자르기는 **여기서** 한다. 호출부가 깜빡해도 집·숙소가 새어 나가지 않는다.
   @override
-  State<ShareCardSheet> createState() => _ShareCardSheetState();
-}
-
-class _ShareCardSheetState extends State<ShareCardSheet> {
-  final _boundary = GlobalKey();
-  bool _busy = false;
-
-  Future<void> _share() async {
-    if (_busy) return;
-    setState(() => _busy = true);
-    try {
-      final obj = _boundary.currentContext?.findRenderObject();
-      if (obj is! RenderRepaintBoundary) return;
-      // 3배로 뜬다. 공유된 이미지가 흐리면 카드를 만든 의미가 없다.
-      final image = await obj.toImage(pixelRatio: 3);
-      final data = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (data == null) return;
-      final bytes = data.buffer.asUint8List();
-
-      final file = File('${Directory.systemTemp.path}/ptrip-${widget.trip.id}.png');
-      await file.writeAsBytes(bytes);
-      await SharePlus.instance.share(
-        ShareParams(files: [XFile(file.path)], subject: S.tripTitle(widget.trip.routeName)),
-      );
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final trimmed = trimEnds(widget.path);
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.bg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
-      ),
-      padding: const EdgeInsets.fromLTRB(0, 12, 0, 26),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 38,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.line,
-                borderRadius: BorderRadius.circular(AppRadius.chip),
-              ),
-            ),
-            const SizedBox(height: AppSpace.x5),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: RepaintBoundary(key: _boundary, child: _card(trimmed)),
-            ),
-            const SizedBox(height: AppSpace.x4),
-            // 무엇이 가려지는지 카드 밑에 그대로 적는다. 토스트로 흘리지 않는다.
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.shield_outlined, size: 14, color: AppColors.ink3),
-                const SizedBox(width: 6),
-                Text(
-                  S.tripShareToast,
-                  style: const TextStyle(fontSize: 12.5, color: AppColors.ink3),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpace.x4),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: SizedBox(
-                height: 56,
-                width: double.infinity,
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.ink,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.button),
-                    ),
-                  ),
-                  onPressed: _busy ? null : _share,
-                  icon: const Icon(Icons.ios_share, size: 18),
-                  label: Text(
-                    _busy ? S.tripSharing : S.tripShare,
-                    style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => _card(trimEnds(path));
 
   /// 경로의 가로:세로 비. 너무 납작하거나 너무 좁아지지 않게 잘라둔다.
   static double _aspect(List<TripPoint> pts) {
@@ -167,7 +125,7 @@ class _ShareCardSheetState extends State<ShareCardSheet> {
   }
 
   Widget _card(List<TripPoint> trimmed) {
-    final t = widget.trip;
+    final t = trip;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -235,21 +193,20 @@ class _ShareCardSheetState extends State<ShareCardSheet> {
             runSpacing: 7,
             children: [
               _chip('${S.statVisited} ${t.visited}', AppColors.tintGreen, AppColors.onTintGreen),
-              _chip('${S.statPassed} ${t.passed}', AppColors.fill, AppColors.ink2),
               if (t.skunked > 0)
                 _chip('${S.statSkunked} ${t.skunked}번', AppColors.tintSun, AppColors.onTintSun)
-              else if (widget.unplannedMeals > 0)
+              else if (unplannedMeals > 0)
                 _chip(
-                  '${S.statUnplannedMeal} ${widget.unplannedMeals}',
+                  '${S.statUnplannedMeal} $unplannedMeals',
                   AppColors.tintGreen,
                   AppColors.onTintGreen,
                 ),
             ],
           ),
-          if (widget.nightSky != null) ...[
+          if (nightSky != null) ...[
             const SizedBox(height: AppSpace.x4),
             Text(
-              widget.nightSky!,
+              nightSky!,
               style: const TextStyle(fontSize: 13, height: 1.6, color: AppColors.ink2),
             ),
           ],

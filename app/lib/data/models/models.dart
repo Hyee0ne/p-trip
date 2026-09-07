@@ -351,7 +351,10 @@ enum CurationAxis {
 enum TripStatus { draft, active, ended }
 
 /// 정차 종류. skunked = 허탕 — 실패도 기록한다 (기획문서 §5-⑴ 실패의 서사화).
-enum StopKind { visited, passed, skunked }
+///
+/// ⚠ **`passed`(스쳐간 곳)는 없앴다** (2026-09-07). 옛 기록에 남아 있을 수 있어
+///   `trip_log`가 불러올 때 버린다 — `visited`로 흘러가면 안 가본 곳이 들른 곳이 된다.
+enum StopKind { visited, skunked }
 
 class TripStop {
   const TripStop({
@@ -410,6 +413,7 @@ class Trip {
     required this.photoCount,
     this.courseId = '',
     this.routeKm = const {},
+    this.coverPhotoId = '',
   });
 
   final String id;
@@ -437,8 +441,14 @@ class Trip {
   final List<TripStop> stops;
   final int photoCount;
 
+  /// 여행기 대표 사진 — **내가 그때 찍은 사진**의 기기 내 식별자 (photo_manager `AssetEntity.id`).
+  ///
+  /// 비어 있으면 '고른 적 없다'는 뜻이고, 목록은 첫 들른 곳의 스팟 사진으로 떨어진다.
+  /// ⚠ 사진 자체를 복사해 두지 않는다. 사진첩에서 지워지면 후보에서도 사라진다 —
+  ///   여행기가 남의 사진첩을 붙들고 있으면 안 된다 (원칙 5, 기기 안의 기록).
+  final String coverPhotoId;
+
   int get visited => stops.where((s) => s.kind == StopKind.visited).length;
-  int get passed => stops.where((s) => s.kind == StopKind.passed).length;
   int get skunked => stops.where((s) => s.kind == StopKind.skunked).length;
 
   /// 코스에 없던 곳에서 먹은 끼니 (SCREENS.md MY-02).

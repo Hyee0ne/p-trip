@@ -33,7 +33,51 @@ void main() {
     return c;
   }
 
-  test('출발 → 들르기·스쳐감 → 마치기', () async {
+  /// ⚠ '스쳐간 곳'(`StopKind.passed`)을 없앴다 (2026-09-07). 옛 기기에는 그 기록이 남아 있다.
+  ///   `StopKind.values.firstWhere(..., orElse: visited)` 를 그냥 두면 **지나치기만 한 곳이
+  ///   갑자기 '들른 곳'이 된다** — 없앤 기능이 옛 여행기를 거짓으로 만들면 안 된다. 버린다.
+  test('옛 기록의 스쳐간 곳은 들른 곳이 되지 않고 사라진다', () async {
+    SharedPreferences.setMockInitialValues({
+      'trips.v1':
+          '[{"id":"t1","episode":1,"date":"2026.08.27","routeId":7,"routeName":"동해 바닷길",'
+          '"startName":"삼척","endName":"강릉","distanceKm":65,"startedAt":"09:00",'
+          '"endedAt":"18:00","photoCount":0,"points":[],"stops":['
+          '{"spotId":"a","spotName":"추암 촛대바위","type":"view","at":"10:00","kind":"visited"},'
+          '{"spotId":"b","spotName":"어달해변","type":"view","at":"11:00","kind":"passed"},'
+          '{"spotId":"c","spotName":"묵호항","type":"food","at":"12:00","kind":"skunked"}]}]',
+    });
+    final c = make();
+    c.read(tripLogProvider);
+    // 복원은 저장소를 여는 비동기다. 이 파일의 다른 테스트와 같은 대기 폭을 쓴다.
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+
+    final trip = c.read(tripLogProvider).trips.single;
+    expect(trip.stops.map((s) => s.spotId), ['a', 'c'], reason: '스쳐간 곳 b는 버린다');
+    expect(trip.visited, 1, reason: 'b가 들른 곳으로 둔갑하면 안 된다');
+    expect(trip.skunked, 1);
+  });
+
+  /// 여행기 대표 사진은 **내가 그때 찍은 사진**이다 (2026-09-07). 예전엔 언제나
+  /// '첫 들른 곳'의 스팟 사진이었다 — 위치와도, 내 사진과도 무관한 그냥 첫 번째였다.
+  test('고른 대표 사진은 기기에 남는다', () async {
+    final c = make();
+    final log = c.read(tripLogProvider.notifier);
+    final id = log.start(routeId: 7, routeName: '동해 바닷길', startName: '삼척', endName: '강릉');
+    expect(c.read(tripLogProvider).active!.coverPhotoId, isEmpty, reason: '고르기 전엔 비어 있다');
+
+    log.setCover(id, 'asset-42');
+    log.end();
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+
+    // 다시 켰을 때도 그대로여야 한다.
+    final again = ProviderContainer();
+    addTearDown(again.dispose);
+    again.read(tripLogProvider);
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    expect(again.read(tripLogProvider).trips.single.coverPhotoId, 'asset-42');
+  });
+
+  test('출발 → 들르기·허탕 → 마치기', () async {
     final c = make();
     final log = c.read(tripLogProvider.notifier);
 
@@ -43,14 +87,14 @@ void main() {
 
     log.updateDistance(12.4);
     log.addStop(spot, StopKind.visited);
-    log.addStop(spot2, StopKind.passed);
+    log.addStop(spot2, StopKind.skunked);
     log.addStop(spot, StopKind.visited); // 같은 곳을 두 번 담지 않는다
 
     final active = c.read(tripLogProvider).active!;
     expect(active.distanceKm, 12);
     expect(active.stops.length, 2);
     expect(active.visited, 1);
-    expect(active.passed, 1);
+    expect(active.skunked, 1);
 
     final ended = log.end();
     expect(ended, id);

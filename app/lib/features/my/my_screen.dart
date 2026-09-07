@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -27,22 +29,16 @@ class MyScreen extends ConsumerStatefulWidget {
 }
 
 class _MyScreenState extends ConsumerState<MyScreen> {
-  bool _showPassed = false;
-
   @override
   Widget build(BuildContext context) {
     final saves = ref.watch(savesProvider);
     final tripsAsync = ref.watch(tripsProvider);
-    final spotsAsync = ref.watch(
-      savedSpotsProvider(savedKey(saves.idsOf(SaveTargetKind.spot, passedOnly: _showPassed))),
-    );
-    // 코스·노선도 찜 대상이다 (TECH_SPEC §2). 스쳐간 발견은 스팟에만 있는 개념이라 제외.
+    final spotsAsync = ref.watch(savedSpotsProvider(savedKey(saves.idsOf(SaveTargetKind.spot))));
+    // 코스·노선도 찜 대상이다 (TECH_SPEC §2).
     final coursesAsync = ref.watch(
-      savedCoursesProvider(savedKey(_showPassed ? const {} : saves.idsOf(SaveTargetKind.course))),
+      savedCoursesProvider(savedKey(saves.idsOf(SaveTargetKind.course))),
     );
-    final routesAsync = ref.watch(
-      savedRoutesProvider(savedKey(_showPassed ? const {} : saves.idsOf(SaveTargetKind.route))),
-    );
+    final routesAsync = ref.watch(savedRoutesProvider(savedKey(saves.idsOf(SaveTargetKind.route))));
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -52,11 +48,11 @@ class _MyScreenState extends ConsumerState<MyScreen> {
           // 탭바에 가려지지 않게 여유를 둔다 (pro-rules: 스크롤/고정요소 공존)
           padding: const EdgeInsets.only(bottom: 40),
           children: [
-            _profile(tripsAsync.value?.length ?? 0, saves.liked.length + saves.passed.length),
+            _profile(tripsAsync.value?.length ?? 0, saves.liked.length),
             const SizedBox(height: AppSpace.x6),
             _collection(tripsAsync.value ?? const []),
             const SizedBox(height: AppSpace.x8),
-            _savedTabs(saves),
+            _savedHeader(saves),
             const SizedBox(height: AppSpace.x3),
             _savedList(spotsAsync),
             _savedCourses(coursesAsync),
@@ -195,54 +191,12 @@ class _MyScreenState extends ConsumerState<MyScreen> {
     );
   }
 
-  Widget _savedTabs(SavesState saves) {
-    Widget tab(String label, int count, bool on, VoidCallback onTap) => GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: on ? AppColors.ink : AppColors.surface,
-          borderRadius: BorderRadius.circular(AppRadius.chip),
-          border: on ? null : Border.all(color: AppColors.line2),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              '$label $count',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: on ? Colors.white : AppColors.ink2,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
-      child: Row(
-        children: [
-          tab(
-            S.savedTab,
-            saves.liked.length,
-            !_showPassed,
-            () => setState(() => _showPassed = false),
-          ),
-          const SizedBox(width: 7),
-          tab(
-            S.passedTab,
-            saves.passed.length,
-            _showPassed,
-            () => setState(() => _showPassed = true),
-          ),
-        ],
-      ),
-    );
-  }
+  /// ⚠ 탭이 둘이었다 — '찜' / '스쳐간 발견'. 자동 적립을 없애면서 탭도 없앴다 (2026-09-07).
+  ///   목록이 하나뿐인데 탭을 남기면 누를 데 없는 UI가 된다.
+  Widget _savedHeader(SavesState saves) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
+    child: SectionLabel(S.savedTab, trailing: '${saves.liked.length}곳'),
+  );
 
   Widget _savedList(AsyncValue<List<Spot>> async) {
     return async.maybeWhen(
@@ -515,20 +469,13 @@ class _TripRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final type = trip.stops.isEmpty ? SpotType.attraction : trip.stops.first.type;
     return InkWell(
       onTap: () => context.push('/my/trip/${trip.id}'),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 11),
         child: Row(
           children: [
-            SpotImage(
-              type: type,
-              spotId: trip.stops.isEmpty ? null : trip.stops.first.spotId,
-              width: 56,
-              height: 56,
-              radius: 13,
-            ),
+            _TripThumb(trip),
             const SizedBox(width: 13),
             Expanded(
               child: Column(
@@ -550,6 +497,79 @@ class _TripRow extends StatelessWidget {
             ),
             const Icon(Icons.chevron_right, size: 18, color: AppColors.ink3),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 여행기 목록의 썸네일.
+///
+/// 대표 사진을 고른 여행기는 **그때 내가 찍은 사진**을, 아니면 첫 들른 곳의 스팟 사진을 쓴다.
+/// ⚠ 원래는 언제나 '첫 들른 곳'이었다 (2026-09-07 이전). 위치와도, 내 사진과도 무관한
+///   그냥 첫 번째였다. 이제 MY-02 사진 스트립에서 직접 고른다.
+/// ⚠ 사진첩에서 지워졌으면 **조용히 스팟 사진으로 돌아간다.** 깨진 자리를 남기지 않는다.
+class _TripThumb extends StatefulWidget {
+  const _TripThumb(this.trip);
+  final Trip trip;
+
+  @override
+  State<_TripThumb> createState() => _TripThumbState();
+}
+
+class _TripThumbState extends State<_TripThumb> {
+  /// ⚠ build 마다 새 Future를 만들면 스크롤할 때마다 썸네일을 다시 뜬다. 한 번만 잡는다.
+  Future<Uint8List?>? _thumb;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(_TripThumb old) {
+    super.didUpdateWidget(old);
+    if (old.trip.coverPhotoId != widget.trip.coverPhotoId) _load();
+  }
+
+  void _load() {
+    final id = widget.trip.coverPhotoId;
+    _thumb = id.isEmpty
+        ? null
+        : AssetEntity.fromId(
+            id,
+          ).then((a) => a?.thumbnailDataWithSize(const ThumbnailSize(168, 168)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final trip = widget.trip;
+    final fallback = SpotImage(
+      type: trip.stops.isEmpty ? SpotType.attraction : trip.stops.first.type,
+      spotId: trip.stops.isEmpty ? null : trip.stops.first.spotId,
+      width: 56,
+      height: 56,
+      radius: 13,
+    );
+    final future = _thumb;
+    if (future == null) return fallback;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(13),
+      child: SizedBox(
+        width: 56,
+        height: 56,
+        child: FutureBuilder<Uint8List?>(
+          future: future,
+          builder: (_, snap) {
+            if (snap.data != null) return Image.memory(snap.data!, fit: BoxFit.cover);
+            // 아직 읽는 중이면 빈 자리. 다 읽었는데 없으면 사진이 지워진 것이다.
+            if (snap.connectionState != ConnectionState.done) {
+              return const ColoredBox(color: AppColors.fill);
+            }
+            return fallback;
+          },
         ),
       ),
     );

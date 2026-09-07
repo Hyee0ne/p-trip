@@ -68,7 +68,7 @@ class _Body extends ConsumerWidget {
           const SizedBox(height: AppSpace.x5),
           // 사진이 없으면 자리도 만들지 않는다 — 없는 걸 채우지 않는다.
           if (photos != null && photos.photos.isNotEmpty) ...[
-            _photoStrip(photos.photos),
+            _photoStrip(context, ref, photos.photos),
             const SizedBox(height: AppSpace.x5),
           ] else if (photos != null && photos.access == PhotoAccess.denied) ...[
             _photoDenied(),
@@ -107,10 +107,6 @@ class _Body extends ConsumerWidget {
             onPressed: () => context.canPop() ? context.pop() : context.go('/my'),
           ),
           const Spacer(),
-          IconButton(
-            icon: const Icon(Icons.ios_share, size: 20, color: AppColors.ink3),
-            onPressed: () => showAppToast(context, S.tripShareToast),
-          ),
         ],
       ),
     );
@@ -155,78 +151,104 @@ class _Body extends ConsumerWidget {
   /// 사진 스트립 — **내 사진만.** 라벨은 스팟명·시각 (SCREENS.md MY-02).
   ///
   /// ⚠ 스팟 사진을 내 사진인 척 채우지 않는다. 그건 여행기가 아니라 카탈로그다.
-  Widget _photoStrip(List<TripPhoto> photos) {
-    final shown = photos.take(4).toList();
-    final more = photos.length - shown.length;
-    return SizedBox(
-      height: 150,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 22),
-        itemCount: shown.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 6),
-        itemBuilder: (_, i) => _photoTile(shown[i], i == shown.length - 1 ? more : 0),
-      ),
+  /// ⚠ 탭하면 **여행기 대표 사진**이 된다 (2026-09-07). 그래서 4장에서 끊지 않는다 —
+  ///   가로로 넘기면 전부 나온다. 고를 수 있어야 하는 사진을 숨기면 안 된다.
+  Widget _photoStrip(BuildContext context, WidgetRef ref, List<TripPhoto> photos) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 150,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            itemCount: photos.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 6),
+            itemBuilder: (_, i) => _photoTile(context, ref, photos[i]),
+          ),
+        ),
+        const SizedBox(height: AppSpace.x3),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 22),
+          child: Text(S.coverHint, style: TextStyle(fontSize: 12, color: AppColors.ink3)),
+        ),
+      ],
     );
   }
 
-  Widget _photoTile(TripPhoto p, int more) {
+  Widget _photoTile(BuildContext context, WidgetRef ref, TripPhoto p) {
     final label = p.spotName ?? _hhmm(p.at);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(15),
-      child: SizedBox(
+    final isCover = trip.coverPhotoId == p.asset.id;
+    return GestureDetector(
+      onTap: () {
+        ref.read(tripLogProvider.notifier).setCover(trip.id, p.asset.id);
+        showAppToast(context, S.toastCover);
+      },
+      child: Container(
         width: 118,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Container(color: AppColors.fill),
-            FutureBuilder<Uint8List?>(
-              future: p.asset.thumbnailDataWithSize(const ThumbnailSize(300, 380)),
-              builder: (_, snap) => snap.data == null
-                  ? const SizedBox.shrink()
-                  : Image.memory(snap.data!, fit: BoxFit.cover),
-            ),
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.center,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0x00000000), Color(0xB3000000)],
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
+          // 고른 사진에만 테두리. 뱃지와 같은 말을 두 번 하는 게 아니라, 멀리서도 보이게.
+          border: isCover ? Border.all(color: AppColors.routeBlue, width: 2.5) : null,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(isCover ? 12.5 : 15),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Container(color: AppColors.fill),
+              FutureBuilder<Uint8List?>(
+                future: p.asset.thumbnailDataWithSize(const ThumbnailSize(300, 380)),
+                builder: (_, snap) => snap.data == null
+                    ? const SizedBox.shrink()
+                    : Image.memory(snap.data!, fit: BoxFit.cover),
+              ),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.center,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0x00000000), Color(0xB3000000)],
+                  ),
                 ),
               ),
-            ),
-            Positioned(
-              left: 8,
-              right: 8,
-              bottom: 7,
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            if (more > 0)
               Positioned(
+                left: 8,
                 right: 8,
-                top: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xEBFFFFFF),
-                    borderRadius: BorderRadius.circular(AppRadius.chip),
-                  ),
-                  child: Text(
-                    '+$more',
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                bottom: 7,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
                   ),
                 ),
               ),
-          ],
+              if (isCover)
+                Positioned(
+                  left: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.routeBlue,
+                      borderRadius: BorderRadius.circular(AppRadius.chip),
+                    ),
+                    child: const Text(
+                      S.coverBadge,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -289,7 +311,6 @@ class _Body extends ConsumerWidget {
         runSpacing: 7,
         children: [
           chip('${S.statVisited} ${trip.visited}', AppColors.tintGreen, AppColors.onTintGreen),
-          chip('${S.statPassed} ${trip.passed}', AppColors.fill, AppColors.ink2),
           // ⚠ 허탕이 있으면 '계획에 없던 밥' **자리를 대신한다** (SCREENS.md MY-02).
           //   부정이 아니라 담담한 톤 — 같은 크기, 같은 모양이다.
           if (trip.skunked > 0)
@@ -379,31 +400,16 @@ class _Body extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 22),
       child: Column(
         children: [
-          SizedBox(
-            height: 56,
-            width: double.infinity,
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.ink,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.button),
-                ),
-              ),
-              // ⚠ 바로 안 보낸다. 무엇이 나가는지 보여준 뒤 사용자가 누른다 —
-              //   경로가 담긴 이미지라 더 그렇다.
-              onPressed: () => ShareCardSheet.show(
-                context,
-                trip: trip,
-                path: path,
-                nightSky: sky,
-                unplannedMeals: meals,
-              ),
-              icon: const Icon(Icons.ios_share, size: 18),
-              label: const Text(
-                S.tripShare,
-                style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700),
-              ),
-            ),
+          _ShareButton(trip: trip, path: path, sky: sky, meals: meals),
+          const SizedBox(height: AppSpace.x3),
+          // 무엇이 가려지는지 버튼 밑에 그대로 적는다. 미리보기를 없앤 자리를 이 줄이 메운다.
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.shield_outlined, size: 13, color: AppColors.ink3),
+              const SizedBox(width: 5),
+              const Text(S.tripShareToast, style: TextStyle(fontSize: 12, color: AppColors.ink3)),
+            ],
           ),
           const SizedBox(height: AppSpace.x5),
           // 탭이 아니라 문장 하나. 숙소를 팔지 않는다 (원칙 4).
@@ -504,6 +510,62 @@ class _StopRow extends StatelessWidget {
                 style: const TextStyle(fontSize: 11.5, color: AppColors.ink3),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 여행기 공유 — **누르면 바로 나간다** (2026-09-07).
+///
+/// 미리보기 시트를 없앤 대신 상태를 여기서 든다. 카드를 뜨는 데 한두 프레임이 걸려서
+/// 그 사이 두 번 눌리면 파일을 두 번 쓰고 공유 시트가 두 번 뜬다.
+class _ShareButton extends StatefulWidget {
+  const _ShareButton({required this.trip, required this.path, this.sky, this.meals = 0});
+
+  final Trip trip;
+  final List<TripPoint> path;
+  final String? sky;
+  final int meals;
+
+  @override
+  State<_ShareButton> createState() => _ShareButtonState();
+}
+
+class _ShareButtonState extends State<_ShareButton> {
+  bool _busy = false;
+
+  Future<void> _run() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await shareTripCard(
+        context,
+        trip: widget.trip,
+        path: widget.path,
+        nightSky: widget.sky,
+        unplannedMeals: widget.meals,
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 56,
+      width: double.infinity,
+      child: FilledButton.icon(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.ink,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
+        ),
+        onPressed: _busy ? null : _run,
+        icon: const Icon(Icons.ios_share, size: 18),
+        label: Text(
+          _busy ? S.tripSharing : S.tripShare,
+          style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700),
         ),
       ),
     );

@@ -3,12 +3,11 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// 찜 · 스쳐간 발견 (TECH_SPEC §2 saves).
+/// 찜 (TECH_SPEC §2 saves).
 ///
-/// `like` = 사용자가 직접 담은 것. `passed` = 스쳐간 발견(레이더가 자동 적립).
-/// ⚠ 둘은 다른 사건이다. 홈에서 카드를 넘긴 건 passed가 아니다 (SCREENS.md CO-01 A).
-enum SaveKind { like, passed }
-
+/// ⚠ **'스쳐간 발견'은 없앴다** (2026-09-07). 레이더가 지나친 곳을 자동으로 적립하던
+///   개념인데, 담은 적 없는 목록이 계속 불어나 찜을 밀어냈다. 담는 건 이제 사용자만 한다.
+///   지나친 곳은 그냥 지나간다 — 재촉하지 않는다는 원칙(6)은 그대로다.
 /// 찜 대상 종류. 스펙상 스팟만이 아니라 **코스·노선도 담을 수 있다.**
 /// (TECH_SPEC §2 `saves.spot_id | course_id`, SCREENS.md CO-07 "출시 알림 대체")
 enum SaveTargetKind { spot, course, route }
@@ -42,27 +41,21 @@ class SaveRef {
 }
 
 class SavesState {
-  const SavesState({this.liked = const {}, this.passed = const {}});
+  const SavesState({this.liked = const {}});
 
   /// 인코딩된 키 집합.
   final Set<String> liked;
-  final Set<String> passed;
 
   bool isLiked(SaveRef ref) => liked.contains(ref.key);
-  bool isPassed(String spotId) => passed.contains(SaveRef.spot(spotId).key);
 
   /// 종류별로 걸러 원본 id만 돌려준다 (마이 탭 목록용).
-  Set<String> idsOf(SaveTargetKind kind, {bool passedOnly = false}) => (passedOnly ? passed : liked)
-      .map(SaveRef.parse)
-      .where((r) => r.kind == kind)
-      .map((r) => r.id)
-      .toSet();
+  Set<String> idsOf(SaveTargetKind kind) =>
+      liked.map(SaveRef.parse).where((r) => r.kind == kind).map((r) => r.id).toSet();
 
-  SavesState copyWith({Set<String>? liked, Set<String>? passed}) =>
-      SavesState(liked: liked ?? this.liked, passed: passed ?? this.passed);
+  SavesState copyWith({Set<String>? liked}) => SavesState(liked: liked ?? this.liked);
 }
 
-/// 찜·스쳐간 발견은 **기기 안에** 둔다.
+/// 찜은 **기기 안에** 둔다.
 ///
 /// ⚠ 로그인을 넣지 않기로 했다 (2026-08-29). 이유:
 ///   - 기획이 "로그인 없이 시작"을 전제한다. 온보딩도 권한만 묻는다
@@ -73,7 +66,9 @@ class SavesState {
 final savesProvider = NotifierProvider<SavesNotifier, SavesState>(SavesNotifier.new);
 
 const _kLiked = 'saves.liked';
-const _kPassed = 'saves.passed';
+
+/// 옛 '스쳐간 발견' 키. 더 쓰지 않는다 — 복원할 때 한 번 지운다.
+const _kPassedLegacy = 'saves.passed';
 
 class SavesNotifier extends Notifier<SavesState> {
   SharedPreferences? _prefs;
@@ -95,10 +90,9 @@ class SavesNotifier extends Notifier<SavesState> {
       _prefs = p;
       // 그새 사용자가 찜했으면 복원이 그걸 덮으면 안 된다.
       if (_dirty) return;
-      state = SavesState(
-        liked: (p.getStringList(_kLiked) ?? const []).toSet(),
-        passed: (p.getStringList(_kPassed) ?? const []).toSet(),
-      );
+      state = SavesState(liked: (p.getStringList(_kLiked) ?? const []).toSet());
+      // 기능을 없앴으니 남은 값도 치운다. 안 쓰는 목록을 기기에 계속 들고 있지 않는다.
+      if (p.containsKey(_kPassedLegacy)) await p.remove(_kPassedLegacy);
     } catch (_) {
       // 저장소를 못 열어도(테스트 환경 등) 앱은 돌아야 한다. 이번 실행에만 안 남을 뿐이다.
     }
@@ -109,7 +103,6 @@ class SavesNotifier extends Notifier<SavesState> {
     await _ready;
     final p = _prefs ??= await SharedPreferences.getInstance();
     await p.setStringList(_kLiked, state.liked.toList());
-    await p.setStringList(_kPassed, state.passed.toList());
   }
 
   /// 하트 토글. 담았으면 true (토스트 표시 여부 판단용).
@@ -120,18 +113,5 @@ class SavesNotifier extends Notifier<SavesState> {
     state = state.copyWith(liked: next);
     unawaited(_persist());
     return added;
-  }
-
-  /// 스쳐간 발견 자동 적립 (DR-02 전용). 이미 찜한 곳은 passed로 내리지 않는다.
-  void markPassed(String spotId) {
-    final k = SaveRef.spot(spotId).key;
-    if (state.liked.contains(k)) return;
-    state = state.copyWith(passed: {...state.passed, k});
-    unawaited(_persist());
-  }
-
-  void clearPassed(String spotId) {
-    state = state.copyWith(passed: {...state.passed}..remove(SaveRef.spot(spotId).key));
-    unawaited(_persist());
   }
 }

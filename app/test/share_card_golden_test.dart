@@ -62,13 +62,6 @@ void main() {
         at: '14:05',
         kind: StopKind.visited,
       ),
-      TripStop(
-        spotId: 's3',
-        spotName: '어달마을',
-        type: SpotType.food,
-        at: '15:40',
-        kind: StopKind.passed,
-      ),
     ],
   );
 
@@ -83,11 +76,17 @@ void main() {
         theme: buildAppTheme(),
         home: Scaffold(
           backgroundColor: AppColors.bg,
-          body: ShareCardSheet(
-            trip: trip,
-            path: path,
-            nightSky: '그날 밤, 달은 없었습니다.',
-            unplannedMeals: 2,
+          // 미리보기 시트는 없앴다 (2026-09-07). 공유되는 그림 자체를 그대로 잡는다.
+          body: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              child: ShareCard(
+                trip: trip,
+                path: path,
+                nightSky: '그날 밤, 달은 없었습니다.',
+                unplannedMeals: 2,
+              ),
+            ),
           ),
         ),
       ),
@@ -95,6 +94,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull, reason: '오버플로');
-    await expectLater(find.byType(ShareCardSheet), matchesGoldenFile('goldens/share_card.png'));
+    await expectLater(find.byType(ShareCard), matchesGoldenFile('goldens/share_card.png'));
   });
 }

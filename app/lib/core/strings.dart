@@ -181,9 +181,6 @@ class S {
   static const radarScanning = '주변을 살피는 중';
   static const radarNotRoute = '경로를 따라가지 않아요. 지금 내 주변만 봅니다 — 길을 바꿔도, 목적지가 바뀌어도 그대로 작동해요.';
 
-  /// ⚠ 원래 '조용히 찜에 담아둘게요'였는데 동작은 **스쳐간 발견** 적립이다
-  ///   (SCREENS DR-02). 무응답은 '지나쳤다'이지 '담았다'가 아니라서,
-  ///   문구를 동작에 맞췄다 — 화면이 거짓말하지 않게.
   /// DR-00 — 실주행인데 위치 권한이 없을 때. 막지 않고 이유만 말한다.
   static const radarNeedsLocation = '위치를 켜야 앞에 뭐가 있는지 볼 수 있어요.';
   static const radarOpenSettings = '설정 열기';
@@ -200,15 +197,11 @@ class S {
   /// 데이터는 있는데 지금 반경 안에 걸리는 게 없을 때. 위와 다르다.
   static const radarQuiet = '이 근처는 지금 조용해요';
 
-  static const radarSolo = '혼자 운전 중이라면 말로 하세요 — "응, 들를래" / "찜해줘". 대답이 없으면 조용히 스쳐간 발견에 담아둘게요.';
+  /// ⚠ 대답이 없으면 **아무 일도 안 일어난다** (2026-09-07). 예전엔 '스쳐간 발견'으로
+  ///   자동 적립했는데, 담은 적 없는 목록이 불어나 정작 찜을 밀어냈다.
+  ///   문구가 동작을 그대로 말해야 한다 — 화면이 거짓말하지 않게.
+  static const radarSolo = '혼자 운전 중이라면 말로 하세요 — "응, 들를래" / "찜해줘". 대답이 없으면 그냥 지나갑니다.';
   static const radarFinish = '오늘 여행 마치기 → 여행기 만들기';
-
-  // ── DR-03 몰아보기 (정차 시) ──
-  /// ⚠ "되돌아가기" 유도 문구를 쓰지 않는다. 갈지 말지는 사용자가 정한다 (SCREENS DR-03).
-  static const catchupTitle = '아까 스쳐간 곳들';
-  static const catchupGo = '지금 가기';
-  static const catchupKeep = '계속 찜';
-  static const catchupDrop = '지우기';
 
   static String radarRecording(String route, num km) => '$route ${km}km 기록 중';
 
@@ -228,9 +221,6 @@ class S {
   static String nextMarketDay(int days) => '다음 장은 $days일 뒤예요';
   static String nextVisited(String spot) => '들른 차들은 다음에 $spot로 갔어요';
 
-  // ── DR-03 몰아보기 ──
-  static const passedTitle = '아까 스쳐간 곳들';
-
   // ── DR-06 백그라운드 알림 ──
   static const bgOptInTitle = '앱을 꺼둬도 알려드릴까요?';
   static const bgOptInSub = '달리는 동안에만 위치를 봅니다. 여행을 마치면 스스로 꺼져요.';
@@ -245,25 +235,33 @@ class S {
   static const tripSub = '오늘의 여행이 한 편의 이야기가 됐어요';
   static const tripTimeline = '지나온 시간';
   static const statVisited = '들른 발견';
-  static const statPassed = '스쳐간 발견';
   static const statSkunked = '허탕';
   static const statUnplannedMeal = '계획에 없던 밥';
+
+  /// MY-02 대표 사진 고르기 (2026-09-07).
+  ///
+  /// ⚠ **내가 찍은 사진만** 후보다. 관광공사 사진을 내 여행의 얼굴로 쓰지 않는다 —
+  ///   그건 여행기가 아니라 카탈로그다 (MY-02가 사진 스트립에서 지켜온 규칙과 같다).
+  static const coverHint = '탭하면 여행기 대표 사진이 돼요';
+  static const coverBadge = '대표';
+  static const toastCover = '대표 사진을 바꿨어요';
   static const photoOpenSettings = '설정 열기';
   static String photoCaption(int n) => '사진 $n장이 GPS·촬영 시각으로 경로 위에 자동 정리됐어요';
-  static String tripFooter(num km) => '국도 수집 +${km}km · 스쳐간 곳은 찜에 남겨뒀어요';
+  static String tripFooter(num km) => '국도 수집 +${km}km';
   static const tripShare = '여행기 공유하기';
   static const tripSharing = '카드 만드는 중…';
   static const tripShareToast = '시작·끝 300m는 가려져요';
   static const oneMoreDay = '이 동네가 좋았다면, 하루 더?';
-  static const tripEmpty = '이번엔 그냥 달린 날 — 스쳐간 곳은 다음 핑계예요';
+  static const tripEmpty = '이번엔 그냥 달린 날 — 길만 남은 것도 여행이에요';
   static const photoDenied = '사진 접근을 허용하면 자동으로 정리해드려요';
 
   // ── MY-01 마이 ──
   static const collectionTitle = '대한민국 국도 51선';
   static String collectionNth(int n) => '지금 $n선째';
   static const savedTab = '찜';
-  static const passedTab = '스쳐간 발견';
-  static const savedEmpty = '아직 담긴 발견이 없어요. 레이더가 담아주거나, ❤️로 직접 담아요.';
+
+  /// ⚠ '레이더가 담아준다'고 하지 않는다 — 자동 적립을 없앴다 (2026-09-07). 담는 건 사용자뿐이다.
+  static const savedEmpty = '아직 담긴 발견이 없어요. 마음에 드는 곳을 ❤️로 담아보세요.';
   static const tripsTitle = '여행기';
 
   /// ⚠ 섹션 라벨만 덩그러니 두지 않는다 — 빈 화면에 아무 말이 없으면 고장으로 읽힌다.
@@ -302,7 +300,6 @@ class S {
 
   // ── 토스트 (§0.2 — 단일 스타일, 1.9초) ──
   static const toastSaved = '찜에 담았어요';
-  static const toastPassed = '스쳐간 발견에 담아뒀어요';
 
   // ── 공통 예외 (§0.3) ──
   static const errNetwork = '잠시 연결이 고르지 않아요';

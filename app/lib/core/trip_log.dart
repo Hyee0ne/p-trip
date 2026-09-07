@@ -153,7 +153,7 @@ class TripLogNotifier extends Notifier<TripLog> {
     if (list.length % 10 == 0) unawaited(_persist());
   }
 
-  /// 들른 곳·스쳐간 곳·허탕. 같은 스팟을 두 번 담지 않는다.
+  /// 들른 곳·허탕. 같은 스팟을 두 번 담지 않는다.
   void addStop(Spot spot, StopKind kind) {
     final trip = state.active;
     if (trip == null) return;
@@ -199,6 +199,10 @@ class TripLogNotifier extends Notifier<TripLog> {
     _replace(tripId, (t) => _copy(t, routeKm: byRoute));
   }
 
+  /// 여행기 대표 사진을 고른다 (MY-02). 빈 문자열이면 자동으로 되돌린다.
+  void setCover(String tripId, String assetId) =>
+      _replace(tripId, (t) => _copy(t, coverPhotoId: assetId));
+
   void _replace(String id, Trip Function(Trip) f) {
     state = TripLog(
       trips: [
@@ -220,6 +224,7 @@ class TripLogNotifier extends Notifier<TripLog> {
     List<TripStop>? stops,
     int? photoCount,
     Map<int, int>? routeKm,
+    String? coverPhotoId,
   }) => Trip(
     id: t.id,
     episode: t.episode,
@@ -235,6 +240,7 @@ class TripLogNotifier extends Notifier<TripLog> {
     photoCount: photoCount ?? t.photoCount,
     courseId: t.courseId,
     routeKm: routeKm ?? t.routeKm,
+    coverPhotoId: coverPhotoId ?? t.coverPhotoId,
   );
 
   Map<String, dynamic> _toJson(Trip t) => {
@@ -255,6 +261,7 @@ class TripLogNotifier extends Notifier<TripLog> {
     'endedAt': t.endedAt,
     'photoCount': t.photoCount,
     'courseId': t.courseId,
+    'coverPhotoId': t.coverPhotoId,
     'routeKm': {for (final e in t.routeKm.entries) '${e.key}': e.value},
     'stops': [
       for (final s in t.stops)
@@ -294,29 +301,34 @@ class TripLogNotifier extends Notifier<TripLog> {
     endedAt: (m['endedAt'] as String?) ?? '',
     photoCount: (m['photoCount'] as num?)?.toInt() ?? 0,
     courseId: (m['courseId'] as String?) ?? '',
+    coverPhotoId: (m['coverPhotoId'] as String?) ?? '',
     routeKm: {
       for (final e in (m['routeKm'] as Map<String, dynamic>? ?? const {}).entries)
         if (int.tryParse(e.key) != null) int.parse(e.key): (e.value as num).toInt(),
     },
     stops: [
       for (final s in (m['stops'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>())
-        TripStop(
-          spotId: s['spotId'] as String,
-          spotName: (s['spotName'] as String?) ?? '',
-          type: SpotType.values.firstWhere(
-            (e) => e.name == s['type'],
-            orElse: () => SpotType.attraction,
+        // ⚠ 옛 '스쳐간 곳'은 **버린다** (2026-09-07 기능 삭제).
+        //   그냥 두면 아래 orElse 가 visited 로 떨어뜨려, 지나치기만 한 곳이
+        //   갑자기 '들른 곳'이 된다. 없앤 기능이 옛 여행기를 거짓으로 만들면 안 된다.
+        if (s['kind'] != 'passed')
+          TripStop(
+            spotId: s['spotId'] as String,
+            spotName: (s['spotName'] as String?) ?? '',
+            type: SpotType.values.firstWhere(
+              (e) => e.name == s['type'],
+              orElse: () => SpotType.attraction,
+            ),
+            at: (s['at'] as String?) ?? '',
+            lat: (s['lat'] as num?)?.toDouble(),
+            lng: (s['lng'] as num?)?.toDouble(),
+            kind: StopKind.values.firstWhere(
+              (e) => e.name == s['kind'],
+              orElse: () => StopKind.visited,
+            ),
+            note: (s['note'] as String?) ?? '',
+            stayMin: (s['stayMin'] as num?)?.toInt(),
           ),
-          at: (s['at'] as String?) ?? '',
-          lat: (s['lat'] as num?)?.toDouble(),
-          lng: (s['lng'] as num?)?.toDouble(),
-          kind: StopKind.values.firstWhere(
-            (e) => e.name == s['kind'],
-            orElse: () => StopKind.visited,
-          ),
-          note: (s['note'] as String?) ?? '',
-          stayMin: (s['stayMin'] as num?)?.toInt(),
-        ),
     ],
   );
 }

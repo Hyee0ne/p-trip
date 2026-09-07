@@ -36,10 +36,7 @@ void main() {
   });
 
   test('들르지 않았으면 먹은 게 아니다', () {
-    final t = trip([
-      stop('밥집A', SpotType.food, StopKind.passed),
-      stop('밥집B', SpotType.food, StopKind.skunked),
-    ]);
+    final t = trip([stop('밥집B', SpotType.food, StopKind.skunked)]);
     expect(t.unplannedMeals(const {}), 0);
   });
 

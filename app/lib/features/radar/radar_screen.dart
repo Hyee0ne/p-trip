@@ -19,7 +19,6 @@ import '../../core/sunset.dart';
 import '../../core/theme.dart';
 import '../../core/trip_log.dart';
 import '../../core/voice.dart';
-import 'catchup_sheet.dart';
 import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/route_badge.dart';
 import '../../core/widgets/spot_image.dart';
@@ -56,9 +55,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
 
   /// 오늘 이 자리의 해·달. 일몰 가중치가 쓴다.
   TodaySky? _sky;
-
-  /// 정차 시 몰아보기(DR-03)를 띄우기 위한 스쳐간 목록
-  final _passed = <Discovery>[];
 
   /// 지금 화면에 떠 있는 발견.
   Discovery? _current;
@@ -247,12 +243,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     // DR-06 — 앱이 뒤에 있으면 카드 대신 **음성 + 알림**으로 나간다 (2026-08-29 결정).
     // ⚠ 대상도 빈도도 앞에 있을 때와 같다 (2026-08-30). 거르는 건 반경과 `_shown` 뿐이다.
     if (_background) {
-      // ⚠ 뒤에서 지나친 건 '보여줬다'가 아니다 — 응답할 화면이 없으니 **전부** 적립한다.
-      //   시의성 없는 것도 적립해야 한다. 안 하면 _shown 에만 남아 영영 사라진다:
-      //   알리지도 않고, 몰아보기에도 없고, 돌아와도 다시 안 뜬다 (원칙 6).
-      ref.read(savesProvider.notifier).markPassed(best.spot.id);
-      ref.read(tripLogProvider.notifier).addStop(best.spot, StopKind.passed);
-      _passed.add(best);
       // 앞에 있을 때와 **같은 발견을** 내보낸다 (2026-08-30 결정, SCREENS.md DR-06).
       // 운전 중엔 배너를 읽을 수 없어 소리가 본 채널이고 알림은 나중에 볼 흔적이다.
       if (_voiceOn) {
@@ -314,12 +304,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
   /// 마지막으로 점을 찍은 **실시간**. 정차 구간을 경로에 남기는 기준이다.
   DateTime _lastLoggedAt = DateTime.now();
 
-  /// 몰아보기를 이미 띄웠는지. 한 번 멈출 때 한 번만 띄운다.
-  bool _catchupShown = false;
-
-  /// 정차 3분이면 아까 스쳐간 것들을 모아 보여준다 (SCREENS DR-03).
-  /// ⚠ 주행 시간 기준이다 — 시연 배속과 무관하게 '3분 멈춤'이어야 한다.
   /// 40분간 이동이 없으면 레이더를 접는다 (SCREENS.md DR-06).
+  /// ⚠ 주행 시간 기준이다 — 시연 배속과 무관해야 한다.
   /// ⚠ 무음 알림 한 번. 접었다는 사실만 남기고 아무것도 재촉하지 않는다.
   bool _folded = false;
 
@@ -329,30 +315,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     _folded = true;
     ref.read(proximityAlertsProvider).foldUp(S.bgStopped);
     ref.read(driveProvider.notifier).stop();
-  }
-
-  void _maybeCatchup(DriveState drive) {
-    if (drive.running) {
-      _catchupShown = false;
-      return;
-    }
-    if (_catchupShown || _cardVisible || _passed.length < 2) return;
-    if (drive.stoppedSec * Env.driveScale / 60 < 3) return;
-    _catchupShown = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      CatchupSheet.show(
-        context,
-        passed: [..._passed],
-        onDone: (remaining) {
-          _passed
-            ..clear()
-            ..addAll(remaining);
-          // 시트를 닫으면 다시 달린다. 멈춘 채로 두면 시연이 거기서 끝난다.
-          if (mounted) ref.read(driveProvider.notifier).resume();
-        },
-      );
-    });
   }
 
   void _record(DriveState drive) {
@@ -410,13 +372,10 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     final log = ref.read(tripLogProvider.notifier);
     if (saved) {
       log.addStop(current.spot, StopKind.visited);
-    } else {
-      // ✕ / 무시 → 스쳐간 발견으로 조용히 적립 (재촉 금지 원칙)
-      ref.read(savesProvider.notifier).markPassed(current.spot.id);
-      log.addStop(current.spot, StopKind.passed);
-      _passed.add(current);
-      showAppToast(context, S.toastPassed);
     }
+    // ⚠ ✕ / 무시는 **아무것도 남기지 않는다** (2026-09-07). 예전엔 '스쳐간 발견'으로
+    //   적립했는데, 담은 적 없는 목록이 불어나 정작 찜을 밀어냈다.
+    //   재촉하지 않는다는 원칙(6)은 그대로다 — 그냥 지나가는 것도 재촉이 아니다.
     setState(() {
       _cardVisible = false;
       _current = null;
@@ -444,7 +403,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     ref.listen(driveProvider, (_, next) {
       _record(next);
       _maybeFold(next);
-      _maybeCatchup(next);
       // ⚠ **뒤에 있을 땐 build가 안 돈다.** 그래서 여기서 키를 다시 만들어 read 한다 —
       //   watch 에만 기대면 백그라운드에서 큐가 그 자리에 얼어붙는다.
       final k = _queueKey(next);

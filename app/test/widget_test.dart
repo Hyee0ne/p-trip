@@ -98,16 +98,17 @@ void main() {
     expect(c.read(savesProvider).idsOf(SaveTargetKind.course), isEmpty);
   });
 
-  test('스쳐간 발견은 스팟에만 적립되고, 이미 찜한 곳은 내리지 않는다', () {
+  /// ⚠ '스쳐간 발견' 자동 적립을 없앴다 (2026-09-07). 담는 건 사용자뿐이다 —
+  ///   담은 적 없는 목록이 불어나면서 정작 찜을 밀어냈다.
+  test('담는 방법은 찜 하나뿐이다 — 자동으로 쌓이는 목록은 없다', () {
     final c = ProviderContainer();
     addTearDown(c.dispose);
     final n = c.read(savesProvider.notifier);
 
-    n.markPassed('chuam-chotdae');
-    expect(c.read(savesProvider).isPassed('chuam-chotdae'), isTrue);
+    n.toggleLike(const SaveRef.spot('chuam-chotdae'));
+    expect(c.read(savesProvider).liked, {'spot:chuam-chotdae'});
 
-    n.toggleLike(const SaveRef.spot('mukho-lighthouse'));
-    n.markPassed('mukho-lighthouse');
-    expect(c.read(savesProvider).isPassed('mukho-lighthouse'), isFalse);
+    // 상태에 들어 있는 집합은 liked 하나다.
+    expect(c.read(savesProvider).idsOf(SaveTargetKind.spot), {'chuam-chotdae'});
   });
 }
