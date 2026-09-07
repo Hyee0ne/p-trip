@@ -50,15 +50,7 @@ class _Body extends ConsumerWidget {
     final planned = trip.courseId.isEmpty
         ? const <String>{}
         : (ref.watch(courseProvider(trip.courseId)).value?.spotIds ?? const []).toSet();
-    // 그날 밤 하늘 (SCREENS.md MY-02 §3). 좌표는 그 여행이 지나온 첫 점.
     final path = ref.watch(tripLogProvider.notifier).pointsOf(trip.id);
-    final sky = path.isEmpty
-        ? null
-        : ref
-              .watch(
-                nightSkyProvider((lat: path.first.lat, lng: path.first.lng, date: path.first.at)),
-              )
-              .value;
     final meals = trip.unplannedMeals(planned);
     return SafeArea(
       child: ListView(
@@ -88,7 +80,7 @@ class _Body extends ConsumerWidget {
             const SizedBox(height: AppSpace.x3),
           ],
           const SizedBox(height: AppSpace.x6),
-          _actions(context, path, sky?.line, meals),
+          _actions(context, path, meals),
         ],
       ),
     );
@@ -296,12 +288,12 @@ class _Body extends ConsumerWidget {
   /// 좌표가 없는 전국 공통 값이지만 여행기에서는 그게 약점이 아니다 —
   /// 그날의 사실이면 충분하다.
 
-  Widget _actions(BuildContext context, List<TripPoint> path, String? sky, int meals) {
+  Widget _actions(BuildContext context, List<TripPoint> path, int meals) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 22),
       child: Column(
         children: [
-          _ShareButton(trip: trip, path: path, sky: sky, meals: meals),
+          _ShareButton(trip: trip, path: path, meals: meals),
           const SizedBox(height: AppSpace.x3),
           // 무엇이 가려지는지 버튼 밑에 그대로 적는다. 미리보기를 없앤 자리를 이 줄이 메운다.
           Row(
@@ -417,11 +409,10 @@ class _StopRow extends StatelessWidget {
 /// 미리보기 시트를 없앤 대신 상태를 여기서 든다. 카드를 뜨는 데 한두 프레임이 걸려서
 /// 그 사이 두 번 눌리면 파일을 두 번 쓰고 공유 시트가 두 번 뜬다.
 class _ShareButton extends StatefulWidget {
-  const _ShareButton({required this.trip, required this.path, this.sky, this.meals = 0});
+  const _ShareButton({required this.trip, required this.path, this.meals = 0});
 
   final Trip trip;
   final List<TripPoint> path;
-  final String? sky;
   final int meals;
 
   @override
@@ -439,7 +430,6 @@ class _ShareButtonState extends State<_ShareButton> {
         context,
         trip: widget.trip,
         path: widget.path,
-        nightSky: widget.sky,
         unplannedMeals: widget.meals,
       );
     } finally {

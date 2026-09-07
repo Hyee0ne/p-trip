@@ -199,12 +199,7 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
       return (v == null || v.length < 5) ? null : v.substring(0, 5);
     }
 
-    return TodaySky(
-      sunset: hm('sunset'),
-      astroDusk: hm('astro_dusk'),
-      moonrise: hm('moonrise'),
-      moonset: hm('moonset'),
-    );
+    return TodaySky(sunset: hm('sunset'));
   }
 
   @override
@@ -316,34 +311,6 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
         (r['route_id'] as num).toInt(): ((r['km'] as num?) ?? 0).round(),
     };
   }
-
-  @override
-  Future<NightSky?> nightSkyOn({
-    required double lat,
-    required double lng,
-    required DateTime date,
-  }) async {
-    final rows =
-        await _db.rpc(
-              'night_sky_on',
-              params: {
-                'p_lat': lat,
-                'p_lng': lng,
-                'p_date': '${date.year}-${_pad(date.month)}-${_pad(date.day)}',
-              },
-            )
-            as List<dynamic>;
-    if (rows.isEmpty) return null;
-    final r = rows.first as Map<String, dynamic>;
-    final sky = NightSky(
-      moonless: r['moonless'] as bool?,
-      eventTitle: (r['event_title'] as String?)?.trim(),
-    );
-    // 할 말이 없으면 아예 없는 셈 친다 — 화면이 빈 줄을 그리지 않게.
-    return sky.line == null ? null : sky;
-  }
-
-  static String _pad(int n) => n.toString().padLeft(2, '0');
 
   // ── 레이더 ──────────────────────────────────────────────
   @override

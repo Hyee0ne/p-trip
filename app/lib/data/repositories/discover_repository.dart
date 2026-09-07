@@ -71,7 +71,6 @@ abstract interface class DiscoverRepository {
   Future<Map<int, int>> matchRouteKm(List<TripPoint> points);
 
   /// 그날 밤의 사실 (MY-02 §3). 데이터가 없으면 null — 없는 밤을 지어내지 않는다.
-  Future<NightSky?> nightSkyOn({required double lat, required double lng, required DateTime date});
 
   /// 레이더 발견 큐 (DR-01/02) — **현 위치 + 진행 방향 반경** 기준.
   ///

@@ -105,12 +105,6 @@ final routeNotesProvider = FutureProvider<Map<int, RouteNote>>(
 );
 
 /// 그날 밤 하늘 (MY-02 §3). 여행기 하나당 한 번만 묻는다.
-final nightSkyProvider =
-    FutureProvider.family<NightSky?, ({double lat, double lng, DateTime date})>(
-      (ref, p) =>
-          ref.watch(discoverRepositoryProvider).nightSkyOn(lat: p.lat, lng: p.lng, date: p.date),
-    );
-
 final todaySkyProvider = FutureProvider.family<TodaySky?, ({double lat, double lng})>(
   (ref, p) => ref.watch(discoverRepositoryProvider).todaySky(lat: p.lat, lng: p.lng),
 );

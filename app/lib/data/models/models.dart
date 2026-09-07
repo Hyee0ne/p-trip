@@ -118,57 +118,15 @@ class RouteCompare {
       min < 60 ? '$min분' : '${min ~/ 60}시간${min % 60 == 0 ? '' : ' ${min % 60}분'}';
 }
 
-class NightSky {
-  const NightSky({this.moonless, this.eventTitle});
-
-  /// 저녁 천문박명 직후 달이 하늘에 없었는가. 모르면 null.
-  final bool? moonless;
-
-  /// 그날의 천문현상 (유성우·월식 등). 없으면 null.
-  final String? eventTitle;
-
-  /// 여행기에 실을 한 줄. 할 말이 없으면 null — 줄을 그리지 않는다.
-  String? get line {
-    final e = eventTitle;
-    if (e != null && e.isNotEmpty) {
-      // 유성우만 '쏟아졌다'가 어울린다. 나머지는 담담하게.
-      final verb = e.contains('유성우') ? '쏟아졌습니다' : '있었습니다';
-      return '그날 밤엔 $e${_subjectJosa(e)} $verb.';
-    }
-    if (moonless == true) return '그날 밤, 달은 없었습니다.';
-    return null;
-  }
-
-  /// 거점 화면(CO-06)에 실을 한 줄. **오늘 밤은 아직 오지 않았다** — 현재형으로 쓴다.
-  String? get tonightLine {
-    final e = eventTitle;
-    if (e != null && e.isNotEmpty) {
-      final verb = e.contains('유성우') ? '쏟아져요' : '있어요';
-      return '오늘 밤엔 $e${_subjectJosa(e)} $verb.';
-    }
-    if (moonless == true) return '오늘 밤은 달이 없어요.';
-    return null;
-  }
-
-  /// 주격 조사. 받침이 있으면 '이', 없으면 '가'.
-  /// ⚠ '이(가)'로 얼버무리지 않는다 — 앉아서 읽는 화면이라 문장이 문장다워야 한다.
-  static String _subjectJosa(String word) {
-    if (word.isEmpty) return '가';
-    final c = word.codeUnitAt(word.length - 1);
-    // 한글 음절 영역이 아니면(숫자·영문) 판단하지 않고 '이'로 둔다.
-    if (c < 0xAC00 || c > 0xD7A3) return '이';
-    return (c - 0xAC00) % 28 == 0 ? '가' : '이';
-  }
-}
-
 class TodaySky {
-  const TodaySky({this.sunset, this.astroDusk, this.moonrise, this.moonset});
+  const TodaySky({this.sunset});
 
   /// 'HH:mm'
+  ///
+  /// ⚠ 월출·월몰·천문박명도 같은 응답에 오지만 **모델에 담지 않는다** (2026-09-07).
+  ///   '별 보기 좋은 밤'(§3.8)을 안 만들기로 하면서 읽는 곳이 없어졌다.
+  ///   파이프라인은 계속 받아 둔다 — 나중에 그 기능을 붙이면 그때 여기 꺼내 쓴다.
   final String? sunset;
-  final String? astroDusk;
-  final String? moonrise;
-  final String? moonset;
 
   /// 일몰까지 남은 분. 모르면 null, 이미 졌으면 음수.
   int? minutesToSunset(DateTime now) {

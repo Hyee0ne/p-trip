@@ -27,14 +27,13 @@ Future<void> shareTripCard(
   BuildContext context, {
   required Trip trip,
   required List<TripPoint> path,
-  String? nightSky,
   int unplannedMeals = 0,
 }) async {
   // 예전 시트의 카드 폭(화면 폭 - 좌우 22)을 그대로 쓴다. 아주 큰 화면에서만 묶는다.
   final width = math.min(MediaQuery.of(context).size.width - 44, 420.0);
   final bytes = await renderCardOffscreen(
     context,
-    ShareCard(trip: trip, path: path, nightSky: nightSky, unplannedMeals: unplannedMeals),
+    ShareCard(trip: trip, path: path, unplannedMeals: unplannedMeals),
     width,
   );
   if (bytes == null) return;
@@ -92,17 +91,10 @@ Future<Uint8List?> renderCardOffscreen(BuildContext context, Widget card, double
 
 /// 공유되는 그림 그 자체. 화면에 띄우지 않고 캡처만 한다.
 class ShareCard extends StatelessWidget {
-  const ShareCard({
-    super.key,
-    required this.trip,
-    required this.path,
-    this.nightSky,
-    this.unplannedMeals = 0,
-  });
+  const ShareCard({super.key, required this.trip, required this.path, this.unplannedMeals = 0});
 
   final Trip trip;
   final List<TripPoint> path;
-  final String? nightSky;
   final int unplannedMeals;
 
   /// ⚠ 자르기는 **여기서** 한다. 호출부가 깜빡해도 집·숙소가 새어 나가지 않는다.
@@ -203,13 +195,6 @@ class ShareCard extends StatelessWidget {
                 ),
             ],
           ),
-          if (nightSky != null) ...[
-            const SizedBox(height: AppSpace.x4),
-            Text(
-              nightSky!,
-              style: const TextStyle(fontSize: 13, height: 1.6, color: AppColors.ink2),
-            ),
-          ],
           const SizedBox(height: AppSpace.x5),
           const Divider(height: 1, thickness: 1, color: AppColors.line),
           const SizedBox(height: AppSpace.x3),

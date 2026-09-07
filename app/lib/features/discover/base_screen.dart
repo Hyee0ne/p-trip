@@ -102,7 +102,6 @@ class _BaseScreenState extends ConsumerState<BaseScreen> {
               ),
               const SizedBox(height: AppSpace.x3),
               _candidates(),
-              _tonightSky(),
               const SizedBox(height: AppSpace.x4),
               const Center(
                 child: Text(S.baseWithout, style: TextStyle(fontSize: 12.5, color: AppColors.ink3)),
@@ -391,36 +390,6 @@ class _BaseScreenState extends ConsumerState<BaseScreen> {
       _pickedLng = spot.lng;
     });
     showAppToast(context, S.baseToastExternal);
-  }
-
-  /// 오늘 밤 하늘 (SCREENS.md CO-06 8번, TECH_SPEC §3.8).
-  ///
-  /// ⚠ **핀을 찍은 뒤에만.** 어디서 잘지 정해지지 않았는데 그날 밤 이야기를 할 수 없다.
-  /// ⚠ SCREENS 예시는 "달이 01:20에 집니다"인데 **그 값을 낼 수 없다** —
-  ///   데이터의 moonset은 그날 아침에 진 달이라 짝이 맞지 않는다 (20260829190000 참고).
-  ///   낼 수 있는 사실만 말한다. 없으면 줄을 그리지 않는다.
-  Widget _tonightSky() {
-    final lat = _pickedLat;
-    final lng = _pickedLng;
-    if (lat == null || lng == null) return const SizedBox.shrink();
-    final sky = ref.watch(nightSkyProvider((lat: lat, lng: lng, date: DateTime.now()))).value;
-    final line = sky?.tonightLine;
-    if (line == null) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.x5, AppSpace.gutter, 0),
-      child: Row(
-        children: [
-          const Icon(Icons.nightlight_outlined, size: 15, color: AppColors.ink3),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text(
-              line,
-              style: const TextStyle(fontSize: 13.5, height: 1.6, color: AppColors.ink2),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _cta() {

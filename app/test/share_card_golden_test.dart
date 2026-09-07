@@ -80,12 +80,7 @@ void main() {
           body: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: ShareCard(
-                trip: trip,
-                path: path,
-                nightSky: '그날 밤, 달은 없었습니다.',
-                unplannedMeals: 2,
-              ),
+              child: ShareCard(trip: trip, path: path, unplannedMeals: 2),
             ),
           ),
         ),

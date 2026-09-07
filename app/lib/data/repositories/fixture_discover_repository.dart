@@ -290,13 +290,6 @@ class FixtureDiscoverRepository implements DiscoverRepository {
   }) async => null;
 
   @override
-  Future<NightSky?> nightSkyOn({
-    required double lat,
-    required double lng,
-    required DateTime date,
-  }) async => null;
-
-  @override
   Future<Spot?> spot(String id) async => _spots.where((s) => s.id == id).firstOrNull;
 
   @override
