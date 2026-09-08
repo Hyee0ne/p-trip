@@ -1,16 +1,21 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:kakao_flutter_sdk_navi/kakao_flutter_sdk_navi.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/settings.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 
 /// HND 내비 핸드오프 시트 (SCREENS.md §HND).
 ///
 /// ⚠ 우리가 내비가 되지 않는다 (CLAUDE.md 원칙 1). 길안내는 외부 앱에 넘긴다.
-/// 카카오내비가 주. 티맵은 **목적지 단건만** 보조 지원(경유지 미지원).
+/// 카카오내비가 주, 애플 지도가 보조. **티맵은 뺐다** (2026-09-08).
+///
+/// ⚠ **어느 앱을 골랐는지 돌려준다.** 레이더는 이 값이 와야 돈다 (DR-01 진입, 2026-09-08).
+///   내리면(스와이프·바깥 탭) null — '안내 없이' 버튼은 따로 두지 않는다. 내리는 게 곧 그것이다.
 enum HandoffMode {
   /// 출발 시 — 목적지=그 길의 진입점
   depart,
@@ -31,13 +36,14 @@ class HandoffPlace {
   Location toLocation() => Location(name: name, x: '$lng', y: '$lat');
 }
 
-class HandoffSheet extends StatelessWidget {
+class HandoffSheet extends StatefulWidget {
   const HandoffSheet({
     super.key,
     required this.mode,
     required this.destination,
     this.via = const [],
     this.showFreeRoadTip = true,
+    this.remembered,
   });
 
   final HandoffMode mode;
@@ -45,13 +51,13 @@ class HandoffSheet extends StatelessWidget {
 
   String get destinationName => destination.name;
 
-  /// 경유 앵커. **카카오내비만 지원한다** (티맵 공개 딥링크는 목적지 단건까지다).
+  /// 경유 앵커. **카카오내비만 지원한다** (애플 지도 공개 URL 은 목적지 단건까지다).
   /// 카카오내비도 최대 3곳이다.
   final List<HandoffPlace> via;
 
   List<String> get viaNames => [for (final v in via) v.name];
 
-  /// 경유를 못 넘기는 앱(티맵·애플 지도)이 갈 곳.
+  /// 경유를 못 넘기는 앱(애플 지도)이 갈 곳.
   ///
   /// ⚠ 거점을 없애면서(2026-09-07) '들르기'의 목적지는 **언제나 누른 그곳**이 됐다.
   ///   경유지는 남겨 둔다 — 코스 앵커 같은 다른 쓰임이 생길 수 있고, 있으면 그게 먼저다.
@@ -60,14 +66,19 @@ class HandoffSheet extends StatelessWidget {
   /// '무료도로 우선' 안내 — 들르기에선 첫 1회만 (SCREENS.md §HND).
   final bool showFreeRoadTip;
 
-  static Future<void> show(
+  /// 지난번에 고른 앱. 있으면 그 버튼 하나만 크게 — 「다른 앱으로」 로 둘 다 볼 수 있다.
+  final NavApp? remembered;
+
+  /// 시트를 띄우고 **고른 앱**을 돌려준다. 내리면 null.
+  static Future<NavApp?> show(
     BuildContext context, {
     required HandoffMode mode,
     required HandoffPlace destination,
     List<HandoffPlace> via = const [],
     bool showFreeRoadTip = true,
   }) {
-    return showModalBottomSheet(
+    final remembered = ProviderScope.containerOf(context, listen: false).read(navAppProvider);
+    return showModalBottomSheet<NavApp>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (_) => HandoffSheet(
@@ -75,12 +86,28 @@ class HandoffSheet extends StatelessWidget {
         destination: destination,
         via: via,
         showFreeRoadTip: showFreeRoadTip,
+        remembered: remembered,
       ),
     );
   }
 
   @override
+  State<HandoffSheet> createState() => _HandoffSheetState();
+}
+
+class _HandoffSheetState extends State<HandoffSheet> {
+  /// 기억한 앱이 있어도 「다른 앱으로」 를 누르면 둘 다 보인다.
+  bool _showAll = false;
+
+  HandoffMode get mode => widget.mode;
+  HandoffPlace get destination => widget.destination;
+  List<HandoffPlace> get via => widget.via;
+  List<String> get viaNames => widget.viaNames;
+  HandoffPlace get singleTarget => widget.singleTarget;
+
+  @override
   Widget build(BuildContext context) {
+    final remembered = _showAll ? null : widget.remembered;
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.surface,
@@ -106,21 +133,19 @@ class HandoffSheet extends StatelessWidget {
           Text(
             mode == HandoffMode.depart
                 ? S.handoffTitle
-                : (viaNames.isEmpty ? destinationName : viaNames.first),
+                : (viaNames.isEmpty ? widget.destinationName : viaNames.first),
             style: AppType.h2,
           ),
           const SizedBox(height: AppSpace.x4),
-          // ⚠ 거점을 지킨 채 들른다는 걸 눈으로 보여준다. 안 보여주면
-          //   목적지가 바뀐 줄 알고 불안해진다.
           if (mode == HandoffMode.depart || viaNames.isNotEmpty) ...[
-            _row('목적지', destinationName),
+            _row('목적지', widget.destinationName),
             if (viaNames.isNotEmpty) ...[
               const SizedBox(height: AppSpace.x2),
               _row('경유', viaNames.join(' · ')),
             ],
             const SizedBox(height: AppSpace.x4),
           ],
-          if (showFreeRoadTip)
+          if (widget.showFreeRoadTip)
             Container(
               padding: const EdgeInsets.all(13),
               decoration: BoxDecoration(
@@ -138,31 +163,19 @@ class HandoffSheet extends StatelessWidget {
               ),
             ),
           const SizedBox(height: AppSpace.x5),
-          SizedBox(
-            height: 56,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.routeBlue,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.button),
-                ),
-              ),
-              onPressed: () => _openKakao(context),
-              child: const Text(
-                S.handoffKakao,
-                style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpace.x2),
           // ⚠ 애플 지도를 빼지 말 것 — 없으면 심사에서 반려된다 (Guideline 4).
-          Row(
-            children: [
-              Expanded(child: _altButton(S.handoffTmap, () => _openTmap(context))),
-              const SizedBox(width: AppSpace.x2),
-              Expanded(child: _altButton(S.handoffApple, () => _openApple(context))),
-            ],
-          ),
+          //   기억한 앱이 있으면 그것만 크게. 없으면 카카오가 주, 애플이 보조.
+          if (remembered == NavApp.apple) ...[
+            _primary(S.handoffApple, () => _openApple(context)),
+            _otherApp(),
+          ] else if (remembered == NavApp.kakao) ...[
+            _primary(S.handoffKakao, () => _openKakao(context)),
+            _otherApp(),
+          ] else ...[
+            _primary(S.handoffKakao, () => _openKakao(context)),
+            const SizedBox(height: AppSpace.x2),
+            _secondary(S.handoffApple, () => _openApple(context)),
+          ],
           // 경유가 있을 때만 말한다. 없으면 굳이 할 말이 아니다.
           if (via.isNotEmpty) ...[
             const SizedBox(height: AppSpace.x2),
@@ -172,15 +185,40 @@ class HandoffSheet extends StatelessWidget {
               style: const TextStyle(fontSize: 12, height: 1.5, color: AppColors.ink3),
             ),
           ],
-          const SizedBox(height: AppSpace.x2),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('취소', style: TextStyle(color: AppColors.ink2)),
-          ),
         ],
       ),
     );
   }
+
+  Widget _primary(String label, VoidCallback onTap) => SizedBox(
+    height: 56,
+    child: FilledButton(
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.routeBlue,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
+      ),
+      onPressed: onTap,
+      child: Text(label, style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700)),
+    ),
+  );
+
+  Widget _secondary(String label, VoidCallback onTap) => SizedBox(
+    height: 52,
+    child: OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.ink,
+        side: const BorderSide(color: AppColors.line2),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
+      ),
+      onPressed: onTap,
+      child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+    ),
+  );
+
+  Widget _otherApp() => TextButton(
+    onPressed: () => setState(() => _showAll = true),
+    child: const Text(S.handoffOtherApp, style: TextStyle(color: AppColors.ink2)),
+  );
 
   Widget _row(String label, String value) {
     return Row(
@@ -204,14 +242,27 @@ class HandoffSheet extends StatelessWidget {
     );
   }
 
+  /// 고른 앱을 기억한다. ⚠ 골든 테스트는 ProviderScope 없이 이 위젯을 그리는데,
+  ///   거기선 아무도 버튼을 누르지 않는다 — 그래도 못 찾으면 조용히 건너뛴다.
+  void _remember(BuildContext context, NavApp app) {
+    try {
+      ProviderScope.containerOf(context, listen: false).read(navAppProvider.notifier).set(app);
+    } catch (_) {
+      /* 기억 못 해도 안내는 나간다 */
+    }
+  }
+
   /// 카카오내비 — 실호출. 경유지는 최대 3곳까지 넘긴다 (TECH_SPEC §3.3).
   ///
   /// ⚠ 무료도로 우선([RpOption.free])으로 넘긴다. 시트에 그렇게 써 놓고
   ///   고속도로로 안내하면 말이 다르다 — 이 앱이 국도 앱인 이유이기도 하다.
+  /// ⚠ 미설치면 스토어로 보내고도 **고른 것으로 친다** — 설치하고 돌아와 달릴 수 있게
+  ///   레이더는 켜 둔다.
   Future<void> _openKakao(BuildContext context) async {
     if (!destination.hasCoords) return _noCoords(context);
     final messenger = ScaffoldMessenger.of(context);
     final nav = Navigator.of(context);
+    _remember(context, NavApp.kakao);
     try {
       if (await NaviApi.instance.isKakaoNaviInstalled()) {
         await NaviApi.instance.navigate(
@@ -219,7 +270,7 @@ class HandoffSheet extends StatelessWidget {
           option: NaviOption(coordType: CoordType.wgs84, rpOption: RpOption.free),
           viaList: [for (final v in via.where((v) => v.hasCoords).take(3)) v.toLocation()],
         );
-        nav.pop();
+        nav.pop(NavApp.kakao);
         return;
       }
     } catch (e) {
@@ -230,22 +281,9 @@ class HandoffSheet extends StatelessWidget {
       );
       return;
     }
-    nav.pop();
-    await _openStore(kakao: true);
+    nav.pop(NavApp.kakao);
+    await _openStore();
   }
-
-  Widget _altButton(String label, VoidCallback onTap) => SizedBox(
-    height: 52,
-    child: OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.ink,
-        side: const BorderSide(color: AppColors.line2),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
-      ),
-      onPressed: onTap,
-      child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-    ),
-  );
 
   /// 애플 지도 — iOS 기본 지도.
   ///
@@ -259,29 +297,18 @@ class HandoffSheet extends StatelessWidget {
     if (!target.hasCoords) return _noCoords(context);
     final nav = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
+    _remember(context, NavApp.apple);
     final ok = await _launch(
       Uri.parse('https://maps.apple.com/?daddr=${target.lat},${target.lng}&dirflg=d'),
     );
-    nav.pop();
     if (!ok) {
+      nav.pop();
       messenger.showSnackBar(
         const SnackBar(content: Text(S.handoffNoMap), duration: AppMotion.toast),
       );
+      return;
     }
-  }
-
-  /// 티맵은 공개 딥링크가 목적지 단건 수준이라 보조 지원 (TECH_SPEC §3.3).
-  Future<void> _openTmap(BuildContext context) async {
-    final target = singleTarget;
-    if (!target.hasCoords) return _noCoords(context);
-    final nav = Navigator.of(context);
-    final uri = Uri.parse(
-      'tmap://route?goalname=${Uri.encodeComponent(target.name)}'
-      '&goalx=${target.lng}&goaly=${target.lat}',
-    );
-    final ok = await _launch(uri);
-    nav.pop();
-    if (!ok) await _openStore(kakao: false);
+    nav.pop(NavApp.apple);
   }
 
   void _noCoords(BuildContext context) {
@@ -299,12 +326,12 @@ class HandoffSheet extends StatelessWidget {
     }
   }
 
-  /// 미설치 → 스토어로 (SCREENS.md §HND 예외).
+  /// 카카오내비 미설치 → 스토어로 (SCREENS.md §HND 예외).
   /// ⚠ `market://`는 안드로이드 전용이다. iOS에서는 아무것도 안 열린다.
-  Future<void> _openStore({required bool kakao}) async {
+  Future<void> _openStore() async {
     final uri = Platform.isIOS
-        ? Uri.parse('https://apps.apple.com/kr/app/id${kakao ? '417698849' : '431589174'}')
-        : Uri.parse('market://details?id=${kakao ? 'com.locnall.KimGiSa' : 'com.skt.tmap.ku'}');
+        ? Uri.parse('https://apps.apple.com/kr/app/id417698849')
+        : Uri.parse('market://details?id=com.locnall.KimGiSa');
     await _launch(uri);
   }
 }

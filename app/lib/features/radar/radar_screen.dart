@@ -7,9 +7,10 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/drive.dart';
-import '../../core/demo.dart';
 import '../../core/env.dart';
+import '../../core/geo.dart';
 import '../../core/journey.dart';
+import '../../core/location.dart';
 import '../../core/saves.dart';
 import '../../core/proximity_alert.dart';
 import '../../core/settings.dart';
@@ -57,9 +58,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
 
   /// 지금 화면에 떠 있는 발견.
   Discovery? _current;
-
-  /// 데모 코스(동해 바닷길). 실주행에서는 사용자가 고른 코스가 들어온다.
-  static const _demoCourseId = kDemoCourseId;
 
   /// 카드를 띄우는 구간 — 진출로까지 3~7분 (TECH_SPEC §3.1 5번).
   /// 너무 이르면 잊어버리고, 너무 늦으면 상의할 시간이 없다.
@@ -122,69 +120,121 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     ref.read(driveProvider.notifier).resume();
   }
 
+  /// 레이더가 **실제로 도는가.** 내비 앱을 고른 순간(또는 이미 길 위일 때) 켜진다.
+  /// 그전엔 화면은 보여도 위치도 서버도 건드리지 않는다 (SCREENS.md DR-01 진입, 2026-09-08).
+  bool _armed = false;
+
+  /// 이번 여정에서 핸드오프 시트를 이미 띄웠는가. 탭을 오갈 때마다 다시 띄우지 않는다.
+  bool _offered = false;
+
+  /// 위 플래그들이 어느 여정의 것인지. 새 여정이 오면 전부 되돌린다 —
+  /// 이 화면은 탭 셸(IndexedStack) 안에서 계속 살아 있어서, 안 되돌리면 두 번째 여행이 안 켜진다.
+  Journey? _flagsFor;
+
+  /// 이보다 가까우면 이미 국도 위다 — 안내할 게 없다. CO-08 과 같은 값.
+  static const _entryThresholdKm = 0.3;
+
+  /// 진입 때 위치를 기다려 주는 시간. 넘으면 시트를 띄운다 — 화면을 붙잡지 않는다.
+  static const _locWait = Duration(seconds: 3);
+
+  void _resetForJourney(Journey? next) {
+    if (identical(next, _flagsFor)) return;
+    _flagsFor = next;
+    _armed = false;
+    _offered = false;
+    _started = false;
+    _shown.clear();
+  }
+
   void _setRunning(bool run) {
     if (!run) {
       ref.read(driveProvider.notifier).stop();
       return;
     }
+    final journey = ref.read(startedJourneyProvider);
+    // ⓪ 길을 안 골랐다. **아무것도 돌지 않는다** — 스윕도, 위치도, 서버 요청도.
+    //   전에는 여기서 코스 없이 레이더를 돌렸다(`routeId: 0`). 그 분기를 통째로 지웠다.
+    // ⚠ 앱을 껐다 켜면 여정은 없다 — 달리던 여행은 `trip_log` 가 '끝난 여행'으로 남기고
+    //   (activeId 는 저장하지 않는다), 레이더는 여기로 온다. 복원하지 않는다.
+    if (journey == null) return;
+
+    if (_armed) {
+      _start(journey);
+      return;
+    }
+    _offerHandoff(journey);
+  }
+
+  /// 진입 직후 한 번 — 이미 길 위면 바로 켜고, 아니면 핸드오프 시트를 띄운다.
+  ///
+  /// ⚠ 데모는 시연용이다. 시뮬레이터엔 내비가 없어 고를 수가 없으니 바로 돈다 (개발 빌드뿐).
+  Future<void> _offerHandoff(Journey journey) async {
+    if (_offered) return;
+    _offered = true;
+    if (ref.read(demoModeProvider) || journey.path.length < 2) {
+      _arm(journey);
+      return;
+    }
+    // 한 번만 재고, 못 재면 시트를 띄운다. 기다리느라 화면을 붙잡지 않는다.
+    final fix = await ref
+        .read(currentLocationProvider.future)
+        .timeout(_locWait, onTimeout: () => const LocFix(LocStatus.unavailable));
+    if (!mounted) return;
+    final entry = journey.path.first;
+    if (fix.hasFix && roughKm(fix.lat!, fix.lng!, entry.lat, entry.lng) <= _entryThresholdKm) {
+      _arm(journey);
+      return;
+    }
+    await _openHandoff(journey);
+  }
+
+  /// 핸드오프 시트. **고르면 켜진다.** 내리면 하단에 「내비로 안내받기」 만 남는다.
+  ///
+  /// ⚠ 목적지는 **그 길의 진입점**이다 — 선형의 끝을 잡으면 카카오내비가 최단 경로로
+  ///   안내해서 고속도로로 빠진다. 국도를 타려고 켠 내비가 국도를 벗어나게 만드는 셈이다.
+  Future<void> _openHandoff(Journey journey) async {
+    final entry = journey.path.first;
+    final app = await HandoffSheet.show(
+      context,
+      mode: HandoffMode.depart,
+      destination: HandoffPlace(journey.routeName, entry.lat, entry.lng),
+    );
+    if (!mounted) return;
+    if (app != null) {
+      _arm(journey);
+    } else {
+      setState(() {});
+    }
+  }
+
+  void _arm(Journey journey) {
+    if (!_armed && mounted) setState(() => _armed = true);
+    _start(journey);
+  }
+
+  void _start(Journey journey) {
     if (_started) return;
     _started = true;
     // ⚠ 모의 주행도 **실제 선형**을 따라간다. 좌표를 지어내지 않는다.
     //   데모 모드를 끄면 같은 선형 위를 진짜 GPS로 달린다 (마이 탭 설정).
-    final demo = ref.read(demoModeProvider);
-    final journey = ref.read(startedJourneyProvider);
-
-    if (journey != null && journey.path.length >= 2) {
-      _begin(journey.path, demo);
-      ref
-          .read(tripLogProvider.notifier)
-          .start(
-            routeId: journey.routeId,
-            routeName: journey.routeName,
-            startName: journey.startName,
-            endName: journey.endName,
-            courseId: journey.courseId,
-          );
-      return;
-    }
-
-    // 아무것도 안 고르고 레이더 탭을 바로 누른 사람.
-    //
-    // ⚠ **실주행이면 데모 코스를 태우지 않는다** (2026-09-04).
-    //   전에는 여기서도 삼척-강릉 코스를 불러 "7번 국도 0km 기록 중 · 남은 65km"를
-    //   띄웠다. 가평에서 그 문구가 나오면 그냥 거짓말이다.
-    //   레이더는 코스 없이도 돈다 — 그게 원칙 2다.
-    //   여행기의 국도는 나중에 `setRouteKm` 이 실제 궤적으로 맵매칭한다. 지어낼 필요가 없다.
-    if (!demo) {
-      _begin(const [], demo);
-      ref
-          .read(tripLogProvider.notifier)
-          .start(routeId: 0, routeName: '', startName: '', endName: '');
-      return;
-    }
-
-    // 데모 모드는 시연이 목적이라 데모 코스를 그대로 돌린다.
-    ref.read(courseGeometryProvider(_demoCourseId).future).then((path) {
-      if (!mounted || path.length < 2) return;
-      _begin(path, demo);
-      ref.read(courseProvider(_demoCourseId).future).then((course) {
-        if (!mounted) return;
-        ref
-            .read(tripLogProvider.notifier)
-            .start(
-              routeId: course?.routeId ?? 7,
-              routeName: course?.title ?? '동해 바닷길',
-              startName: course?.startName ?? '삼척',
-              endName: course?.endName ?? '강릉',
-              courseId: _demoCourseId,
-            );
-      });
-    });
+    _begin(journey.path, ref.read(demoModeProvider));
+    // 이미 진행 중인 여행이 있으면(복원) 그걸 돌려준다 — 새로 만들지 않는다.
+    ref
+        .read(tripLogProvider.notifier)
+        .start(
+          routeId: journey.routeId,
+          routeName: journey.routeName,
+          startName: journey.startName,
+          endName: journey.endName,
+          courseId: journey.courseId,
+        );
   }
 
   /// 모의 주행이냐 실주행이냐만 가른다. 선형은 이미 정해져 온다.
   void _begin(List<GeoPoint> path, bool demo) {
     if (demo) {
+      // 복원한 여정은 선형이 없다 — 모의 주행을 시킬 길이 없으니 멈춘 채 둔다 (개발 빌드뿐).
+      if (path.length < 2) return;
       ref.read(driveProvider.notifier).start(path);
     } else {
       // 알림을 켰으면 앱을 내려도 위치가 계속 온다 (DR-06).
@@ -397,6 +447,10 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     if (drive.hasFix) {
       _sky = ref.watch(todaySkyProvider((lat: _grid(drive.lat!), lng: _grid(drive.lng!)))).value;
     }
+    final journey = ref.watch(startedJourneyProvider);
+    final active = ref.watch(tripLogProvider).active;
+    // 새 여정이 오면 켜짐·시트·시작 플래그를 전부 되돌린다. 안 그러면 두 번째 여행이 안 켜진다.
+    ref.listen(startedJourneyProvider, (_, next) => _resetForJourney(next));
     // ⚠ build 안에서 provider를 고치면 안 된다 (Riverpod). 주행이 바뀔 때만 반응한다.
     ref.listen(driveProvider, (_, next) {
       _record(next);
@@ -420,6 +474,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
               // DR-00 — 실주행인데 위치를 못 받는다. 레이더는 위치가 전부라
               // 빈 화면을 보여주느니 이유를 말하고 길을 둘 다 열어둔다.
               if (drive.needsLocation) return _needsLocation();
+              // ⓪ 길을 안 골랐다 (SCREENS.md DR-01 진입). 아무것도 돌지 않는다.
+              if (journey == null && active == null) return _idle();
               final current = _current;
               return Stack(
                 children: [
@@ -433,7 +489,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
                       _notRouteNotice(),
                       const SizedBox(height: AppSpace.x4),
                       const SizedBox(height: AppSpace.x5),
-                      _finishButton(),
+                      // 내비 앱을 고르기 전엔 마칠 여행이 없다 — 시트를 다시 여는 버튼만.
+                      if (_armed) _finishButton() else _handoffButton(),
                     ],
                   ),
                   if (_cardVisible && current != null)
@@ -518,87 +575,90 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     ),
   );
 
-  /// 지금 달리는 노선 번호. 기록 중인 여행에서 가져온다.
+  /// 지금 달리는 노선 번호. 여정에서, 없으면 기록 중인 여행에서.
   ///
   /// ⚠ **모르면 null이다. 7을 박지 않는다.** 전에는 `?? 7` 이라 코스를 안 고르고
   ///   레이더를 켜면 가평에서도 "7번 국도"라고 말했다 (2026-09-04).
-  ///   `routeId: 0` 은 trip_log 의 '모름' 값이다.
+  ///   `routeId: 0` 은 trip_log 의 '모름' 값이다 (옛 기록에 남아 있을 수 있다).
   int? get _routeNo {
-    final id = ref.watch(tripLogProvider).active?.routeId;
+    final id =
+        ref.watch(startedJourneyProvider)?.routeId ?? ref.watch(tripLogProvider).active?.routeId;
     return (id == null || id == 0) ? null : id;
   }
 
-  /// DR-06a 유도 화면. **조건부 1회** — 여기가 유일하게 권한을 묻는 자리다.
-  Future<void> _askBackground() async {
-    final yes = await showModalBottomSheet<bool>(
-      context: context,
-      backgroundColor: AppColors.darkSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.x6, AppSpace.gutter, 26),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              S.bgOptInTitle,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
-                color: AppColors.darkInk,
+  /// ⓪ 레이더 탭인데 길을 안 골랐을 때 (SCREENS.md DR-01 진입).
+  ///
+  /// ⚠ 아무것도 돌지 않는다. 원은 그리되 **스윕이 없다** — 도는 것처럼 보이면 거짓말이다.
+  /// ⚠ 버튼 하나가 발견 탭으로 보낸다. 눌러도 아무 일 없는 화면을 남기지 않는다.
+  Widget _idle() => Center(
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(width: 200, height: 200, child: CustomPaint(painter: _StillRings())),
+          const SizedBox(height: AppSpace.x6),
+          const Text(
+            S.radarIdleTitle,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.4,
+              color: AppColors.darkInk,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            S.radarIdleSub,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13.5, height: 1.5, color: AppColors.darkInk2),
+          ),
+          const SizedBox(height: AppSpace.x5),
+          SizedBox(
+            height: 52,
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.routeBlue,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.button),
+                ),
+              ),
+              onPressed: () => context.go('/'),
+              child: const Text(
+                S.radarIdleCta,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
             ),
-            const SizedBox(height: AppSpace.x2),
-            const Text(
-              S.bgOptInSub,
-              style: TextStyle(fontSize: 14, height: 1.6, color: AppColors.darkInk2),
-            ),
-            const SizedBox(height: AppSpace.x5),
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: AppTouch.min,
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.darkLine),
-                        foregroundColor: AppColors.darkInk2,
-                      ),
-                      onPressed: () => Navigator.of(ctx).pop(false),
-                      child: const Text(S.bgOptInNo),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpace.x2),
-                Expanded(
-                  child: SizedBox(
-                    height: AppTouch.min,
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: AppColors.routeBlue),
-                      onPressed: () => Navigator.of(ctx).pop(true),
-                      child: const Text(S.bgOptInYes),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
+        ],
+      ),
+    ),
+  );
+
+  /// 시트를 안 고르고 내렸을 때의 하단. 레이더는 아직 안 돈다 — 이 버튼이 유일한 길이다.
+  Widget _handoffButton() {
+    final journey = ref.read(startedJourneyProvider);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: SizedBox(
+        height: 50,
+        child: FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.routeBlue,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
+          ),
+          onPressed: journey == null || journey.path.length < 2
+              ? null
+              : () => _openHandoff(journey),
+          child: const Text(
+            S.radarHandoffAgain,
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          ),
         ),
       ),
     );
-    if (yes != true) return;
-    // ⚠ 권한을 거절하면 켜지 않는다. 켠 줄 알고 기다리게 두지 않는다.
-    final ok = await ref.read(proximityAlertsProvider).requestPermission();
-    await ref.read(backgroundAlertsProvider.notifier).set(ok);
-    // ⚠ 이미 달리는 중이면 스트림을 다시 연다. 안 그러면 이번 주행 내내
-    //   백그라운드 위치가 꺼진 채라 알림이 한 건도 안 나간다.
-    if (ok && mounted && !ref.read(demoModeProvider)) {
-      _started = false;
-      _setRunning(true);
-    }
   }
 
   Widget _topBar() {
@@ -621,15 +681,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
               ),
             ),
           ),
-          // DR-06a — 여행을 2번 이상 마친 사람에게만, 이미 켰으면 안 보인다.
-          // ⚠ 온보딩·첫 진입에서는 절대 묻지 않는다 (권한 피로 = 이탈).
-          if (ref.watch(tripsProvider).value != null &&
-              ref.watch(tripsProvider).value!.length >= 2 &&
-              !ref.watch(backgroundAlertsProvider))
-            IconButton(
-              icon: const Icon(Icons.notifications_none, color: AppColors.darkInk2, size: 20),
-              onPressed: _askBackground,
-            ),
+          // ⚠ 🔔(DR-06a)은 없앴다 (2026-09-08). 권한은 출발할 때 한 번 묻는다.
           IconButton(
             icon: Icon(
               _voiceOn ? Icons.volume_up_outlined : Icons.volume_off_outlined,
@@ -816,6 +868,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
                   .then((byRoute) => log.setRouteKm(id, byRoute))
                   .catchError((_) {});
             }
+            // 여정을 비운다 → 레이더 탭은 다시 ⓪(길을 골라주세요)이 된다.
+            ref.read(startedJourneyProvider.notifier).set(null);
             context.go(id == null ? '/my' : '/my/trip/$id');
           },
           child: const Text(
@@ -826,6 +880,32 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
       ),
     );
   }
+}
+
+/// ⓪ 화면의 멈춘 원. 스윕이 없다 — 돌지 않는다는 걸 그림이 말한다.
+class _StillRings extends CustomPainter {
+  const _StillRings();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = Offset(size.width / 2, size.height / 2);
+    final r = size.width / 2;
+    final ring = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = const Color(0x17F0EDE6);
+    for (final f in [1.0, 0.66, 0.33]) {
+      canvas.drawCircle(c, r * f, ring);
+    }
+    final cross = Paint()
+      ..strokeWidth = 1
+      ..color = const Color(0x0FF0EDE6);
+    canvas.drawLine(Offset(0, c.dy), Offset(size.width, c.dy), cross);
+    canvas.drawLine(Offset(c.dx, 0), Offset(c.dx, size.height), cross);
+  }
+
+  @override
+  bool shouldRepaint(_StillRings oldDelegate) => false;
 }
 
 /// DR-02 근접 발견 카드 — 전면 카드 (SCREENS.md DR-02).

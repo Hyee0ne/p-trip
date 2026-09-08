@@ -28,18 +28,19 @@ void main() {
     expect(find.text(S.appName), findsOneWidget);
   });
 
-  testWidgets('레이더 탭 — 경로가 아니라 주변 기준이라는 문구가 있다', (tester) async {
+  /// ⚠ 레이더는 **길을 골라 출발해야** 돈다 (2026-09-08, SCREENS.md DR-01 진입).
+  ///   탭만 눌렀을 땐 아무것도 돌지 않고, 고르러 가는 버튼만 있다.
+  testWidgets('레이더 탭 — 길을 안 골랐으면 돌지 않고 고르러 가라고 한다', (tester) async {
     await pumpApp(tester);
     await tester.tap(find.text(S.tabRadar));
-    // ⚠ 레이더 스윕이 repeat 애니메이션이라 pumpAndSettle이 끝나지 않는다.
-    //   프레임을 몇 번만 돌려 라우트 전환을 완료시킨다.
     for (var i = 0; i < 5; i++) {
       await tester.pump(const Duration(milliseconds: 120));
     }
 
-    expect(find.text(S.radarScanning), findsOneWidget);
-    // 레이더 뷰가 실제로 그려졌는지 (문구는 접혀 있을 수 있어 위젯으로 확인)
-    expect(find.byType(RadarView), findsOneWidget);
+    expect(find.text(S.radarIdleTitle), findsOneWidget);
+    expect(find.text(S.radarIdleCta), findsOneWidget);
+    expect(find.byType(RadarView), findsNothing, reason: '길 없이 스윕이 돌면 거짓말이다');
+    expect(find.text(S.radarScanning), findsNothing);
     // ⚠ 레이더에는 뷰 토글이 없다 — 운전 중엔 언제나 한 곳씩
     expect(find.text(S.viewBrowse), findsNothing);
     expect(find.text(S.viewOneByOne), findsNothing);

@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/geo.dart';
 import '../../core/journey.dart';
 import '../../core/location.dart';
+import '../../core/proximity_alert.dart';
+import '../../core/settings.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/route_badge.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/providers.dart';
-import '../handoff/handoff_sheet.dart';
 
 /// CO-08 길 떠나기 — 노선 탭 직후.
 ///
@@ -38,9 +38,6 @@ class DepartSheet extends ConsumerStatefulWidget {
   @override
   ConsumerState<DepartSheet> createState() => _DepartSheetState();
 }
-
-/// 이보다 가까우면 이미 국도 위다 — 안내할 게 없다.
-const _entryThresholdKm = 0.3;
 
 class _DepartSheetState extends ConsumerState<DepartSheet> {
   bool _busy = false;
@@ -85,6 +82,15 @@ class _DepartSheetState extends ConsumerState<DepartSheet> {
       return;
     }
 
+    // ⚠ 알림 권한은 **여기서 한 번** 묻는다 (SCREENS.md DR-01 진입, 2026-09-08).
+    //   iOS 는 평생 한 번만 묻는다. 온보딩은 설명만 하고, 실제 팝업은 출발하는 이 순간이다 —
+    //   "앱을 내려도 알려준다"가 무슨 뜻인지 가장 잘 아는 때다. 이미 물었으면 그냥 지나간다.
+    //   허용이든 거절이든 출발을 막지 않는다.
+    await ref
+        .read(backgroundAlertsProvider.notifier)
+        .askOnce(ref.read(proximityAlertsProvider).requestPermission);
+    if (!mounted) return;
+
     ref
         .read(startedJourneyProvider.notifier)
         .set(
@@ -97,21 +103,9 @@ class _DepartSheetState extends ConsumerState<DepartSheet> {
           ),
         );
 
-    // ⚠ **국도까지는 데려다줘야 한다.** 집에서 출발하면 국도 위에 있지도 않다.
-    //   목적지는 **그 국도의 진입점**이다 — 선형의 끝을 목적지로 잡으면
-    //   카카오내비가 최단 경로로 안내해서 **고속도로로 빠진다.** 국도를 타려고 켠 내비가
-    //   국도를 벗어나게 만드는 셈이다. 짧게 끊어야 그 일이 안 생긴다.
-    final entry = path.first;
-    final toEntryKm = roughKm(fix.lat!, fix.lng!, entry.lat, entry.lng);
-    if (toEntryKm > _entryThresholdKm) {
-      await HandoffSheet.show(
-        context,
-        mode: HandoffMode.depart,
-        destination: HandoffPlace(S.routeNumber(widget.route.id), entry.lat, entry.lng),
-      );
-      if (!mounted) return;
-    }
-    // 이미 국도 위면 안내할 게 없다. 바로 달린다.
+    // ⚠ 내비로 보내지 않는다. 레이더가 먼저고, 핸드오프 시트는 **레이더 위에서** 뜬다 —
+    //   전에는 여기서 바로 카카오내비로 넘겨서 사용자가 이 앱의 핵심 화면을 한 번도
+    //   안 보고 떠났다 (2026-09-08).
     context.go('/radar');
   }
 

@@ -261,7 +261,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(S.handoffKakao), findsOneWidget);
-    expect(find.text(S.handoffTmap), findsOneWidget);
+    // ⚠ 애플 지도를 빼면 심사에서 반려된다 (Guideline 4). 티맵은 뺐다 (2026-09-08).
+    expect(find.text(S.handoffApple), findsOneWidget);
     expect(find.text(S.handoffFreeRoad), findsOneWidget);
   });
 }

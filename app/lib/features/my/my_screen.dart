@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:photo_manager/photo_manager.dart';
 
@@ -11,6 +12,7 @@ import '../../core/proximity_alert.dart';
 import '../../core/settings.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
+import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/cards.dart';
 import '../../core/widgets/heart_button.dart';
 import '../../core/widgets/route_badge.dart';
@@ -410,9 +412,17 @@ class _MyScreenState extends ConsumerState<MyScreen> {
                   // ⚠ 끄면 알림만 멈춘다. OS 권한은 그대로 둔다 (SCREENS.md DR-06).
                   //   켤 땐 권한부터 — 권한 없이 켜두면 켠 줄 알고 기다리게 된다.
                   onChanged: (v) async {
-                    if (!v) return ref.read(backgroundAlertsProvider.notifier).set(false);
-                    final ok = await ref.read(proximityAlertsProvider).requestPermission();
-                    await ref.read(backgroundAlertsProvider.notifier).set(ok);
+                    final n = ref.read(backgroundAlertsProvider.notifier);
+                    if (!v) return n.set(false);
+                    // 안 물어봤으면 여기서 묻는다. 물어봤는데 꺼져 있으면 iOS 는 다시 못 묻는다 —
+                    // 설정 앱으로 보낸다. 켠 줄 알고 기다리게 두지 않는다.
+                    final request = ref.read(proximityAlertsProvider).requestPermission;
+                    final ok = n.asked ? await request() : await n.askOnce(request);
+                    await n.set(ok);
+                    if (!ok && mounted) {
+                      showAppToast(context, S.toastNotifDenied);
+                      await Geolocator.openAppSettings();
+                    }
                   },
                 ),
               ),

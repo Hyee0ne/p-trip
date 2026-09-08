@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/geo.dart';
 import '../../core/journey.dart';
-import '../../core/location.dart';
+import '../../core/proximity_alert.dart';
+import '../../core/settings.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/cards.dart';
@@ -12,13 +12,6 @@ import '../../core/widgets/route_badge.dart';
 import '../../core/widgets/route_preview.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/providers.dart';
-import '../handoff/handoff_sheet.dart';
-
-/// 이미 코스 위라고 볼 거리. CO-08 `depart_sheet` 와 같은 값이다.
-const _entryThresholdKm = 0.3;
-
-/// 출발할 때 위치를 기다려 주는 시간. 넘으면 안내 없이 그냥 달린다.
-const _locWait = Duration(seconds: 3);
 
 /// CO-02 코스 상세 (SCREENS.md CO-02).
 ///
@@ -219,40 +212,21 @@ class _Body extends ConsumerWidget {
         );
   }
 
-  /// 코스 진입점까지 데려다주고 레이더로 넘긴다.
+  /// 출발 — 알림 권한을 한 번 묻고, 여정을 세우고, 레이더로 간다.
   ///
-  /// ⚠ 거점을 없앴다 (2026-09-07). 전에는 거점이 목적지였고, 없으면 CO-06으로 유도했다.
-  ///   이제 노선 출발(CO-08 `depart_sheet`)과 **같은 문법**이다 — 목적지는 그 길의 진입점이다.
-  /// ⚠ 코스 끝을 목적지로 잡으면 카카오내비가 최단 경로로 안내해 **고속도로로 빠진다.**
-  ///   국도를 타려고 켠 내비가 국도를 벗어나게 만드는 셈이다. 짧게 끊어야 그 일이 안 생긴다.
-  /// ⚠ 위치를 모르거나 이미 코스 위면 안내할 게 없다. 막지 않고 그냥 달린다.
+  /// ⚠ 거점을 없앴다 (2026-09-07). 노선 출발(CO-08 `depart_sheet`)과 **같은 문법**이다.
+  /// ⚠ 내비로 보내지 않는다 (2026-09-08). 핸드오프 시트는 **레이더 위에서** 뜬다 —
+  ///   코스 진입점까지 데려다주는 것도 거기서 한다. 레이더는 내비 앱을 고른 순간부터 돈다.
   Future<void> _onDepart(BuildContext context) async {
     final container = ProviderScope.containerOf(context);
+    // 알림 권한은 여기서 한 번. 이미 물었으면 그냥 지나간다. 허용이든 거절이든 출발을 막지 않는다.
+    await container
+        .read(backgroundAlertsProvider.notifier)
+        .askOnce(container.read(proximityAlertsProvider).requestPermission);
+    if (!context.mounted) return;
     // 레이더가 **이 코스**를 달린다. 안 넘기면 무슨 코스를 골랐든 데모 코스가 돈다.
     await _setJourney(container, course);
-    if (!context.mounted) return;
-
-    final path = await container.read(courseGeometryProvider(course.id).future);
-    // ⚠ **위치를 기다리느라 출발을 붙잡지 않는다.** GPS 를 못 잡으면 getCurrentPosition 이
-    //   8초까지 버티는데, 그동안 버튼을 누른 사람은 아무 반응 없는 화면을 본다.
-    //   못 받으면 안내를 못 붙일 뿐이다 — 달리는 건 막지 않는다.
-    final fix = await container
-        .read(currentLocationProvider.future)
-        .timeout(_locWait, onTimeout: () => const LocFix(LocStatus.unavailable));
-    if (!context.mounted) return;
-
-    if (path.isNotEmpty && fix.hasFix) {
-      final entry = path.first;
-      if (roughKm(fix.lat!, fix.lng!, entry.lat, entry.lng) > _entryThresholdKm) {
-        await HandoffSheet.show(
-          context,
-          mode: HandoffMode.depart,
-          destination: HandoffPlace(course.startName, entry.lat, entry.lng),
-        );
-        if (!context.mounted) return;
-      }
-    }
-    context.go('/radar');
+    if (context.mounted) context.go('/radar');
   }
 
   Widget _cta(BuildContext context) {

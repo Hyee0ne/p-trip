@@ -209,6 +209,8 @@ class _Permissions extends StatelessWidget {
         children: [
           item(Icons.my_location, '위치', S.onboardLocation),
           item(Icons.photo_library_outlined, '사진', S.onboardPhoto),
+          // ⚠ 설명만. 팝업은 출발할 때 한 번 — 여기서 띄우면 이유를 모른 채 거절하고 그게 끝이다.
+          item(Icons.notifications_none, '알림', S.onboardNotif),
           const SizedBox(height: AppSpace.x3),
           const Text(
             '각각 선택할 수 있고, 나중에 허용해도 돼요.',

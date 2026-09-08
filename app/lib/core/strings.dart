@@ -26,6 +26,11 @@ class S {
   static const onboardLocation = '레이더가 주변을 살피려면요';
   static const onboardPhoto = '여행기에 사진을 자동 정리해드려요';
 
+  /// ⚠ 온보딩은 **설명만** 한다. 시스템 팝업은 출발할 때 한 번 뜬다 (SCREENS.md DR-01 진입).
+  ///   iOS 알림 권한은 평생 한 번만 물을 수 있어서, 이유를 모른 채 거절하면 끝이다 —
+  ///   이 줄이 그 팝업의 이유를 미리 말해 둔다.
+  static const onboardNotif = '앱을 내려둬도 근처 발견을 알려드려요';
+
   // ── CO-01 홈 섹션 ──
   static const secRoutes = '국도부터 고르기';
   static const secRising = '조용히 뜨는 길';
@@ -132,14 +137,16 @@ class S {
   static const handoffTitle = '카카오내비로 안내를 시작해요';
   static const handoffFreeRoad = '내비에서 \'무료도로 우선\'을 켜면 국도 중심으로 안내돼요';
   static const handoffKakao = '카카오내비 열기';
-  static const handoffTmap = '티맵';
 
   /// ⚠ **애플 지도를 지우지 말 것.** 없으면 App Store 심사에서 반려된다
   ///   (2026-09-02, Guideline 4 - Design). SCREENS.md §HND 참조.
   static const handoffApple = '애플 지도';
 
   /// 경유가 있을 때만 낸다 — 없으면 굳이 할 말이 아니다.
-  static String handoffDestOnly(String name) => '티맵·애플 지도는 경유를 못 넘겨요 · $name만 안내돼요';
+  static String handoffDestOnly(String name) => '애플 지도는 경유를 못 넘겨요 · $name만 안내돼요';
+
+  /// 한 번 고른 앱을 기억한 뒤 (HND). 다음부턴 그 앱 버튼 하나만 크게 보이고 이 줄로 바꾼다.
+  static const handoffOtherApp = '다른 앱으로';
 
   // ── DR-00 권한 ──
   static const permTitle = '레이더가 주변을 살피려면 위치가 필요해요';
@@ -169,6 +176,16 @@ class S {
 
   static const radarFinish = '오늘 여행 마치기 → 여행기 만들기';
 
+  /// DR-01 ⓪ — 레이더 탭인데 길을 안 골랐을 때 (2026-09-08).
+  /// ⚠ 아무것도 돌지 않는다. 버튼 하나가 발견 탭으로 보낸다 — 눌러도 아무 일 없는 화면이 아니다.
+  static const radarIdleTitle = '달릴 길을 먼저 골라주세요';
+  static const radarIdleSub = '레이더는 길을 고르고 출발하면 켜져요';
+  static const radarIdleCta = '국도 고르러 가기';
+
+  /// 핸드오프 시트를 안 고르고 내렸을 때 하단 버튼. 시트를 다시 연다.
+  /// ⚠ 레이더는 내비 앱을 고른 순간부터 돈다 (2026-09-08). 그전엔 이 버튼이 유일한 길이다.
+  static const radarHandoffAgain = '내비로 안내받기';
+
   static String radarRecording(String route, num km) => '$route ${km}km 기록 중';
 
   /// 국도를 아직 모를 때. **번호를 지어내지 않는다** — 여행기의 국도는
@@ -186,10 +203,6 @@ class S {
   static String nextVisited(String spot) => '들른 차들은 다음에 $spot로 갔어요';
 
   // ── DR-06 백그라운드 알림 ──
-  static const bgOptInTitle = '앱을 꺼둬도 알려드릴까요?';
-  static const bgOptInSub = '달리는 동안에만 위치를 봅니다. 여행을 마치면 스스로 꺼져요.';
-  static const bgOptInYes = '허용하러 가기';
-  static const bgOptInNo = '지금은 괜찮아요';
   static const bgStopped = '레이더를 접어뒀어요';
   static const bgDemoNote = '데모 모드에선 앱을 내리면 주행이 멈춰요 — 알림은 실제 주행에서 나갑니다.';
 
@@ -263,6 +276,9 @@ class S {
 
   // ── 토스트 (§0.2 — 단일 스타일, 1.9초) ──
   static const toastSaved = '찜에 담았어요';
+
+  /// MY-03 토글을 켰는데 OS 권한이 이미 거절돼 있을 때. iOS 는 다시 못 묻는다 — 설정 앱으로 보낸다.
+  static const toastNotifDenied = '알림이 꺼져 있어요 — 설정에서 켜주세요';
 
   // ── 공통 예외 (§0.3) ──
   static const errNetwork = '잠시 연결이 고르지 않아요';
