@@ -240,7 +240,7 @@ trip 종료 시:
 | 전국전통시장표준데이터 | 장날 | data.go.kr | pipeline |
 | 천문연 출몰시각 | 일몰 (레이더 일몰 카드). **전망 스팟이 있는 격자만** 채운다 (약 40칸). 월출·월몰·박명은 받아만 둔다 | data.go.kr | pipeline |
 | 티맵 URL 스킴 (`tmap://route`) | 핸드오프 | SK open API 앱 연동 | 앱 |
-| ~~카카오내비 SDK~~ | ~~핸드오프~~ (2026-09-09 티맵으로 교체, 검증 뒤 삭제) | developers.kakao.com | 앱 |
+| ~~카카오내비 SDK~~ | ~~핸드오프~~ (2026-09-09 티맵으로 교체, 삭제) | developers.kakao.com | 앱 |
 | 카카오맵 **네이티브 SDK v2** | 지도 표시 (kakao_map_sdk) | developers.kakao.com | 앱 — **네이티브 앱 키**, 내비와 공용 |
 | 천문연 천문현상 정보 | 유성우·월식·슈퍼문 — **앱에서 읽는 곳 없음** (§3.8 삭제). 테이블만 남겨둔다 | data.go.kr (B090041) | pipeline |
 | 한국관광 데이터랩 (검색·방문 변화율) | CO-01 "조용히 뜨는 길" | datalab.visitkorea.or.kr | pipeline |
@@ -264,7 +264,7 @@ trip 종료 시:
 | CO-07 국도 선택 | `/routes` | routes 51행, drivable 구분 |
 | CO-02 코스 상세 | `/course/:id` | course.geom + 경로변 spots, RouteBadge |
 | CO-03 스팟 상세 | `/spot/:id` | spot + spot_links + 확신도 문구. **마을/스팟 통합** |
-| HND 핸드오프 시트 | (모달) | 티맵 · 애플 지도 딥링크 (kakao_flutter_sdk_navi 는 검증 뒤 삭제) |
+| HND 핸드오프 시트 | (모달) | 티맵 · 애플 지도 딥링크 |
 | DR-00 위치 권한 | (`/radar` 인라인) | 앱 사용 중 허용만 |
 | DR-01 레이더 | `/radar` | discover_nearby RPC, 위치 스트림, rec 로깅 |
 | DR-02 발견 카드 | (레이더 내 전면 카드) | 점수 상위 1건, 액션: 핸드오프/찜/passed |

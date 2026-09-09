@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:kakao_flutter_sdk_navi/kakao_flutter_sdk_navi.dart';
 import 'package:kakao_map_sdk/kakao_map_sdk.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -22,12 +21,9 @@ void main() async {
 
   // 카카오 지도(네이티브 앱 키). 없으면 초기화하지 않는다 —
   // CO-07은 키가 없으면 지도 자리를 비워둔다 (route_map.dart).
-  // ⚠ 지도와 내비 핸드오프가 같은 키를 쓴다.
+  // ⚠ 내비 핸드오프는 티맵 URL 스킴이라 키가 필요 없다 (카카오내비 SDK 삭제, 2026-09-09).
   if (Env.hasMapKey) {
     unawaited(KakaoMapSdk.instance.initialize(Env.kakaoNativeAppKey));
-    // ⚠ 카카오내비는 티맵으로 교체했다 (2026-09-09). 검증이 끝나면 이 init 과
-    //   kakao_flutter_sdk_navi 의존을 지운다. 지도(kakao_map_sdk)는 위 한 줄로 충분하다.
-    KakaoSdk.init(nativeAppKey: Env.kakaoNativeAppKey);
   }
 
   runApp(const ProviderScope(child: PTripApp()));

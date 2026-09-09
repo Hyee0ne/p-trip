@@ -1,7 +1,6 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
-import 'package:kakao_flutter_sdk_navi/kakao_flutter_sdk_navi.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/strings.dart';
@@ -15,8 +14,8 @@ import '../../core/theme.dart';
 /// ⚠ **카카오내비 → 티맵 (2026-09-09).** 카카오내비는 안내 중엔 새 목적지를 거절한다 —
 ///   「들르기」를 누르면 "주행 중에는 사용할 수 없는 기능" 얼럿만 떴다 (카카오모빌리티 공식:
 ///   "주행 중에는 새 목적지를 검색할 수 없습니다", devtalk 149550). 티맵은 안내 중에 URL 스킴으로
-///   새 목적지를 보내면 **경로를 바꾼다** — 실기기로 확인했다. 카카오내비 코드는 티맵 검증이
-///   끝나면 지운다 (`_openKakao`, `NavApp.kakao`, kakao_flutter_sdk_navi).
+///   새 목적지를 보내면 **경로를 바꾼다** — 실기기로 확인했다. 카카오내비 코드는 지웠다
+///   (SDK 의존·`KakaoSdk.init`·URL 스킴 선언까지). 지도(kakao_map_sdk)와는 별개다.
 ///
 /// ⚠ **애플 지도를 접어 두지 않는다** (2026-09-09). 한 번 고른 앱을 기억해 그 버튼 하나만
 ///   보이고 「다른 앱으로」 뒤에 애플 지도를 숨겼는데, 그게 지난 반려(Guideline 4 —
@@ -33,8 +32,7 @@ enum HandoffMode {
 }
 
 /// 시트가 돌려주는 값 — 어느 앱으로 넘어갔는가.
-/// ⚠ `kakao` 는 화면에 없다. 티맵 검증 뒤 삭제 예정 (2026-09-09).
-enum NavApp { tmap, apple, kakao }
+enum NavApp { tmap, apple }
 
 /// 길안내로 넘길 한 곳. **좌표가 없으면 넘길 수 없다** — 내비는 이름만으로 못 간다.
 class HandoffPlace {
@@ -44,8 +42,6 @@ class HandoffPlace {
   final double? lng;
 
   bool get hasCoords => lat != null && lng != null;
-
-  Location toLocation() => Location(name: name, x: '$lng', y: '$lat');
 }
 
 class HandoffSheet extends StatelessWidget {
@@ -67,7 +63,6 @@ class HandoffSheet extends StatelessWidget {
   String get destinationName => destination.name;
 
   /// 경유 앵커. ⚠ **티맵·애플 지도 둘 다 못 넘긴다** — 공개 URL 스킴이 목적지 단건까지다.
-  ///   (카카오내비 SDK 만 최대 3곳을 받았다. 지금은 안 쓴다.)
   final List<HandoffPlace> via;
 
   List<String> get viaNames => [for (final v in via) v.name];
@@ -275,37 +270,6 @@ class HandoffSheet extends StatelessWidget {
     await _launch(uri);
   }
 
-  /// 카카오내비 — **화면에서 뺐다 (2026-09-09).** 안내 중엔 새 목적지를 거절해서 「들르기」가
-  /// 막혔다. 티맵 검증이 끝나면 이 메서드·`_openStore`·`NavApp.kakao`·SDK 의존을 지운다.
-  ///
-  /// (기록) 경유지는 최대 3곳, 무료도로 우선([RpOption.free])으로 넘겼다.
-  // ignore: unused_element
-  Future<void> _openKakao(BuildContext context) async {
-    if (!destination.hasCoords) return _noCoords(context);
-    final messenger = ScaffoldMessenger.of(context);
-    final nav = Navigator.of(context);
-    try {
-      if (await NaviApi.instance.isKakaoNaviInstalled()) {
-        await NaviApi.instance.navigate(
-          destination: destination.toLocation(),
-          option: NaviOption(coordType: CoordType.wgs84, rpOption: RpOption.free),
-          viaList: [for (final v in via.where((v) => v.hasCoords).take(3)) v.toLocation()],
-        );
-        nav.pop(NavApp.kakao);
-        return;
-      }
-    } catch (e) {
-      // SDK가 실패하면 삼키지 않고 말한다. 조용히 아무 일도 안 일어나는 게 제일 나쁘다.
-      nav.pop();
-      messenger.showSnackBar(
-        SnackBar(content: Text('카카오내비를 열지 못했어요 · $e'), duration: AppMotion.toast),
-      );
-      return;
-    }
-    nav.pop(NavApp.kakao);
-    await _openStore();
-  }
-
   /// 애플 지도 — iOS 기본 지도.
   ///
   /// ⚠ **선택지로 반드시, 뎁스 없이 있어야 한다.** 2026-09-02 App Store 반려 사유가
@@ -344,15 +308,5 @@ class HandoffSheet extends StatelessWidget {
     } catch (_) {
       return false;
     }
-  }
-
-  /// 카카오내비 미설치 → 스토어로. `_openKakao` 와 함께 삭제 예정 (2026-09-09).
-  /// ⚠ `market://`는 안드로이드 전용이다. iOS에서는 아무것도 안 열린다.
-  // ignore: unused_element
-  Future<void> _openStore() async {
-    final uri = Platform.isIOS
-        ? Uri.parse('https://apps.apple.com/kr/app/id417698849')
-        : Uri.parse('market://details?id=com.locnall.KimGiSa');
-    await _launch(uri);
   }
 }

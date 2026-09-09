@@ -21,7 +21,6 @@ dependencies:
 
   # 위치 · 지도 · 내비
   geolocator: ^14.0.3
-  kakao_flutter_sdk_navi: ^2.0.0
 
   # 여행기
   photo_manager: ^3.12.0

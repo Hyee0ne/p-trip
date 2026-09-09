@@ -149,9 +149,6 @@ class S {
   ///   「들르기」가 막혔다. 티맵은 안내 중에도 경로를 바꾼다 (실기기 확인).
   static const handoffTmap = '티맵';
 
-  /// 화면에서 뺐다. 코드 삭제와 함께 지울 것 (2026-09-09).
-  static const handoffKakao = '카카오내비';
-
   /// ⚠ **애플 지도를 지우지 말 것.** 없으면 App Store 심사에서 반려된다
   ///   (2026-09-02, Guideline 4 - Design). SCREENS.md §HND 참조.
   static const handoffApple = '애플 지도';
