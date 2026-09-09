@@ -126,4 +126,23 @@ void main() {
     expect(find.text(S.radarStopsNext), findsOneWidget, reason: '자취는 이어진다 — 「다음」 점선 원');
     expect(tester.takeException(), isNull);
   });
+
+  /// 2026-09-09 실기기: 마이 탭을 안 거치고 바로 출발하면 레이더가 데모 모드의 **첫 독자**가 된다.
+  /// 저장값(꺼짐)이 복원되기 전에 기본값(켜짐)을 읽어 시트 없이 모의 주행이 돌았다.
+  testWidgets('데모를 꺼 둔 채 바로 출발해도 — 저장값을 기다려 시트를 띄운다', (tester) async {
+    SharedPreferences.setMockInitialValues({'demoMode.v1': false});
+    phone(tester);
+    await tester.pumpWidget(
+      ProviderScope(
+        // ⚠ demoModeProvider 를 덮어쓰지 않는다. 실제 복원 경로를 탄다.
+        overrides: [startedJourneyProvider.overrideWith(_WithJourney.new)],
+        child: const MaterialApp(home: RadarScreen()),
+      ),
+    );
+    await settle(tester, 48);
+
+    expect(find.text(S.radarNoNavDemo), findsNothing, reason: '꺼 둔 데모를 켜진 걸로 읽지 않는다');
+    expect(find.text(S.handoffTitleRoute(7)), findsOneWidget, reason: '실주행이면 시트가 먼저다');
+    expect(find.text(S.radarFinish), findsNothing, reason: '고르기 전엔 돌지 않는다');
+  });
 }

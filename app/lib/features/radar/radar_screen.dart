@@ -172,6 +172,10 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
   Future<void> _offerHandoff(Journey journey) async {
     if (_offered) return;
     _offered = true;
+    // ⚠ 데모 모드는 **저장값이 복원된 뒤에** 본다. 첫 독자가 레이더면 기본값(켜짐)이 먼저 와서
+    //   꺼 둔 데모가 켜진 걸로 읽혔다 (2026-09-09 실기기). settings.dart `ready` 참조.
+    await ref.read(demoModeProvider.notifier).ready;
+    if (!mounted) return;
     if (ref.read(demoModeProvider) || journey.path.length < 2) {
       // 데모 모드는 시트 없이 돈다 — 시연 리허설에서 내비를 열지 않고도 레이더를 봐야 한다.
       final demo = ref.read(demoModeProvider);

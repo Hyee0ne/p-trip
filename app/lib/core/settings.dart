@@ -43,6 +43,14 @@ class DemoModeNotifier extends Notifier<bool> {
     }
   }
 
+  /// 저장값 복원이 끝났는가. **판단하기 전에 기다릴 것.**
+  ///
+  /// ⚠ 이 프로바이더는 처음 읽는 순간 만들어지고, `build()` 는 기본값(켜짐)을 **먼저** 돌려준 뒤
+  ///   저장값을 비동기로 덮어쓴다. 앱을 켜고 마이 탭을 안 거친 채 바로 출발하면 레이더가
+  ///   첫 독자가 되어 **꺼 둔 데모 모드를 켜진 걸로 읽었다** — 시트 없이 모의 주행이 돌고
+  ///   "데모 모드라 안내 없이 켰어요"가 떴다 (2026-09-09 실기기, 43번 국도). 이걸 기다리면 없다.
+  Future<void> get ready => _ready ?? Future<void>.value();
+
   Future<void> set(bool v) async {
     _dirty = true;
     state = v;
