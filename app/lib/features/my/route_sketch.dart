@@ -238,11 +238,13 @@ class RoutePainter extends CustomPainter {
     }
   }
 
-  /// 10km 마다 선에 직각인 눈금. 숫자는 없다 — 리듬만 준다.
+  /// 10km 마다 선을 가로지르는 흰 눈금. 숫자는 없다 — 리듬만 준다.
+  /// ⚠ 파란 눈금은 파란 선 위에서 안 보였다 (시뮬레이터). 선을 가로지르는 흰 금이어야 읽힌다.
   void _paintTicks(Canvas canvas, Offset Function(double, double) at) {
     final paint = Paint()
-      ..color = AppColors.routeBlue.withValues(alpha: 0.45)
-      ..strokeWidth = 1.5;
+      ..color = Colors.white
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
     var acc = 0.0;
     var next = 10.0;
     for (var i = 1; i < points.length; i++) {
@@ -258,7 +260,7 @@ class RoutePainter extends CustomPainter {
         final pa = at(a.lat, a.lng), pb = at(b.lat, b.lng);
         final dir = pb - pa;
         if (dir.distance > 0) {
-          final n = Offset(-dir.dy, dir.dx) / dir.distance * 4;
+          final n = Offset(-dir.dy, dir.dx) / dir.distance * 3.5;
           canvas.drawLine(o - n, o + n, paint);
         }
         next += 10;
