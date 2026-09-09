@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 import '../../core/env.dart';
+import '../../core/os.dart';
 import '../../core/saves.dart';
 import '../../core/proximity_alert.dart';
 import '../../core/settings.dart';
@@ -507,15 +508,54 @@ class _MyScreenState extends ConsumerState<MyScreen> {
             const SizedBox(height: AppSpace.x4),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
               decoration: BoxDecoration(
                 color: AppColors.fill,
                 borderRadius: BorderRadius.circular(AppRadius.card),
               ),
-              child: const Text(
-                S.voiceBetterSteps,
-                style: TextStyle(fontSize: 13.5, height: 1.7, fontWeight: FontWeight.w600),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 한 줄에 화살표로 이어 쓰면 설정 앱을 오가며 따라가기 어렵다. 한 단계 한 줄.
+                  for (final (i, step) in S.voiceBetterSteps(iosMajor).indexed)
+                    Padding(
+                      padding: EdgeInsets.only(top: i == 0 ? 0 : 6),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 22,
+                            child: Text(
+                              '${i + 1}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                height: 1.6,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.ink3,
+                                fontFeatures: [FontFeature.tabularFigures()],
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              step,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                height: 1.6,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
+            ),
+            const SizedBox(height: AppSpace.x3),
+            const Text(
+              S.voiceBetterAfter,
+              style: TextStyle(fontSize: 13, height: 1.6, color: AppColors.ink2),
             ),
           ],
         ),

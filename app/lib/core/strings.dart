@@ -280,7 +280,21 @@ class S {
   ///   설정에서 내려받는다. 앱이 열어줄 수 있는 설정 화면도 없다 — 경로만 알려준다.
   static const voiceBetterRow = '더 자연스러운 목소리 받기';
   static const voiceBetterWhy = '지금은 기본 음성이에요. 고품질 음성을 내려받으면 낭독이 훨씬 자연스러워요.';
-  static const voiceBetterSteps = '설정 → 손쉬운 사용 → 콘텐츠 말하기 → 음성 → 한국어 → 유나 (고품질)';
+
+  /// 고품질 음성을 받는 길. 앱이 그 화면을 열어줄 수 없어 글로 안내한다.
+  /// ⚠ **iOS 26 에서 「콘텐츠 말하기」가 「읽기 및 말하기」로 바뀌었다.** 시뮬레이터 런타임의
+  ///   설정 앱 한국어 리소스(`ReadAndSpeakSettings.strings`)로 확인했다 (2026-09-09).
+  ///   품질 이름도 iOS 그대로: 「유나(기본 품질)」「유나(고품질)」「유나(프리미엄)」,
+  ///   버튼은 「프리미엄 음성 다운로드」. 지어내지 않는다 — 다르면 못 찾는다.
+  static List<String> voiceBetterSteps(int iosMajor) => [
+    '설정 → 손쉬운 사용',
+    iosMajor >= 26 ? '읽기 및 말하기' : '콘텐츠 말하기',
+    '음성 → 한국어 → 유나',
+    '프리미엄 음성 다운로드',
+  ];
+
+  /// 받고 나면 할 일이 없다 — 앱이 제일 좋은 음성을 알아서 고른다 (`Voice.pickVoice`).
+  static const voiceBetterAfter = '받고 나면 따로 고를 것 없이 앱이 그 목소리로 읽어요.';
 
   // ── 토스트 (§0.2 — 단일 스타일, 1.9초) ──
   static const toastSaved = '찜에 담았어요';
