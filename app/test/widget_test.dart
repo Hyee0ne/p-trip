@@ -39,7 +39,7 @@ void main() {
 
     expect(find.text(S.radarIdleTitle), findsOneWidget);
     expect(find.text(S.radarIdleCta), findsOneWidget);
-    expect(find.byType(RadarView), findsNothing, reason: '길 없이 스윕이 돌면 거짓말이다');
+    expect(find.byType(RadarView), findsOneWidget, reason: '그림은 돈다 (장식) — 실제 주행은 아니다');
     expect(find.text(S.radarScanning), findsNothing);
     // ⚠ 레이더에는 뷰 토글이 없다 — 운전 중엔 언제나 한 곳씩
     expect(find.text(S.viewBrowse), findsNothing);

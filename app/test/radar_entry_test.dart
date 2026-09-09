@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:p_trip/core/drive.dart';
 import 'package:p_trip/core/journey.dart';
 import 'package:p_trip/core/settings.dart';
 import 'package:p_trip/core/strings.dart';
@@ -50,7 +51,9 @@ void main() {
 
     expect(find.text(S.radarIdleTitle), findsOneWidget);
     expect(find.text(S.radarIdleCta), findsOneWidget);
-    expect(find.byType(RadarView), findsNothing, reason: '스윕이 돌면 돌고 있는 것처럼 보인다');
+    expect(find.byType(RadarView), findsOneWidget, reason: '그림은 돈다 — 죽은 화면처럼 보이면 안 된다');
+    final c = ProviderScope.containerOf(tester.element(find.byType(RadarScreen)));
+    expect(c.read(driveProvider).running, isFalse, reason: '그림만 돈다 — 위치도 서버도 안 건드린다');
     expect(find.text(S.radarScanning), findsNothing);
     expect(find.text(S.radarFinish), findsNothing, reason: '마칠 여행이 없다');
     expect(tester.takeException(), isNull);

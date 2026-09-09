@@ -588,7 +588,9 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
 
   /// ⓪ 레이더 탭인데 길을 안 골랐을 때 (SCREENS.md DR-01 진입).
   ///
-  /// ⚠ 아무것도 돌지 않는다. 원은 그리되 **스윕이 없다** — 도는 것처럼 보이면 거짓말이다.
+  /// ⚠ **그림만 돈다.** 스윕은 장식이다 — 위치도 서버도 건드리지 않는다 (driveProvider 는 멈춰 있다).
+  ///   전에는 멈춘 원을 그렸는데 화면이 죽어 보였다 (2026-09-09). 돌려 두되 블립은 없다 —
+  ///   없는 발견을 찍으면 그때부터 거짓말이다.
   /// ⚠ 버튼 하나가 발견 탭으로 보낸다. 눌러도 아무 일 없는 화면을 남기지 않는다.
   Widget _idle() => Center(
     child: Padding(
@@ -596,7 +598,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(width: 200, height: 200, child: CustomPaint(painter: _StillRings())),
+          const SizedBox(width: 220, height: 220, child: RadarView(blips: [])),
           const SizedBox(height: AppSpace.x6),
           const Text(
             S.radarIdleTitle,
@@ -880,32 +882,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
       ),
     );
   }
-}
-
-/// ⓪ 화면의 멈춘 원. 스윕이 없다 — 돌지 않는다는 걸 그림이 말한다.
-class _StillRings extends CustomPainter {
-  const _StillRings();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final c = Offset(size.width / 2, size.height / 2);
-    final r = size.width / 2;
-    final ring = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..color = const Color(0x17F0EDE6);
-    for (final f in [1.0, 0.66, 0.33]) {
-      canvas.drawCircle(c, r * f, ring);
-    }
-    final cross = Paint()
-      ..strokeWidth = 1
-      ..color = const Color(0x0FF0EDE6);
-    canvas.drawLine(Offset(0, c.dy), Offset(size.width, c.dy), cross);
-    canvas.drawLine(Offset(c.dx, 0), Offset(c.dx, size.height), cross);
-  }
-
-  @override
-  bool shouldRepaint(_StillRings oldDelegate) => false;
 }
 
 /// DR-02 근접 발견 카드 — 전면 카드 (SCREENS.md DR-02).

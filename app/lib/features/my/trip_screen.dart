@@ -15,6 +15,7 @@ import '../../core/widgets/route_badge.dart';
 import '../../core/widgets/spot_image.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/providers.dart';
+import 'route_sketch.dart';
 import 'share_card.dart';
 
 /// MY-02 자동 여행기 (SCREENS.md MY-02).
@@ -58,6 +59,15 @@ class _Body extends ConsumerWidget {
         children: [
           _appBar(context),
           _header(),
+          // 지나온 길. 공유 카드와 같은 선인데 **여기선 통째로** 그린다 — 내 기기 안이다.
+          //   점이 둘 미만이면(방금 시작·강제 종료) 상자를 그리지 않는다. 없는 길을 채우지 않는다.
+          if (path.length >= 2) ...[
+            const SizedBox(height: AppSpace.x4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 22),
+              child: RouteSketch(points: path, height: 190),
+            ),
+          ],
           const SizedBox(height: AppSpace.x5),
           // 사진이 없으면 자리도 만들지 않는다 — 없는 걸 채우지 않는다.
           if (photos != null && photos.photos.isNotEmpty) ...[
@@ -288,30 +298,9 @@ class _Body extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 22),
       child: Column(
         children: [
+          // ⚠ '시작·끝 300m는 가려져요' 줄과 '하루 더?' 링크는 뺐다 (2026-09-09).
+          //   자르기는 코드가 그대로 한다(share_card `trimEnds`) — 말만 안 할 뿐이다.
           _ShareButton(trip: trip, path: path, meals: meals),
-          const SizedBox(height: AppSpace.x3),
-          // 무엇이 가려지는지 버튼 밑에 그대로 적는다. 미리보기를 없앤 자리를 이 줄이 메운다.
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.shield_outlined, size: 13, color: AppColors.ink3),
-              const SizedBox(width: 5),
-              const Text(S.tripShareToast, style: TextStyle(fontSize: 12, color: AppColors.ink3)),
-            ],
-          ),
-          const SizedBox(height: AppSpace.x5),
-          // 탭이 아니라 문장 하나. 숙소를 팔지 않는다 (원칙 4).
-          GestureDetector(
-            onTap: () => showAppToast(context, '주변 숙박 정보는 준비 중이에요'),
-            child: const Text(
-              S.oneMoreDay,
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.ink2,
-                decoration: TextDecoration.underline,
-              ),
-            ),
-          ),
         ],
       ),
     );

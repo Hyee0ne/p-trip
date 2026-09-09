@@ -178,7 +178,7 @@ class S {
 
   /// DR-01 ⓪ — 레이더 탭인데 길을 안 골랐을 때 (2026-09-08).
   /// ⚠ 아무것도 돌지 않는다. 버튼 하나가 발견 탭으로 보낸다 — 눌러도 아무 일 없는 화면이 아니다.
-  static const radarIdleTitle = '달릴 길을 먼저 골라주세요';
+  static const radarIdleTitle = '어디로 떠나볼까요?';
   static const radarIdleSub = '레이더는 길을 고르고 출발하면 켜져요';
   static const radarIdleCta = '국도 고르러 가기';
 
@@ -226,8 +226,6 @@ class S {
   static String photoCaption(int n) => '사진 $n장이 GPS·촬영 시각으로 경로 위에 자동 정리됐어요';
   static const tripShare = '여행기 공유하기';
   static const tripSharing = '카드 만드는 중…';
-  static const tripShareToast = '시작·끝 300m는 가려져요';
-  static const oneMoreDay = '이 동네가 좋았다면, 하루 더?';
   static const tripEmpty = '이번엔 그냥 달린 날 — 길만 남은 것도 여행이에요';
   static const photoDenied = '사진 접근을 허용하면 자동으로 정리해드려요';
 

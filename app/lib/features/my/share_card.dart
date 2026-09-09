@@ -12,6 +12,7 @@ import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/route_badge.dart';
 import '../../data/models/models.dart';
+import 'route_sketch.dart';
 
 /// 여행기 공유 카드 (SCREENS.md MY-02 §4).
 ///
@@ -101,21 +102,6 @@ class ShareCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _card(trimEnds(path));
 
-  /// 경로의 가로:세로 비. 너무 납작하거나 너무 좁아지지 않게 잘라둔다.
-  static double _aspect(List<TripPoint> pts) {
-    var minLat = pts.first.lat, maxLat = minLat, minLng = pts.first.lng, maxLng = minLng;
-    for (final p in pts) {
-      if (p.lat < minLat) minLat = p.lat;
-      if (p.lat > maxLat) maxLat = p.lat;
-      if (p.lng < minLng) minLng = p.lng;
-      if (p.lng > maxLng) maxLng = p.lng;
-    }
-    final x = (maxLng - minLng) * 88.0;
-    final y = (maxLat - minLat) * 111.0;
-    if (y <= 0) return 1.8;
-    return (x / y).clamp(0.62, 1.9);
-  }
-
   Widget _card(List<TripPoint> trimmed) {
     final t = trip;
     return Container(
@@ -167,16 +153,10 @@ class ShareCard extends StatelessWidget {
           //   넣으면 가느다란 선 하나에 좌우가 텅 빈다. 장식을 더하는 대신 여백을 없앤다.
           if (trimmed.length >= 2)
             Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                child: SizedBox(
-                  height: 170,
-                  width: 170 * _aspect(trimmed),
-                  child: ColoredBox(
-                    color: AppColors.fill,
-                    child: CustomPaint(painter: _RoutePainter(trimmed)),
-                  ),
-                ),
+              child: RouteSketch(
+                points: trimmed,
+                height: 170,
+                width: 170 * RouteSketch.aspect(trimmed),
               ),
             ),
           if (trimmed.length >= 2) const SizedBox(height: AppSpace.x4),
@@ -240,55 +220,4 @@ class ShareCard extends StatelessWidget {
       ],
     ),
   );
-}
-
-/// 지나온 길. **잘라낸 뒤의 점들만** 받는다 — 여기서 다시 자르지 않는다.
-class _RoutePainter extends CustomPainter {
-  _RoutePainter(this.points);
-  final List<TripPoint> points;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (points.length < 2) return;
-
-    var minLat = points.first.lat, maxLat = minLat;
-    var minLng = points.first.lng, maxLng = minLng;
-    for (final p in points) {
-      minLat = math.min(minLat, p.lat);
-      maxLat = math.max(maxLat, p.lat);
-      minLng = math.min(minLng, p.lng);
-      maxLng = math.max(maxLng, p.lng);
-    }
-    // 위도 1도와 경도 1도의 실제 길이가 다르다. 보정 안 하면 길이 납작해진다.
-    final spanX = math.max((maxLng - minLng) * 88.0, 1e-6);
-    final spanY = math.max((maxLat - minLat) * 111.0, 1e-6);
-    const pad = 14.0;
-    final scale = math.min((size.width - pad * 2) / spanX, (size.height - pad * 2) / spanY);
-    final offX = (size.width - spanX * scale) / 2;
-    final offY = (size.height - spanY * scale) / 2;
-
-    Offset at(TripPoint p) => Offset(
-      offX + (p.lng - minLng) * 88.0 * scale,
-      // 위도는 위로 커지는데 캔버스는 아래로 커진다.
-      size.height - offY - (p.lat - minLat) * 111.0 * scale,
-    );
-
-    final path = Path()..moveTo(at(points.first).dx, at(points.first).dy);
-    for (final p in points.skip(1)) {
-      path.lineTo(at(p).dx, at(p).dy);
-    }
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = AppColors.routeBlue
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3.5
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
-    // 양 끝점은 찍지 않는다 — 어디서 시작했는지 강조할 이유가 없다.
-  }
-
-  @override
-  bool shouldRepaint(_RoutePainter old) => old.points != points;
 }
