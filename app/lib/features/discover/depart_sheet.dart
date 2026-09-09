@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/journey.dart';
+import '../../core/nav.dart';
 import '../../core/location.dart';
 import '../../core/proximity_alert.dart';
 import '../../core/settings.dart';
@@ -106,7 +106,10 @@ class _DepartSheetState extends ConsumerState<DepartSheet> {
     // ⚠ 내비로 보내지 않는다. 레이더가 먼저고, 핸드오프 시트는 **레이더 위에서** 뜬다 —
     //   전에는 여기서 바로 카카오내비로 넘겨서 사용자가 이 앱의 핵심 화면을 한 번도
     //   안 보고 떠났다 (2026-09-08).
-    context.go('/radar');
+    // ⚠ **발견 탭을 뿌리로 돌려놓고 간다** (2026-09-09). 전에는 시트를 둔 채 탭만 바꿨다 —
+    //   이 시트는 발견 탭의 내비게이터 위에 떠 있어서, 여행을 마치고 발견 탭에 돌아오면
+    //   `_busy`(버튼 비활성)인 채 그대로 남아 있었다. 실기기에서 잡았다.
+    departToRadar(context);
   }
 
   @override

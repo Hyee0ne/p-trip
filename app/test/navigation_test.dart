@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:p_trip/core/location.dart';
 import 'package:p_trip/core/strings.dart';
+import 'package:p_trip/core/widgets/app_tab_bar.dart';
 import 'package:p_trip/core/widgets/cards.dart';
 import 'package:p_trip/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -251,6 +253,58 @@ void main() {
       await tester.pump(const Duration(milliseconds: 80));
     }
     expect(find.text(S.radarFinish), findsWidgets, reason: '출발하면 레이더다');
+
+    // ⚠ 발견 탭은 뿌리로 돌아가 있어야 한다 (2026-09-09). 코스 화면을 둔 채 탭만 바꾸면
+    //   여행을 마치고 돌아왔을 때 그 화면이 그대로 있다.
+    await tester.tap(
+      find.descendant(of: find.byType(AppTabBar), matching: find.text(S.tabDiscover)),
+    );
+    await settleRoutes(tester);
+    expect(find.text(S.courseStart), findsNothing, reason: '코스 화면은 내려갔다');
+    // 시트는 펼친 채 남아 있을 수 있다(그 화면의 상태다). 뿌리 화면인지만 본다.
+    expect(find.byKey(const Key('routes-sheet-list')), findsOneWidget, reason: '발견 탭은 국도 목록(뿌리)');
+  });
+
+  /// 실기기에서 잡은 것 (2026-09-09): 「길 떠나기」 시트는 발견 탭 내비게이터 위에 떠 있어서,
+  /// 레이더로 탭만 바꾸면 `_busy`(버튼 비활성)인 채 남았다. 여행을 마치고 발견 탭에 오면
+  /// 죽은 버튼이 기다리고 있었다.
+  testWidgets('노선 출발 — 시트는 닫히고 발견 탭은 뿌리로. 다시 열면 버튼이 살아 있다', (tester) async {
+    tester.view.physicalSize = const Size(393 * 3, 852 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    // 시트는 좌표가 있어야 출발시킨다 — 테스트엔 geolocator 가 없으니 하나 준다.
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          currentLocationProvider.overrideWith(
+            (ref) async => const LocFix(LocStatus.ready, lat: 37.52, lng: 129.11),
+          ),
+        ],
+        child: const PTripApp(),
+      ),
+    );
+    await toRoutes(tester);
+    await tapRoute(tester, '동해 바닷길');
+    expect(find.text(S.departWhichWay), findsOneWidget);
+
+    await tester.tap(find.text(S.departNorth));
+    for (var i = 0; i < 40; i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+    expect(find.text(S.radarFinish), findsWidgets, reason: '출발하면 레이더다');
+
+    await tester.tap(
+      find.descendant(of: find.byType(AppTabBar), matching: find.text(S.tabDiscover)),
+    );
+    await settleRoutes(tester);
+    expect(find.text(S.departWhichWay), findsNothing, reason: '시트는 닫혔다');
+    expect(find.text(S.routesNearTitle), findsOneWidget, reason: '발견 탭은 국도 목록(뿌리)');
+
+    // 다시 열면 새 시트다 — 버튼이 눌린다.
+    await tapRoute(tester, '동해 바닷길');
+    final btn = tester.widget<FilledButton>(find.widgetWithText(FilledButton, S.departNorth));
+    expect(btn.enabled, isTrue, reason: '비활성인 채 남은 옛 시트가 아니다');
   });
 
   testWidgets('스팟 길 안내 → HND 시트. 무료도로 안내가 있다', (tester) async {

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/journey.dart';
+import '../../core/nav.dart';
 import '../../core/proximity_alert.dart';
 import '../../core/settings.dart';
 import '../../core/strings.dart';
@@ -226,7 +227,8 @@ class _Body extends ConsumerWidget {
     if (!context.mounted) return;
     // 레이더가 **이 코스**를 달린다. 안 넘기면 무슨 코스를 골랐든 데모 코스가 돈다.
     await _setJourney(container, course);
-    if (context.mounted) context.go('/radar');
+    // 코스 화면을 내리고 간다 — 발견 탭은 뿌리로 (depart_sheet 와 같은 이유, 2026-09-09).
+    if (context.mounted) departToRadar(context);
   }
 
   Widget _cta(BuildContext context) {

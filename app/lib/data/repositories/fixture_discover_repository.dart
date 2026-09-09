@@ -276,7 +276,10 @@ class FixtureDiscoverRepository implements DiscoverRepository {
     required double lng,
     required bool northOrEast,
     double maxKm = 120,
-  }) async => const [];
+  }) async =>
+      // 서버 없이도 출발이 되게 곧은 선 두 점. ⚠ 비어 있으면 CO-08 이 '이을 선형이 없다'고
+      // 출발을 막아서, 키 없는 개발 빌드와 위젯 테스트가 레이더까지 못 갔다 (2026-09-09).
+      [GeoPoint(lat, lng), GeoPoint(lat + (northOrEast ? 0.3 : -0.3), lng)];
 
   @override
   Future<Spot?> spot(String id) async => _spots.where((s) => s.id == id).firstOrNull;
