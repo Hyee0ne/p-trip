@@ -421,6 +421,11 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
       // 헤드 + 상황 한 줄만. 본문까지 읽으면 운전 중에 길다.
       ref.read(voiceProvider).speak('${d.headline}. ${d.situation}');
     }
+    _armNoAnswer(d);
+  }
+
+  /// 15초 무응답 타이머. 찜을 누르면 다시 센다 — 반응이 있었다.
+  void _armNoAnswer(Discovery d) {
     _noAnswer?.cancel();
     _noAnswer = Timer(const Duration(seconds: 15), () {
       if (!mounted || !_cardVisible || _current?.spot.id != d.spot.id) return;
@@ -436,6 +441,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     _noAnswer?.cancel();
     ref.read(voiceProvider).stop();
 
+    // saved = 들르기. ⚠ 찜은 여기로 안 온다 (2026-09-09) — 찜은 카드를 닫지도, 들른 곳으로 적지도 않는다.
     final log = ref.read(tripLogProvider.notifier);
     if (saved) {
       log.addStop(current.spot, StopKind.visited);
@@ -541,10 +547,15 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
                         //   레이더는 현재 위치 기준이다 (원칙 2) — 들르러 가는 길에도 계속 본다.
                         _advance(saved: true);
                       },
+                      liked: ref.watch(savesProvider).isLiked(SaveRef.spot(current.spot.id)),
                       onSave: () {
-                        ref.read(savesProvider.notifier).toggleLike(SaveRef.spot(current.spot.id));
-                        showAppToast(context, S.toastSaved);
-                        _advance(saved: true);
+                        // ⚠ **카드는 그대로 둔다** (2026-09-09). 찜하고 들르기도 할 수 있어야 한다 —
+                        //   전에는 찜이 카드를 닫고 '들른 곳'으로까지 적었다. 찜은 찜일 뿐이다.
+                        final liked = ref
+                            .read(savesProvider.notifier)
+                            .toggleLike(SaveRef.spot(current.spot.id));
+                        if (liked) showAppToast(context, S.toastSaved);
+                        _armNoAnswer(current);
                       },
                       onSkip: () => _advance(saved: false),
                     ),
@@ -956,12 +967,16 @@ class _FinishButtonState extends State<_FinishButton> {
 class _DiscoveryCard extends StatelessWidget {
   const _DiscoveryCard({
     required this.discovery,
+    required this.liked,
     required this.onVisit,
     required this.onSave,
     required this.onSkip,
   });
 
   final Discovery discovery;
+
+  /// 찜 상태. 하트가 채워진다 — 카드가 남아 있으니 상태가 보여야 한다.
+  final bool liked;
   final VoidCallback onVisit;
   final VoidCallback onSave;
   final VoidCallback onSkip;
@@ -1077,7 +1092,11 @@ class _DiscoveryCard extends StatelessWidget {
                   const SizedBox(width: 20),
                   _primary(onVisit),
                   const SizedBox(width: 20),
-                  _circle(Icons.favorite_border, AppTouch.driveSecondary, onSave),
+                  _circle(
+                    liked ? Icons.favorite : Icons.favorite_border,
+                    AppTouch.driveSecondary,
+                    onSave,
+                  ),
                 ],
               ),
             ),
