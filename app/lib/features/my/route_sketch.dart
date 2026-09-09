@@ -243,7 +243,7 @@ class RoutePainter extends CustomPainter {
   void _paintTicks(Canvas canvas, Offset Function(double, double) at) {
     final paint = Paint()
       ..color = Colors.white
-      ..strokeWidth = 2
+      ..strokeWidth = 2.5
       ..strokeCap = StrokeCap.round;
     var acc = 0.0;
     var next = 10.0;
@@ -260,7 +260,8 @@ class RoutePainter extends CustomPainter {
         final pa = at(a.lat, a.lng), pb = at(b.lat, b.lng);
         final dir = pb - pa;
         if (dir.distance > 0) {
-          final n = Offset(-dir.dy, dir.dx) / dir.distance * 3.5;
+          // 선(4.5pt) 양옆으로 4pt 씩 나와야 눈금으로 읽힌다.
+          final n = Offset(-dir.dy, dir.dx) / dir.distance * 6.5;
           canvas.drawLine(o - n, o + n, paint);
         }
         next += 10;
