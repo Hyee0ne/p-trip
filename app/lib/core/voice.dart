@@ -55,12 +55,15 @@ class Voice {
   /// 말하기 직전에 다듬는다. **화면 문구는 그대로 두고 소리만 고친다.**
   ///
   /// 카드 문구가 그대로 들어오는데 기호가 섞여 있다 — 헤드라인의 `\n`은 어색하게 끊기고,
-  /// '근처에 있어요 · 국도에서 4분' 의 가운뎃점은 읽거나 삼킨다. 쉼표면 잠깐 쉬고 넘어간다.
+  /// '근처에 있어요 · 여기서 약 2.4km' 의 가운뎃점은 읽거나 삼킨다. 쉼표면 잠깐 쉬고 넘어간다.
   @visibleForTesting
   static String shapeForSpeech(String text) => text
       .replaceAll('\n', ' ')
       .replaceAll(RegExp(r'\s*[·•]\s*'), ', ')
       .replaceAll(RegExp(r'\s*[—–]\s*'), ', ')
+      // '2.4km' · '700m' 은 단위를 풀어 읽는다 — 합성음이 'km' 을 '케이엠' 으로 읽지 않게. km 을 먼저.
+      .replaceAllMapped(RegExp(r'(\d)\s*km\b'), (m) => '${m[1]}킬로미터')
+      .replaceAllMapped(RegExp(r'(\d)\s*m\b'), (m) => '${m[1]}미터')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
 

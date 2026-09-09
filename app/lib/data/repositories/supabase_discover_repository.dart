@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/strings.dart';
 import '../models/models.dart';
 import 'discover_repository.dart';
 
@@ -332,7 +333,7 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
           () {
             final s = _spot(byId[id]!);
             // 타이틀은 **존재형 문구**다. ⚠ 거리 문구를 넣지 않는다 (SCREENS.md DR-02).
-            //   상황 칩이 이미 "국도에서 N분"을 말한다 — 타이틀에 또 쓰면 같은 말이 두 번이다.
+            //   상황 칩이 이미 거리를 말한다 — 타이틀에 또 쓰면 같은 말이 두 번이다.
             final headline = switch (s.timeliness) {
               Timeliness.marketDay => '오늘이 마침 ${s.name}이에요',
               Timeliness.endingSoon => '${s.name}, 이번 주까지예요',
@@ -343,9 +344,11 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
             return Discovery(
               spot: s,
               headline: headline,
-              situation: s.timelinessNote.isEmpty
-                  ? '근처에 있어요 · 국도에서 ${s.detourMin}분'
-                  : '${s.timelinessNote} · 국도에서 ${s.detourMin}분',
+              // ⚠ 거리는 여기 없다. 저장소는 격자 좌표(_cell)만 알아서 정확한 위치를 모른다 —
+              //   카드가 뜨는 순간 레이더가 기기 안에서 잰다 (S.cardSituation).
+              //   전엔 '국도에서 N분'(detour_min)이었는데, 노선 최근접점↔스팟 왕복 어림이라
+              //   운전자 입장에선 어디서부터 N분인지 알 수 없었다 (2026-09-09).
+              lead: s.timelinessNote.isEmpty ? S.cardNearbyLead : s.timelinessNote,
               body: note.isEmpty ? s.blurb : '$note. ${s.blurb}',
             );
           }(),

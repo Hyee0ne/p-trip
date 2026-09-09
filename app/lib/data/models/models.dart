@@ -429,7 +429,7 @@ class Discovery {
   const Discovery({
     required this.spot,
     required this.headline,
-    required this.situation,
+    required this.lead,
     required this.body,
   });
 
@@ -438,8 +438,11 @@ class Discovery {
   /// 존재형 문구. "오늘이 마침 북평 5일장이에요"
   final String headline;
 
-  /// 상황 라벨. "동해IC 진출로 4분 전 · 오늘만"
-  final String situation;
+  /// 상황 칩 앞머리. "근처에 있어요" / "일몰 40분 전" / "동해IC 진출로 4분 전 · 오늘만"
+  ///
+  /// ⚠ 거리는 여기 없다. 저장소는 격자 좌표만 알아서 못 잰다 — 카드가 뜨는 **그 순간**
+  ///   레이더가 기기 안에서 현 위치↔스팟 직선거리를 재어 붙인다 (`S.cardSituation`).
+  final String lead;
   final String body;
 }
 

@@ -26,7 +26,7 @@ Discovery applySunset(Discovery d, TodaySky? sky, DateTime now) {
   return Discovery(
     spot: s,
     headline: S.sunsetTitle(s.name),
-    situation: S.sunsetSituation(left, s.detourMin),
+    lead: S.sunsetNote(left),
     body: d.body,
   );
 }

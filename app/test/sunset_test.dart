@@ -21,7 +21,7 @@ void main() {
       timeliness: t,
     ),
     headline: name,
-    situation: '근처에 있어요 · 국도에서 $detour분',
+    lead: S.cardNearbyLead,
     body: '',
   );
 
@@ -33,7 +33,7 @@ void main() {
     final d = applySunset(view('추암 촛대바위'), sky, at(18, 20));
     expect(d.spot.timeliness, Timeliness.sunset);
     expect(d.headline, S.sunsetTitle('추암 촛대바위'));
-    expect(d.situation, S.sunsetSituation(40, 6));
+    expect(d.lead, S.sunsetNote(40));
   });
 
   test('창 밖이면 안 붙는다 — 너무 이르거나(−61분) 너무 늦거나(−19분)', () {
@@ -59,7 +59,7 @@ void main() {
         trustScore: 80,
       ),
       headline: '물회 골목',
-      situation: '',
+      lead: '',
       body: '',
     );
     expect(applySunset(food, sky, at(18, 20)).spot.timeliness, Timeliness.none);

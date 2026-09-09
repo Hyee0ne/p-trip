@@ -391,7 +391,8 @@ class FixtureDiscoverRepository implements DiscoverRepository {
         hasPhoto: true,
       ),
       headline: '오늘이 마침\n북평 5일장이에요',
-      situation: '동해IC 진출로 4분 전 · 오늘만',
+      // ⚠ 픽스처 스팟엔 좌표가 없어 거리는 안 붙는다 — 앞머리만 나간다 (S.cardSituation).
+      lead: '동해IC 진출로 4분 전 · 오늘만',
       body: '3·8일에만 서는 장이라, 다음 장은 5일 뒤예요.',
     ),
     Discovery(
@@ -406,7 +407,7 @@ class FixtureDiscoverRepository implements DiscoverRepository {
         hasPhoto: true,
       ),
       headline: '어달마을에\n물회 골목이 있어요',
-      situation: '근처에 있어요 · 국도에서 4분',
+      lead: '근처에 있어요',
       body: '간판 없는 집이 많아요. 들른 차들은 다음에 묵호등대로 갔어요.',
     ),
     Discovery(
@@ -422,7 +423,7 @@ class FixtureDiscoverRepository implements DiscoverRepository {
         hasPhoto: true,
       ),
       headline: '곧 추암 촛대바위에\n해가 져요',
-      situation: '일몰 40분 전 · 국도에서 6분',
+      lead: '일몰 40분 전',
       body: '바위 사이로 해가 떨어지는 걸 보려고 새벽에도 옵니다.',
     ),
   ];

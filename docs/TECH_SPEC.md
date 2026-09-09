@@ -72,7 +72,9 @@ spots: id, tourapi_contentid, type(enum), name, lat, lng, geom(Point),
 
 -- detour_min 정의 (라우팅 API 없이 계산 — 비내비 원칙)
 --   ceil( ST_Distance(exit_geom, geom) / 40km/h * 60 ) * 2   -- 왕복, 지방도 40km/h 가정
---   UI 표기는 항상 "국도에서 약 N분". 도착 시각으로 환산 금지
+--   UI 표기는 "국도에서 약 N분" (브라우징·상세). 도착 시각으로 환산 금지
+--   ⚠ 레이더 발견 카드(DR-02)는 이 값을 안 쓴다 (2026-09-09) — 카드가 뜬 순간의
+--     현 위치↔스팟 직선거리를 기기 안에서 재어 "여기서 약 N km" 로 적는다. 분으로 바꾸지 않는다
 
 -- 연관 관광지 (발자국 데이터)
 spot_links: from_spot_id, to_spot_id, category, rank

@@ -60,6 +60,10 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
   /// 지금 화면에 떠 있는 발견.
   Discovery? _current;
 
+  /// [_current] 가 뜬 **그 순간**의 현 위치↔스팟 직선거리(km). 좌표가 없으면 null.
+  /// ⚠ 한 번 재고 갱신하지 않는다 — 줄어드는 숫자는 카운트다운이다 (원칙 6).
+  double? _currentKm;
+
   /// 카드를 띄우는 구간 — 진출로까지 3~7분 (TECH_SPEC §3.1 5번).
   /// 너무 이르면 잊어버리고, 너무 늦으면 상의할 시간이 없다.
   /// 발견을 내보내는 **반경(km)**. 진행 방향으로 이 안에 들어오면 알린다.
@@ -288,7 +292,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     var bestScore = 0.0;
     final now = DateTime.now();
     // 큐는 이미 **현 위치 반경 _aheadKm, 진행 방향 ±60°**로 걸러져 온다
-    // (discover_ahead RPC). 여기서 거리를 다시 재지 않는다.
+    // (discover_ahead RPC). 여기서 거리로 **거르지** 않는다 — 칩에 적는 거리는 보여주는 값이다 (_kmFromHere).
     // ⚠ 전에는 exit_frac 으로 쟀는데, 그건 **그 스팟이 속한 노선의** 비율이라
     //   다른 국도를 달리면 뺄셈 자체가 말이 안 됐다 (43번 위에서 7번 스팟이 뜬 이유).
     // ⚠ '같은 유형 연속 금지'는 폐기했다 (2026-08-30). 빈도 제한이 없어진 마당에
@@ -315,7 +319,11 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
       // 앞에 있을 때와 **같은 발견을** 내보낸다 (2026-08-30 결정, SCREENS.md DR-06).
       // 운전 중엔 배너를 읽을 수 없어 소리가 본 채널이고 알림은 나중에 볼 흔적이다.
       if (_voiceOn) {
-        ref.read(voiceProvider).speak('${best.headline}. ${best.situation}');
+        ref
+            .read(voiceProvider)
+            .speak(
+              '${best.headline}. ${S.cardSituation(best.lead, _kmFromHere(drive, best.spot))}',
+            );
       }
       ref
           .read(proximityAlertsProvider)
@@ -324,6 +332,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     }
 
     _current = best;
+    _currentKm = _kmFromHere(drive, best.spot);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // 그 사이 여행을 마쳤으면 내보내지 않는다.
       if (!mounted || !ref.read(driveProvider).running) return;
@@ -349,6 +358,14 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
       score *= 2;
     }
     return score;
+  }
+
+  /// 카드가 뜨는 **이 순간** 현 위치↔스팟 직선거리(km). **기기 안에서만 잰다** — 정확한 좌표는
+  /// 서버로 안 간다 (docs/위치정보_문의.md). 좌표를 모르면 null — 숫자를 지어내지 않는다.
+  /// ⚠ 분으로 바꾸지 않는다. 그건 도착 예정이고 원칙 1이 막는다.
+  static double? _kmFromHere(DriveState d, Spot s) {
+    if (!d.hasFix || s.lat == null || s.lng == null) return null;
+    return roughKm(d.lat!, d.lng!, s.lat!, s.lng!);
   }
 
   /// 0.1도 격자로 반올림. sun_moon 캐시가 그 단위다.
@@ -422,7 +439,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
   void _announce(Discovery d) {
     if (_voiceOn) {
       // 헤드 + 상황 한 줄만. 본문까지 읽으면 운전 중에 길다.
-      ref.read(voiceProvider).speak('${d.headline}. ${d.situation}');
+      ref.read(voiceProvider).speak('${d.headline}. ${S.cardSituation(d.lead, _currentKm)}');
     }
     _armNoAnswer(d);
   }
@@ -455,6 +472,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     setState(() {
       _cardVisible = false;
       _current = null;
+      _currentKm = null;
     });
     // 카드가 사라지고 바로 다음 걸 띄우지 않는다. 다음 발견이 앞에 올 때까지 기다린다.
     _nextCard?.cancel();
@@ -531,6 +549,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
                   if (_cardVisible && current != null)
                     _DiscoveryCard(
                       discovery: current,
+                      situation: S.cardSituation(current.lead, _currentKm),
                       onVisit: () {
                         // ⚠ 거점을 없앴다 (2026-09-07). **누른 곳이 목적지다.**
                         //   전에는 거점을 목적지로 두고 이 발견을 경유지로 넘겼다.
@@ -884,6 +903,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     _noAnswer?.cancel();
     ref.read(voiceProvider).stop();
     _current = null;
+    _currentKm = null;
     _cardVisible = false;
     final log = ref.read(tripLogProvider.notifier);
     final id = log.end();
@@ -977,6 +997,7 @@ class _FinishButtonState extends State<_FinishButton> {
 class _DiscoveryCard extends StatelessWidget {
   const _DiscoveryCard({
     required this.discovery,
+    required this.situation,
     required this.liked,
     required this.onVisit,
     required this.onSave,
@@ -984,6 +1005,9 @@ class _DiscoveryCard extends StatelessWidget {
   });
 
   final Discovery discovery;
+
+  /// 상황 칩 한 줄. 앞머리 + 카드가 뜬 순간의 거리 — 레이더가 만들어 넘긴다 (S.cardSituation).
+  final String situation;
 
   /// 찜 상태. 하트가 채워진다 — 카드가 남아 있으니 상태가 보여야 한다.
   final bool liked;
@@ -1055,7 +1079,7 @@ class _DiscoveryCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 7),
                         Text(
-                          d.situation,
+                          situation,
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w800,

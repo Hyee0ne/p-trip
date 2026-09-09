@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 /// P의 여행 고정 카피 — 단일 소스.
 ///
 /// 출처는 `docs/SCREENS.md`. 그 문서에서 " "로 적힌 문구는 **고정 문구**이고
@@ -214,7 +216,30 @@ class S {
   static const cardSave = '찜해두기';
   static String cardMarketDay(String name) => '오늘이 마침 $name이에요';
   static String cardSunset(String name) => '곧 $name에 해가 져요';
-  static String cardNearby(int min) => '근처에 있어요 · 국도에서 $min분';
+
+  /// 상황 칩 앞머리(일반형). 거리는 여기 없다 — 카드가 뜨는 순간 레이더가 [cardSituation] 으로 붙인다.
+  static const cardNearbyLead = '근처에 있어요';
+
+  /// '여기서 약 2.4km'. 카드가 뜬 순간의 **현 위치↔스팟 직선거리**다. 도로 거리도 소요시간도 아니다.
+  /// ⚠ 분으로 바꾸지 않는다 — 그건 도착 예정(ETA)이고 원칙 1이 막는다.
+  /// ⚠ 전엔 '국도에서 N분'(detour_min: 노선 최근접점↔스팟 왕복 어림)이었는데,
+  ///   운전자 입장에선 어디서부터 N분인지 알 수 없었다 (2026-09-09).
+  static String cardFromHere(double km) => '여기서 약 ${distanceLabel(km)}';
+
+  /// 앞머리 + 거리. 거리를 모르면(좌표 없음·위치 없음) 앞머리만 — 없는 숫자를 지어내지 않는다.
+  static String cardSituation(String lead, double? km) =>
+      km == null ? lead : '$lead · ${cardFromHere(km)}';
+
+  /// 0.73 → '700m' · 2.44 → '2.4km' · 2.0 → '2km' · 12.6 → '13km'. 100m 아래는 '100m' 로 올린다.
+  static String distanceLabel(double km) {
+    if (km < 0.95) return '${math.max(100, (km * 10).round() * 100)}m';
+    if (km < 10) {
+      final v = (km * 10).round() / 10;
+      return v == v.roundToDouble() ? '${v.round()}km' : '${v}km';
+    }
+    return '${km.round()}km';
+  }
+
   static String nextMarketDay(int days) => '다음 장은 $days일 뒤예요';
   static String nextVisited(String spot) => '들른 차들은 다음에 $spot로 갔어요';
 
@@ -264,7 +289,6 @@ class S {
   // ── 일몰 발견 (SCREENS.md DR-02 2·3번) ──
   // ⚠ 문구는 DR-02 규정 그대로다. 임의로 다시 쓰지 말 것.
   static String sunsetTitle(String name) => '곧 $name에 해가 져요';
-  static String sunsetSituation(int minLeft, int detourMin) => '일몰 $minLeft분 전 · 국도에서 $detourMin분';
   static String sunsetNote(int minLeft) => '일몰 $minLeft분 전';
 
   // ── 데이터 출처 (MY-01/03 설정) ──

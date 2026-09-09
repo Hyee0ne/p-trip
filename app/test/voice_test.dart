@@ -52,9 +52,16 @@ void main() {
   group('말하기 전 다듬기 — 화면 문구는 그대로, 소리만', () {
     test('줄바꿈은 공백, 가운뎃점은 쉼표', () {
       expect(
-        Voice.shapeForSpeech('곧 추암 촛대바위에\n해가 져요. 일몰 40분 전 · 국도에서 4분'),
-        '곧 추암 촛대바위에 해가 져요. 일몰 40분 전, 국도에서 4분',
+        Voice.shapeForSpeech('곧 추암 촛대바위에\n해가 져요. 일몰 40분 전 · 여기서 약 2.4km'),
+        '곧 추암 촛대바위에 해가 져요. 일몰 40분 전, 여기서 약 2.4킬로미터',
       );
+    });
+
+    test('거리 단위는 풀어 읽는다 — km 을 먼저, m 은 그 다음', () {
+      expect(Voice.shapeForSpeech('근처에 있어요 · 여기서 약 700m'), '근처에 있어요, 여기서 약 700미터');
+      expect(Voice.shapeForSpeech('여기서 약 12km'), '여기서 약 12킬로미터');
+      // 숫자 뒤가 아니면 건드리지 않는다.
+      expect(Voice.shapeForSpeech('km 단위'), 'km 단위');
     });
 
     test('줄표도 쉼표 — 잠깐 쉬고 넘어간다', () {
