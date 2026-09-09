@@ -119,39 +119,32 @@ class _RouteMapPanelState extends State<RouteMapPanel> {
   }
 
   /// 갈래마다 따로 그린다. 국도는 끊겨 있어서 한 줄로 이으면 없는 길이 생긴다.
-  /// 근처 노선은 흰 밑선 + 파란 선 두 겹(MapKit 선엔 테두리가 없다), 먼 노선은 옅은 파란 선 하나.
+  ///
+  /// ⚠ **zIndex 를 쓰지 않는다.** apple_maps_flutter 의 zIndex 는 겹침 순서가 아니라
+  ///   `insertOverlay(at:)` 의 **배열 위치**다 — 값을 주면 새 선이 아래로 끼어들어 순서가 뒤섞인다.
+  ///   흰 밑선을 깔았더니 실기기에서 선이 죄다 하얗고 87번만 파랬다 (2026-09-09).
+  ///   밑선을 없애고 넣는 순서(먼 길 → 근처)로만 겹침을 정한다. 바뀐 선은 다시 위로 얹힌다.
   Set<Polyline> _buildPolylines() {
-    final out = <Polyline>{};
+    Polyline line(m.RouteLine r, int i, List<LatLng> pts, {required bool near}) => Polyline(
+      polylineId: PolylineId('r-${r.id}-$i'),
+      points: pts,
+      // 전국이 한 화면일 때 두꺼우면 덩어리가 된다 — 근처 4pt, 먼 길 3pt(옅게).
+      color: near ? AppColors.routeBlue : AppColors.routeBlue.withValues(alpha: 0.42),
+      width: near ? 4 : 3,
+    );
+    final far = <Polyline>[];
+    final nearLines = <Polyline>[];
     for (final r in widget.routes) {
       final near = widget.nearIds.contains(r.id);
       for (var i = 0; i < r.paths.length; i++) {
         final chain = r.paths[i];
         if (chain.length < 2) continue;
         final pts = [for (final p in chain) LatLng(p.lat, p.lng)];
-        if (near) {
-          out.add(
-            Polyline(
-              polylineId: PolylineId('u-${r.id}-$i'),
-              points: pts,
-              color: Colors.white,
-              width: 6,
-              zIndex: 1,
-            ),
-          );
-        }
-        out.add(
-          Polyline(
-            polylineId: PolylineId('r-${r.id}-$i'),
-            points: pts,
-            color: near ? AppColors.routeBlue : AppColors.routeBlue.withValues(alpha: 0.42),
-            // 전국이 한 화면일 때 두꺼우면 덩어리가 된다 — 근처 4pt, 먼 길 3pt(옅게).
-            width: near ? 4 : 3,
-            zIndex: near ? 2 : 0,
-          ),
-        );
+        (near ? nearLines : far).add(line(r, i, pts, near: near));
       }
     }
-    return out;
+    // 먼 길을 먼저 깔고 근처를 그 위에.
+    return {...far, ...nearLines};
   }
 
   @override
