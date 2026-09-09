@@ -489,8 +489,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
                       _radar(queue),
                       const SizedBox(height: AppSpace.x5),
                       _notRouteNotice(),
-                      const SizedBox(height: AppSpace.x4),
-                      const SizedBox(height: AppSpace.x5),
+                      const SizedBox(height: AppSpace.x8),
                       // 내비 앱을 고르기 전엔 마칠 여행이 없다 — 시트를 다시 여는 버튼만.
                       if (_armed) _finishButton() else _handoffButton(),
                     ],
@@ -851,37 +850,95 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
   Widget _finishButton() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18),
-      child: SizedBox(
-        height: 50,
-        child: OutlinedButton(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.darkInk,
-            backgroundColor: const Color(0x17F0EDE6),
-            side: const BorderSide(color: AppColors.darkLine),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.button)),
-          ),
-          onPressed: () {
-            // ⚠ 하드코딩된 'ep3'로 가고 있었다. 지금 막 끝낸 여행으로 간다.
-            ref.read(driveProvider.notifier).stop();
-            final log = ref.read(tripLogProvider.notifier);
-            final id = log.end();
-            // 51선 수집은 **지나온 점을 노선에 붙여** 센다 (맵매칭).
-            // ⚠ 화면을 붙잡지 않는다. 실패해도 여행기는 열린다 — 그때는 예전 방식으로 센다.
-            if (id != null) {
-              final pts = log.pointsOf(id);
-              ref
-                  .read(discoverRepositoryProvider)
-                  .matchRouteKm(pts)
-                  .then((byRoute) => log.setRouteKm(id, byRoute))
-                  .catchError((_) {});
-            }
-            // 여정을 비운다 → 레이더 탭은 다시 ⓪(길을 골라주세요)이 된다.
-            ref.read(startedJourneyProvider.notifier).set(null);
-            context.go(id == null ? '/my' : '/my/trip/$id');
-          },
-          child: const Text(
-            S.radarFinish,
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+      child: _FinishButton(onPressed: _finish),
+    );
+  }
+
+  /// 오늘 여행을 마친다 → 여행기로. 버튼 하나가 하는 일의 전부다.
+  void _finish() {
+    // ⚠ 하드코딩된 'ep3'로 가고 있었다. 지금 막 끝낸 여행으로 간다.
+    ref.read(driveProvider.notifier).stop();
+    final log = ref.read(tripLogProvider.notifier);
+    final id = log.end();
+    // 51선 수집은 **지나온 점을 노선에 붙여** 센다 (맵매칭).
+    // ⚠ 화면을 붙잡지 않는다. 실패해도 여행기는 열린다 — 그때는 예전 방식으로 센다.
+    if (id != null) {
+      final pts = log.pointsOf(id);
+      ref
+          .read(discoverRepositoryProvider)
+          .matchRouteKm(pts)
+          .then((byRoute) => log.setRouteKm(id, byRoute))
+          .catchError((_) {});
+    }
+    // 여정을 비운다 → 레이더 탭은 다시 ⓪(길을 골라주세요)이 된다.
+    ref.read(startedJourneyProvider.notifier).set(null);
+    context.go(id == null ? '/my' : '/my/trip/$id');
+  }
+}
+
+/// 「오늘 여행 마치기」 — 레이더의 유일한 하단 버튼 (2026-09-09 디자인 개정).
+///
+/// 어두운 화면에서 **밝은 크림 한 덩어리**로 선다. 전에는 얇은 외곽선(ghost)이라
+/// 운전 중엔 눈에 안 들어왔고, 문구에 '→ 여행기 만들기'까지 붙어 두 가지를 말했다.
+/// - 56pt: 운전 중 터치 영역 (CLAUDE.md 서체·터치 기준)
+/// - 눌리는 동안 살짝 줄어들고(0.97) 짧은 진동 — 여행 하나를 닫는 손맛
+/// - 아이콘은 책 한 권: 마치면 여행기가 된다는 걸 문구 대신 조용히 말한다
+class _FinishButton extends StatefulWidget {
+  const _FinishButton({required this.onPressed});
+  final VoidCallback onPressed;
+
+  @override
+  State<_FinishButton> createState() => _FinishButtonState();
+}
+
+class _FinishButtonState extends State<_FinishButton> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: S.radarFinish,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => setState(() => _down = true),
+        onTapCancel: () => setState(() => _down = false),
+        onTapUp: (_) => setState(() => _down = false),
+        onTap: () {
+          HapticFeedback.mediumImpact();
+          widget.onPressed();
+        },
+        child: AnimatedScale(
+          scale: _down ? 0.97 : 1,
+          duration: const Duration(milliseconds: 110),
+          curve: Curves.easeOut,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 110),
+            height: 56,
+            decoration: BoxDecoration(
+              color: _down ? const Color(0xFFDDD9D0) : AppColors.darkInk,
+              borderRadius: BorderRadius.circular(AppRadius.button),
+              boxShadow: const [
+                // 숯 위의 크림은 그림자가 아니라 **빛**으로 뜬다.
+                BoxShadow(color: Color(0x2EF0EDE6), blurRadius: 28, offset: Offset(0, 6)),
+              ],
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.auto_stories_outlined, size: 20, color: AppColors.darkBg),
+                SizedBox(width: 9),
+                Text(
+                  S.radarFinish,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                    color: AppColors.darkBg,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
