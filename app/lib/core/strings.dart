@@ -269,8 +269,12 @@ class S {
   static const sourcesRow = '데이터 출처';
   static const sourcesIntro = '이 앱은 아래 공공데이터를 이용합니다.';
   static const sourcesNote = '사진과 소개글의 저작권은 각 제공기관에 있습니다.';
-  static const sourcesMapRow = '지도 · 길찾기 · 장소검색';
-  static const sourcesMapOrg = '카카오';
+
+  /// ⚠ 카카오 → Apple 지도 · 티맵 (2026-09-09). 앱에 카카오가 남지 않았다.
+  static const sourcesMapRow = '지도';
+  static const sourcesMapOrg = 'Apple 지도';
+  static const sourcesNavRow = '길 안내 · 앱으로 넘겨요';
+  static const sourcesNavOrg = '티맵';
 
   /// (제공기관, 데이터셋). 파이프라인이 **실제로 부르는 것**만 적는다 —
   /// 안 쓰는 출처를 적으면 그것도 거짓말이다.

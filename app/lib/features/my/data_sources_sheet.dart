@@ -56,6 +56,7 @@ class DataSourcesSheet extends StatelessWidget {
             for (final s in S.sources) _Row(org: s.org, what: s.what),
             const Divider(height: AppSpace.x6, thickness: 1, color: AppColors.line),
             const _Row(org: S.sourcesMapOrg, what: S.sourcesMapRow),
+            const _Row(org: S.sourcesNavOrg, what: S.sourcesNavRow),
             const SizedBox(height: AppSpace.x5),
             const Text(
               S.sourcesNote,
