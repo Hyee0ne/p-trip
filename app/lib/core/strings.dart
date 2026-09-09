@@ -76,7 +76,6 @@ class S {
   static const routeNotePopular = '이 길로 다녀간 사람이 많아요';
 
   /// 코스 진입 — 주인공이 아니라 안전망이라는 게 문장에 있어야 한다.
-  static const routesCourseHint = '처음이라 걱정되면, 짜여진 코스로';
 
   // ── CO-08 길 떠나기 ──
   static String routeNumber(int id) => '$id번 국도';

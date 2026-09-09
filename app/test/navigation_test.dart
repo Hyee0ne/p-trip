@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:p_trip/core/location.dart';
 import 'package:p_trip/core/strings.dart';
 import 'package:p_trip/core/widgets/app_tab_bar.dart';
@@ -61,17 +62,11 @@ void main() {
     await settleRoutes(tester);
   }
 
-  /// 시트 안에서 노선 줄을 찾아 탭한다. 51줄이라 화면 밖으로 나간다.
-  /// 코스는 이제 **시트 맨 아래 한 줄**로 들어간다 (CO-01 재설계).
-  /// 주 흐름은 국도 → 방향이고, 코스는 "처음이라 걱정되면" 쪽이다.
+  /// 코스 화면으로. ⚠ 홈의 「처음이라 걱정되면, 짜여진 코스로」 줄은 지웠다 (2026-09-09) —
+  ///   코스 화면 자체는 남아 있어 라우터로 바로 간다.
   Future<void> toCourse(WidgetTester tester) async {
-    await tester.dragUntilVisible(
-      find.text(S.routesCourseHint),
-      find.byKey(const Key('routes-sheet-list')),
-      const Offset(0, -120),
-    );
-    await settleRoutes(tester);
-    await tester.tap(find.text(S.routesCourseHint));
+    // 픽스처의 첫 코스(한계령길). 데모 코스 id 는 서버 것이라 픽스처엔 없다.
+    GoRouter.of(tester.element(find.byType(AppTabBar))).go('/course/hangyeryeong');
     await tester.pumpAndSettle();
   }
 

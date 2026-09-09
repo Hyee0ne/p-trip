@@ -276,12 +276,13 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
           ),
         )
       else
-        SliverList.list(children: [for (final r in rest) _RouteRow(route: r)]),
+        SliverList.list(
+          children: [for (final r in rest) _RouteRow(route: r, onPick: _pick)],
+        ),
 
       // 코스는 **보조 진입로**다 (CO-01 재설계). 주 흐름은 길과 방향이고,
       // 코스는 "처음이라 걱정되면" 쪽으로 맨 아래 한 줄만 둔다.
-      const SliverToBoxAdapter(child: _CourseLine()),
-
+      // ⚠ 「처음이라 걱정되면, 짜여진 코스로」 줄은 지웠다 (2026-09-09). 코스 화면은 남아 있지만 홈에서 가는 길은 없다.
       SliverToBoxAdapter(
         child: SizedBox(height: AppSpace.x8 + MediaQuery.viewPaddingOf(context).bottom),
       ),
@@ -340,38 +341,6 @@ class _MapSearchBar extends StatelessWidget {
             SizedBox(width: 10),
             Text(S.searchHint, style: TextStyle(fontSize: 14.5, color: AppColors.ink3)),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// 코스 진입 한 줄. **버튼이 아니라 문장이다** — 주인공이 아니라는 뜻이 모양에 있어야 한다.
-///
-/// ⚠ 코스를 없애지 않는 이유: 처음 쓰는 사람에게 안전망이 필요하다.
-///   다만 앞세우면 다시 '짜여진 경로를 고르는' 흐름이 된다 (CO-01 재설계).
-class _CourseLine extends ConsumerWidget {
-  const _CourseLine();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final courses = ref.watch(allCoursesProvider).value ?? const [];
-    // 코스가 없으면 줄도 없다. 눌러도 갈 데가 없는 문장을 두지 않는다.
-    if (courses.isEmpty) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.x5, AppSpace.gutter, 0),
-      child: Center(
-        child: GestureDetector(
-          onTap: () => context.push('/course/${courses.first.id}'),
-          child: const Text(
-            S.routesCourseHint,
-            style: TextStyle(
-              fontSize: 12.5,
-              color: AppColors.ink3,
-              decoration: TextDecoration.underline,
-              decorationColor: AppColors.ink3,
-            ),
-          ),
         ),
       ),
     );
