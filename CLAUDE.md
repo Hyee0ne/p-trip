@@ -179,6 +179,22 @@ p-trip/
   xcrun devicectl device process launch --terminate-existing --device <udid> com.ricecookey.pjourney
   ```
   ⚠ `flutter install --use-application-binary`는 멀쩡히 있는 `.app`을 "does not exist"라고 거부한다.
+  ⚠ **`This provisioning profile cannot be installed on this device` (0xe8008012)** —
+    기기가 팀에 등록 안 된 게 아니라 **로컬에 캐시된 옛 프로파일**을 Xcode가 갱신 없이 쓴 것이다
+    (팀을 `2Q5557H9T4`로 바꾼 2026-08-30 뒤로 두 번 겪었다). Xcode에 그 팀 계정이 없어서
+    `flutter build ios`는 새 프로파일을 못 받는다. 해법: 옛 프로파일 파일을 치우고
+    (`~/Library/Developer/Xcode/UserData/Provisioning Profiles/`, `embedded.mobileprovision`의 UUID)
+    **기기를 대상으로 지정해** API 키로 한 번 서명하면 `iOS Team Provisioning Profile: com.ricecookey.pjourney`가
+    새로 생기고, 그 뒤로는 `flutter build ios`가 그걸 쓴다.
+    ```bash
+    xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release -sdk iphoneos \
+      -destination 'platform=iOS,id=<devicectl identifier>' SYMROOT="$PWD/build/ios" OBJROOT="$PWD/build/ios" \
+      -allowProvisioningUpdates -allowProvisioningDeviceRegistration \
+      -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_7U29A76MBG.p8 \
+      -authenticationKeyID 7U29A76MBG -authenticationKeyIssuerID ea714c32-bf27-4e6f-b4cd-cadb3b7a3908 build
+    # 결과물은 build/ios/Release-iphoneos/Runner.app (dart-define은 직전 flutter build 의 Generated.xcconfig 를 쓴다)
+    ```
+  ⚠ 설치·실행은 **아이폰 잠금이 풀려 있어야** 한다 (`kAMDMobileImageMounterDeviceLocked`).
   ⚠ `flutter run -d <기기>`는 **`iproxy` 포트 포워딩이 깨져서 못 붙는다.**
 - **실기기 Dart 로그는 잡히지 않는다.** release 빌드는 `flutter logs`·`devicectl --console` 둘 다
   아무것도 안 준다. 원인 좁히기는 **같은 코드를 시뮬레이터에서 돌리고**
