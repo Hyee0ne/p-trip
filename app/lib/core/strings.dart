@@ -274,6 +274,12 @@ class S {
 
   static const photoAccessRow = '사진 접근';
 
+  /// MY-03 — **기본 음성일 때만** 보이는 행. iOS 고품질 음성은 앱이 못 받고 사용자가
+  ///   설정에서 내려받는다. 앱이 열어줄 수 있는 설정 화면도 없다 — 경로만 알려준다.
+  static const voiceBetterRow = '더 자연스러운 목소리 받기';
+  static const voiceBetterWhy = '지금은 기본 음성이에요. 고품질 음성을 내려받으면 낭독이 훨씬 자연스러워요.';
+  static const voiceBetterSteps = '설정 → 손쉬운 사용 → 콘텐츠 말하기 → 음성 → 한국어 → 유나 (고품질)';
+
   // ── 토스트 (§0.2 — 단일 스타일, 1.9초) ──
   static const toastSaved = '찜에 담았어요';
 

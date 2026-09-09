@@ -12,6 +12,7 @@ import '../../core/proximity_alert.dart';
 import '../../core/settings.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
+import '../../core/voice.dart';
 import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/cards.dart';
 import '../../core/widgets/heart_button.dart';
@@ -459,6 +460,17 @@ class _MyScreenState extends ConsumerState<MyScreen> {
                 onTap: PhotoManager.openSetting,
               ),
               const Divider(height: 1, thickness: 1, color: AppColors.line),
+              // ⚠ **기본 음성일 때만** 보인다. 고품질이 있거나 모르면(엔진 실패) 안 그린다 —
+              //   눌러도 할 게 없는 행을 남기지 않는다. 앱이 그 설정 화면을 열어줄 수도 없어
+              //   경로를 글로 보여주는 게 전부다.
+              if (ref.watch(voiceQualityProvider).value == false) ...[
+                row(
+                  S.voiceBetterRow,
+                  const Icon(Icons.chevron_right, size: 18, color: AppColors.ink3),
+                  onTap: _showVoiceBetter,
+                ),
+                const Divider(height: 1, thickness: 1, color: AppColors.line),
+              ],
               // ⚠ 공공누리 출처표시 의무. 지우지 말 것 (SCREENS.md MY-01/03).
               row(
                 S.sourcesRow,
@@ -469,6 +481,45 @@ class _MyScreenState extends ConsumerState<MyScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  /// 고품질 음성을 받는 길. 앱이 대신 열어줄 화면이 없어서 경로를 그대로 적는다.
+  void _showVoiceBetter() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(AppSpace.gutter, AppSpace.x5, AppSpace.gutter, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(S.voiceBetterRow, style: AppType.h2),
+            const SizedBox(height: AppSpace.x3),
+            const Text(
+              S.voiceBetterWhy,
+              style: TextStyle(fontSize: 14, height: 1.6, color: AppColors.ink2),
+            ),
+            const SizedBox(height: AppSpace.x4),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.fill,
+                borderRadius: BorderRadius.circular(AppRadius.card),
+              ),
+              child: const Text(
+                S.voiceBetterSteps,
+                style: TextStyle(fontSize: 13.5, height: 1.7, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

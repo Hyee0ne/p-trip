@@ -12,12 +12,57 @@ import 'package:flutter_tts/flutter_tts.dart';
 ///   → `setIosAudioCategory(playback, [mixWithOthers, duckOthers])`가 그 약속이다.
 ///   ⚠ **실기기에서만 확인된다.** 시뮬레이터는 오디오 세션 충돌을 재현하지 않는다.
 /// ⚠ 짧게 읽는다. 운전 중에 긴 문장을 들려주면 그 자체가 방해다.
+///
+/// **기기 음성만 쓴다** (2026-09-09 결정). 클라우드 TTS(ElevenLabs 등)는 품질이 위지만
+/// 국도 음영지역에서 끊기고, 낭독 문장에 스팟 이름이 들어가 "지금 어디 근처에 있다"가
+/// 외부로 나간다 — 위치정보 문의에서 "외부 제공 없음"으로 정리한 것과 어긋난다.
 class Voice {
   Voice._();
   static final instance = Voice._();
 
   FlutterTts? _tts;
   bool _failed = false;
+
+  /// 고른 음성이 고품질(enhanced·premium)인가. 엔진이 뜨기 전엔 null.
+  bool? _highQuality;
+
+  /// 등급 순위. 같은 '유나'라도 iOS 에 세 등급이 있고 기본은 압축본이다 — 그게 로봇 소리의 원인.
+  /// enhanced·premium 은 **사용자가 설정에서 내려받아야** 생긴다. 앱이 대신 받을 수 없다.
+  static const _rank = {'premium': 3, 'enhanced': 2, 'default': 1};
+
+  /// 한국어 음성 중 가장 좋은 것. 없으면 null — 그땐 언어만 잡고 iOS 가 고르게 둔다.
+  ///
+  /// [voices] 는 `getVoices()` 결과 그대로 (플랫폼 맵 목록). 키·값을 문자열로 정규화해 본다.
+  @visibleForTesting
+  static Map<String, String>? pickVoice(Iterable<dynamic> voices) {
+    Map<String, String>? best;
+    var bestRank = 0;
+    for (final raw in voices) {
+      if (raw is! Map) continue;
+      final v = {for (final e in raw.entries) '${e.key}': '${e.value}'};
+      // iOS 는 'ko-KR', 안드로이드는 'ko_KR' 로 온다.
+      final locale = (v['locale'] ?? '').replaceAll('_', '-').toLowerCase();
+      if (!locale.startsWith('ko')) continue;
+      final r = _rank[v['quality']] ?? 1;
+      if (r > bestRank) {
+        bestRank = r;
+        best = v;
+      }
+    }
+    return best;
+  }
+
+  /// 말하기 직전에 다듬는다. **화면 문구는 그대로 두고 소리만 고친다.**
+  ///
+  /// 카드 문구가 그대로 들어오는데 기호가 섞여 있다 — 헤드라인의 `\n`은 어색하게 끊기고,
+  /// '근처에 있어요 · 국도에서 4분' 의 가운뎃점은 읽거나 삼킨다. 쉼표면 잠깐 쉬고 넘어간다.
+  @visibleForTesting
+  static String shapeForSpeech(String text) => text
+      .replaceAll('\n', ' ')
+      .replaceAll(RegExp(r'\s*[·•]\s*'), ', ')
+      .replaceAll(RegExp(r'\s*[—–]\s*'), ', ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
 
   Future<FlutterTts?> _engine() async {
     if (_failed) return null;
@@ -33,8 +78,27 @@ class Voice {
         IosTextToSpeechAudioCategoryOptions.duckOthers,
       ], IosTextToSpeechAudioMode.voicePrompt);
       await t.setLanguage('ko-KR');
-      // 운전 중이라 조금 느리게. 기본 속도는 흘려듣기 쉽다.
-      await t.setSpeechRate(0.48);
+
+      // 목소리를 고른다. 안 고르면 iOS 가 압축본을 잡는다.
+      // ⚠ flutter_tts 에서 getVoices 는 함수가 아니라 **getter** 다.
+      final voices = await t.getVoices;
+      final picked = pickVoice(voices is List ? voices : const []);
+      if (picked != null) {
+        await t.setVoice({
+          'name': picked['name'] ?? '',
+          'locale': picked['locale'] ?? 'ko-KR',
+          // identifier 가 있으면 플러그인이 그걸로 정확히 잡는다 (이름·언어 검색보다 확실하다).
+          if ((picked['identifier'] ?? '').isNotEmpty) 'identifier': picked['identifier']!,
+        });
+        _highQuality = picked['quality'] == 'enhanced' || picked['quality'] == 'premium';
+      } else {
+        _highQuality = false;
+      }
+
+      // ⚠ 0.48 은 오히려 더 기계적으로 들렸다 — 늘어지는 만큼 합성음 티가 난다.
+      //   유나 음성엔 0.5 + 살짝 높은 피치가 자연스럽다. 실기기로 듣고 맞춘 값이다.
+      await t.setSpeechRate(0.5);
+      await t.setPitch(1.05);
       await t.setVolume(0.9);
       await t.awaitSpeakCompletion(true);
       _tts = t;
@@ -47,6 +111,13 @@ class Voice {
     }
   }
 
+  /// 설정 화면이 「더 자연스러운 목소리 받기」를 보여줄지 정할 때 쓴다.
+  /// 엔진을 못 띄우면(테스트·시뮬레이터) null — **모르면 안 보여준다.**
+  Future<bool?> probeQuality() async {
+    await _engine();
+    return _highQuality;
+  }
+
   /// 낭독 순서. **앞의 말을 끊지 않고 줄을 세운다.**
   ///
   /// ⚠ 전에는 speak마다 `stop()`을 불러 앞 문장을 잘랐다. 발견을 하나씩 띄우던 시절엔
@@ -55,8 +126,9 @@ class Voice {
   Future<void> _queue = Future<void>.value();
 
   Future<void> speak(String text) {
-    if (text.trim().isEmpty) return _queue;
-    final next = _queue.then((_) => _speakOne(text));
+    final shaped = shapeForSpeech(text);
+    if (shaped.isEmpty) return _queue;
+    final next = _queue.then((_) => _speakOne(shaped));
     // 한 건이 실패해도 줄이 끊기지 않게 한다.
     _queue = next.catchError((_) {});
     return _queue;
@@ -91,3 +163,7 @@ class Voice {
 }
 
 final voiceProvider = Provider<Voice>((ref) => Voice.instance);
+
+/// 고품질 음성이 깔려 있는가. false 면 MY-03 이 「더 자연스러운 목소리 받기」를 보여준다.
+/// null(모름)이면 안 보여준다 — 눌러도 할 게 없는 행을 남기지 않는다.
+final voiceQualityProvider = FutureProvider<bool?>((ref) => Voice.instance.probeQuality());
