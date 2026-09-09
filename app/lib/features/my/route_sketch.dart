@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
@@ -245,29 +246,40 @@ class RoutePainter extends CustomPainter {
       ..color = Colors.white
       ..strokeWidth = 2.5
       ..strokeCap = StrokeCap.round;
+    for (final (a, b) in tickLines(points, at)) {
+      canvas.drawLine(a, b, paint);
+    }
+  }
+
+  /// 눈금 선분들. [everyKm] 마다 하나, 선(4.5pt) 양옆으로 [half] 만큼 나온다.
+  @visibleForTesting
+  static List<(Offset, Offset)> tickLines(
+    List<TripPoint> pts,
+    Offset Function(double, double) at, {
+    double everyKm = 10,
+    double half = 6.5,
+  }) {
+    final out = <(Offset, Offset)>[];
     var acc = 0.0;
-    var next = 10.0;
-    for (var i = 1; i < points.length; i++) {
-      final a = points[i - 1], b = points[i];
+    var next = everyKm;
+    for (var i = 1; i < pts.length; i++) {
+      final a = pts[i - 1], b = pts[i];
       final segKm = math.sqrt(
         math.pow((b.lng - a.lng) * 88.0, 2) + math.pow((b.lat - a.lat) * 111.0, 2),
       );
       while (segKm > 0 && acc + segKm >= next) {
         final t = (next - acc) / segKm;
-        final lat = a.lat + (b.lat - a.lat) * t;
-        final lng = a.lng + (b.lng - a.lng) * t;
-        final o = at(lat, lng);
-        final pa = at(a.lat, a.lng), pb = at(b.lat, b.lng);
-        final dir = pb - pa;
+        final o = at(a.lat + (b.lat - a.lat) * t, a.lng + (b.lng - a.lng) * t);
+        final dir = at(b.lat, b.lng) - at(a.lat, a.lng);
         if (dir.distance > 0) {
-          // 선(4.5pt) 양옆으로 4pt 씩 나와야 눈금으로 읽힌다.
-          final n = Offset(-dir.dy, dir.dx) / dir.distance * 6.5;
-          canvas.drawLine(o - n, o + n, paint);
+          final n = Offset(-dir.dy, dir.dx) / dir.distance * half;
+          out.add((o - n, o + n));
         }
-        next += 10;
+        next += everyKm;
       }
       acc += segKm;
     }
+    return out;
   }
 
   /// 점 옆에 이름(과 시각). 오른쪽이 기본, 넘치면 왼쪽, 겹치면 아래.
