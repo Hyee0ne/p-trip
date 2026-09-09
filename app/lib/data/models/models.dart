@@ -275,11 +275,16 @@ class TripStop {
     this.lat,
     this.lng,
     this.note = '',
+    this.imageUrl,
   });
 
   final String spotId;
   final String spotName;
   final SpotType type;
+
+  /// 그 스팟의 대표 사진. 레이더 「오늘 들른 곳」 자취와 여행기 행이 쓴다 (2026-09-09).
+  /// ⚠ 없으면 유형색 원. 이전 기록엔 없다 — 지어내지 않는다.
+  final String? imageUrl;
 
   /// 'HH:mm'
   final String at;

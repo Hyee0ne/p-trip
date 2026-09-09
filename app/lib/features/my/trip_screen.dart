@@ -332,7 +332,14 @@ class _StopRow extends StatelessWidget {
                 ),
               ),
             ),
-            SpotImage(type: stop.type, spotId: stop.spotId, width: 44, height: 44, radius: 11),
+            SpotImage(
+              type: stop.type,
+              spotId: stop.spotId,
+              imageUrl: stop.imageUrl,
+              width: 44,
+              height: 44,
+              radius: 11,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

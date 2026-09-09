@@ -145,6 +145,7 @@ class _StopItem extends StatelessWidget {
                     child: SpotImage(
                       type: stop.type,
                       spotId: stop.spotId,
+                      imageUrl: stop.imageUrl,
                       width: _circle - 6,
                       height: _circle - 6,
                       radius: (_circle - 6) / 2,

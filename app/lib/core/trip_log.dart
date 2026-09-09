@@ -168,6 +168,7 @@ class TripLogNotifier extends Notifier<TripLog> {
       kind: kind,
       lat: spot.lat,
       lng: spot.lng,
+      imageUrl: spot.imageUrl,
     );
     _replace(trip.id, (t) => _copy(t, stops: [...t.stops, stop]));
   }
@@ -274,6 +275,7 @@ class TripLogNotifier extends Notifier<TripLog> {
           'lat': s.lat,
           'lng': s.lng,
           'note': s.note,
+          if (s.imageUrl != null) 'imageUrl': s.imageUrl,
         },
     ],
   };
@@ -326,6 +328,7 @@ class TripLogNotifier extends Notifier<TripLog> {
               orElse: () => StopKind.visited,
             ),
             note: (s['note'] as String?) ?? '',
+            imageUrl: s['imageUrl'] as String?,
           ),
     ],
   );
