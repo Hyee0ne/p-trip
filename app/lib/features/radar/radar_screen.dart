@@ -809,28 +809,9 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
                 ],
               ),
             ),
-            // ⚠ 코스가 없으면 '남은 거리'가 없다. 0에서 뺀 음수를 보여주면 거짓말이다.
-            if (ref.watch(driveProvider).courseKm > 0)
-              Positioned(
-                top: 12,
-                right: 14,
-                child: Row(
-                  children: [
-                    const Icon(Icons.cabin_outlined, size: 12, color: Color(0xFFB79BE0)),
-                    const SizedBox(width: 5),
-                    Text(
-                      // ⚠ 거점까지 거리는 아직 계산하지 않는다. 18km는 지어낸 값이었다.
-                      //   코스 진행률로 남은 거리는 알 수 있으니 그걸 말한다.
-                      '남은 ${(ref.watch(driveProvider).courseKm - ref.watch(driveProvider).distanceKm).toStringAsFixed(0)}km',
-                      style: const TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFFB79BE0),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            // ⚠ 우상단 「남은 Nkm」 칩은 지웠다 (2026-09-09). 오두막 아이콘·보라색은 거점(폐기)의
+            //   흔적이었고, 숫자도 '고른 선형의 남은 길이'라 목적지가 없는 이 화면과 맞지 않았다 —
+            //   국도 출발이면 그 선형은 120km 창(route_path_ahead)이라 사용자에게 뜻이 없다.
           ],
         ),
       ),
