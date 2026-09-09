@@ -221,12 +221,9 @@ class TripLogNotifier extends Notifier<TripLog> {
     unawaited(_persist());
   }
 
-  /// 여행기 대표 사진을 고른다 (MY-02) — 여행 시간대의 내 사진(사진첩 식별자).
-  /// 사진첩에서 고른 파일이 있었으면 그건 내려놓는다 — 둘 중 하나만 산다.
-  void setCover(String tripId, String assetId) =>
-      _replace(tripId, (t) => _copy(t, coverPhotoId: assetId, coverPath: ''));
-
-  /// 사진첩에서 직접 고른 대표 사진 (2026-09-09). [fileName] 은 `covers/` 안의 파일 이름.
+  /// 사진첩에서 고른 대표 사진 (2026-09-09). [fileName] 은 `covers/` 안의 파일 이름.
+  /// ⚠ 스트립 사진을 탭해 고르던 길(`coverPhotoId`)은 지웠다 (같은 날). 옛 기록의 값은
+  ///   그대로 보여주되 새로 적지는 않는다 — 여기서 비운다.
   void setCoverFile(String tripId, String fileName) =>
       _replace(tripId, (t) => _copy(t, coverPhotoId: '', coverPath: fileName));
 

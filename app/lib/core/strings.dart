@@ -235,14 +235,12 @@ class S {
   ///
   /// ⚠ **내가 찍은 사진만** 후보다. 관광공사 사진을 내 여행의 얼굴로 쓰지 않는다 —
   ///   그건 여행기가 아니라 카탈로그다 (MY-02가 사진 스트립에서 지켜온 규칙과 같다).
-  static const coverHint = '탭하면 여행기 대표 사진이 돼요';
 
   /// MY-02 대표 사진 행 (2026-09-09) — 사진첩 어디서든 고른다. 시스템 선택기라 권한 팝업 없음.
   static const coverTitle = '대표 사진';
   static const coverAuto = '아직 안 골랐어요 · 첫 들른 곳 사진으로 보여요';
   static const coverChosen = '내가 고른 사진';
   static const coverPick = '사진첩에서 고르기';
-  static const coverBadge = '대표';
   static const toastCover = '대표 사진을 바꿨어요';
   static const photoOpenSettings = '설정 열기';
   static String photoCaption(int n) => '사진 $n장이 GPS·촬영 시각으로 경로 위에 자동 정리됐어요';

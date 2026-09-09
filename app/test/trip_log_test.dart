@@ -57,26 +57,6 @@ void main() {
     expect(trip.skunked, 1);
   });
 
-  /// 여행기 대표 사진은 **내가 그때 찍은 사진**이다 (2026-09-07). 예전엔 언제나
-  /// '첫 들른 곳'의 스팟 사진이었다 — 위치와도, 내 사진과도 무관한 그냥 첫 번째였다.
-  test('고른 대표 사진은 기기에 남는다', () async {
-    final c = make();
-    final log = c.read(tripLogProvider.notifier);
-    final id = log.start(routeId: 7, routeName: '동해 바닷길', startName: '삼척', endName: '강릉');
-    expect(c.read(tripLogProvider).active!.coverPhotoId, isEmpty, reason: '고르기 전엔 비어 있다');
-
-    log.setCover(id, 'asset-42');
-    log.end();
-    await Future<void>.delayed(const Duration(milliseconds: 40));
-
-    // 다시 켰을 때도 그대로여야 한다.
-    final again = ProviderContainer();
-    addTearDown(again.dispose);
-    again.read(tripLogProvider);
-    await Future<void>.delayed(const Duration(milliseconds: 40));
-    expect(again.read(tripLogProvider).trips.single.coverPhotoId, 'asset-42');
-  });
-
   test('출발 → 들르기·허탕 → 마치기', () async {
     final c = make();
     final log = c.read(tripLogProvider.notifier);
@@ -159,22 +139,15 @@ void main() {
     expect(stops.last.imageUrl, isNull, reason: '없는 사진을 지어내지 않는다');
   });
 
-  /// 사진첩에서 고른 대표(파일 이름)와 여행 시간대 사진(식별자)은 둘 중 하나만 산다 (2026-09-09).
-  test('사진첩 대표 사진은 파일 이름으로 남고, 스트립 대표와 서로 밀어낸다', () async {
+  /// 사진첩에서 고른 대표 사진은 파일 이름으로 남고 재시작 뒤에도 그대로다 (2026-09-09).
+  test('사진첩 대표 사진은 파일 이름으로 남는다', () async {
     final first = make();
     final log = first.read(tripLogProvider.notifier);
     log.start(routeId: 7, routeName: '동해 바닷길', startName: '삼척', endName: '강릉');
     log.updateDistance(10);
     final id = log.end()!;
-    log.setCover(id, 'asset-1');
     log.setCoverFile(id, 't-123.jpg');
-    var trip = first.read(tripLogProvider).finished.single;
-    expect(trip.coverPath, 't-123.jpg');
-    expect(trip.coverPhotoId, '', reason: '파일을 고르면 식별자는 내려놓는다');
-    log.setCover(id, 'asset-2');
-    trip = first.read(tripLogProvider).finished.single;
-    expect(trip.coverPhotoId, 'asset-2');
-    expect(trip.coverPath, '', reason: '스트립을 고르면 파일은 내려놓는다');
+    expect(first.read(tripLogProvider).finished.single.coverPath, 't-123.jpg');
     log.setCoverFile(id, 't-456.jpg');
     await Future<void>.delayed(Duration.zero);
 

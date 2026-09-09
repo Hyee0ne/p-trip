@@ -163,11 +163,11 @@ class _Body extends ConsumerWidget {
     );
   }
 
-  /// 사진 스트립 — **내 사진만.** 라벨은 스팟명·시각 (SCREENS.md MY-02).
+  /// 사진 스트립 — **내 사진만.** 보기만 한다 (SCREENS.md MY-02).
   ///
   /// ⚠ 스팟 사진을 내 사진인 척 채우지 않는다. 그건 여행기가 아니라 카탈로그다.
-  /// ⚠ 탭하면 **여행기 대표 사진**이 된다 (2026-09-07). 그래서 4장에서 끊지 않는다 —
-  ///   가로로 넘기면 전부 나온다. 고를 수 있어야 하는 사진을 숨기면 안 된다.
+  /// ⚠ ~~탭하면 대표 사진~~ → **지웠다 (2026-09-09).** 대표는 「대표 사진」 행의 사진첩 선택기로만
+  ///   고른다. 파란 테두리·「대표」 뱃지·힌트 줄도 같이 뺐다. 4장에서 끊지 않는 건 그대로다.
   Widget _photoStrip(BuildContext context, WidgetRef ref, List<TripPhoto> photos) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,11 +181,6 @@ class _Body extends ConsumerWidget {
             separatorBuilder: (_, _) => const SizedBox(width: 6),
             itemBuilder: (_, i) => _photoTile(context, ref, photos[i]),
           ),
-        ),
-        const SizedBox(height: AppSpace.x3),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 22),
-          child: Text(S.coverHint, style: TextStyle(fontSize: 12, color: AppColors.ink3)),
         ),
       ],
     );
@@ -246,54 +241,21 @@ class _Body extends ConsumerWidget {
   ///   규칙(300m 안에 들른 곳이 있으면 이름, 없으면 시각)이 화면에 드러나 보였다.
   ///   내 사진이 규칙의 결과물처럼 보이면 그건 여행기가 아니다. 사진은 사진으로 둔다.
   Widget _photoTile(BuildContext context, WidgetRef ref, TripPhoto p) {
-    final isCover = trip.coverPhotoId == p.asset.id;
-    return GestureDetector(
-      key: ValueKey('photo-${p.asset.id}'),
-      onTap: () {
-        ref.read(tripLogProvider.notifier).setCover(trip.id, p.asset.id);
-        showAppToast(context, S.toastCover);
-      },
-      child: Container(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(15),
+      child: SizedBox(
         width: 118,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(15),
-          // 고른 사진에만 테두리. 뱃지와 같은 말을 두 번 하는 게 아니라, 멀리서도 보이게.
-          border: isCover ? Border.all(color: AppColors.routeBlue, width: 2.5) : null,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(isCover ? 12.5 : 15),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Container(color: AppColors.fill),
-              FutureBuilder<Uint8List?>(
-                future: p.asset.thumbnailDataWithSize(const ThumbnailSize(300, 380)),
-                builder: (_, snap) => snap.data == null
-                    ? const SizedBox.shrink()
-                    : Image.memory(snap.data!, fit: BoxFit.cover),
-              ),
-              if (isCover)
-                Positioned(
-                  left: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.routeBlue,
-                      borderRadius: BorderRadius.circular(AppRadius.chip),
-                    ),
-                    child: const Text(
-                      S.coverBadge,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Container(color: AppColors.fill),
+            FutureBuilder<Uint8List?>(
+              future: p.asset.thumbnailDataWithSize(const ThumbnailSize(300, 380)),
+              builder: (_, snap) => snap.data == null
+                  ? const SizedBox.shrink()
+                  : Image.memory(snap.data!, fit: BoxFit.cover),
+            ),
+          ],
         ),
       ),
     );
