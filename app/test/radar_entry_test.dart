@@ -75,7 +75,7 @@ void main() {
     await settle(tester, 48);
 
     expect(find.text(S.handoffTitleRoute(7)), findsOneWidget, reason: '레이더 위에 핸드오프 시트');
-    expect(find.text(S.handoffKakao), findsOneWidget);
+    expect(find.text(S.handoffTmap), findsOneWidget);
     expect(find.text(S.handoffApple), findsOneWidget);
     expect(find.text(S.radarFinish), findsNothing, reason: '고르기 전엔 마칠 여행이 없다');
 

@@ -10,7 +10,13 @@ import '../../core/theme.dart';
 /// HND 내비 핸드오프 시트 (SCREENS.md §HND).
 ///
 /// ⚠ 우리가 내비가 되지 않는다 (CLAUDE.md 원칙 1). 길안내는 외부 앱에 넘긴다.
-/// 카카오내비와 애플 지도 **둘 다 언제나 보인다.** 티맵은 뺐다 (2026-09-08).
+/// 티맵과 애플 지도 **둘 다 언제나 보인다.**
+///
+/// ⚠ **카카오내비 → 티맵 (2026-09-09).** 카카오내비는 안내 중엔 새 목적지를 거절한다 —
+///   「들르기」를 누르면 "주행 중에는 사용할 수 없는 기능" 얼럿만 떴다 (카카오모빌리티 공식:
+///   "주행 중에는 새 목적지를 검색할 수 없습니다", devtalk 149550). 티맵은 안내 중에 URL 스킴으로
+///   새 목적지를 보내면 **경로를 바꾼다** — 실기기로 확인했다. 카카오내비 코드는 티맵 검증이
+///   끝나면 지운다 (`_openKakao`, `NavApp.kakao`, kakao_flutter_sdk_navi).
 ///
 /// ⚠ **애플 지도를 접어 두지 않는다** (2026-09-09). 한 번 고른 앱을 기억해 그 버튼 하나만
 ///   보이고 「다른 앱으로」 뒤에 애플 지도를 숨겼는데, 그게 지난 반려(Guideline 4 —
@@ -27,7 +33,8 @@ enum HandoffMode {
 }
 
 /// 시트가 돌려주는 값 — 어느 앱으로 넘어갔는가.
-enum NavApp { kakao, apple }
+/// ⚠ `kakao` 는 화면에 없다. 티맵 검증 뒤 삭제 예정 (2026-09-09).
+enum NavApp { tmap, apple, kakao }
 
 /// 길안내로 넘길 한 곳. **좌표가 없으면 넘길 수 없다** — 내비는 이름만으로 못 간다.
 class HandoffPlace {
@@ -59,13 +66,13 @@ class HandoffSheet extends StatelessWidget {
 
   String get destinationName => destination.name;
 
-  /// 경유 앵커. **카카오내비만 지원한다** (애플 지도 공개 URL 은 목적지 단건까지다).
-  /// 카카오내비도 최대 3곳이다.
+  /// 경유 앵커. ⚠ **티맵·애플 지도 둘 다 못 넘긴다** — 공개 URL 스킴이 목적지 단건까지다.
+  ///   (카카오내비 SDK 만 최대 3곳을 받았다. 지금은 안 쓴다.)
   final List<HandoffPlace> via;
 
   List<String> get viaNames => [for (final v in via) v.name];
 
-  /// 경유를 못 넘기는 앱(애플 지도)이 갈 곳.
+  /// 경유를 못 넘기는 앱(티맵 · 애플 지도)이 갈 곳.
   ///
   /// ⚠ 거점을 없애면서(2026-09-07) '들르기'의 목적지는 **언제나 누른 그곳**이 됐다.
   ///   경유지는 남겨 둔다 — 코스 앵커 같은 다른 쓰임이 생길 수 있고, 있으면 그게 먼저다.
@@ -155,7 +162,7 @@ class HandoffSheet extends StatelessWidget {
             ),
           const SizedBox(height: AppSpace.x5),
           // ⚠ 둘 다 **언제나** 보인다. 애플 지도를 빼거나 접으면 심사에서 반려된다 (Guideline 4).
-          _primary(S.handoffKakao, () => _openKakao(context)),
+          _primary(S.handoffTmap, () => _openTmap(context)),
           const SizedBox(height: AppSpace.x2),
           _secondary(S.handoffApple, () => _openApple(context)),
           // 경유가 있을 때만 말한다. 없으면 굳이 할 말이 아니다.
@@ -219,12 +226,60 @@ class HandoffSheet extends StatelessWidget {
     );
   }
 
-  /// 카카오내비 — 실호출. 경유지는 최대 3곳까지 넘긴다 (TECH_SPEC §3.3).
+  /// 티맵 — 공개 URL 스킴 `tmap://route?rGoName=&rGoX=&rGoY=` (SK 개발자 문서의 앱 연동 형식).
   ///
-  /// ⚠ 무료도로 우선([RpOption.free])으로 넘긴다. 시트에 그렇게 써 놓고
-  ///   고속도로로 안내하면 말이 다르다 — 이 앱이 국도 앱인 이유이기도 하다.
+  /// ⚠ **안내 중에도 받는다.** 티맵이 이미 안내 중일 때 이 URL 을 열면 경로가 새 목적지로
+  ///   바뀐다 — 실기기 확인 (2026-09-09). 카카오내비는 이걸 거절했다.
+  /// ⚠ 경로 옵션은 못 넘긴다. 카카오내비 SDK 는 '무료도로 우선'을 코드로 줬는데, 티맵 URL 엔
+  ///   그 파라미터가 없다 → 시트의 안내문이 사용자에게 고르라고 말한다 (`S.handoffFreeRoad`).
+  /// ⚠ 이름은 참고용이고 **좌표가 목적지**다. 좌표 없으면 못 넘긴다.
   /// ⚠ 미설치면 스토어로 보내고도 **고른 것으로 친다** — 설치하고 돌아와 달릴 수 있게
   ///   레이더는 켜 둔다.
+  Future<void> _openTmap(BuildContext context) async {
+    final target = singleTarget;
+    if (!target.hasCoords) return _noCoords(context);
+    final nav = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    // 공백은 %20 으로. `queryParameters` 는 '+' 로 바꾸는데, 앱마다 그걸 공백으로 안 읽기도 한다.
+    final uri = Uri.parse(
+      'tmap://route?rGoName=${Uri.encodeComponent(target.name)}&rGoX=${target.lng}&rGoY=${target.lat}',
+    );
+    var installed = false;
+    try {
+      // LSApplicationQueriesSchemes 에 `tmap` 이 있어야 true 가 온다 (Info.plist).
+      installed = await canLaunchUrl(uri);
+    } catch (_) {
+      installed = false;
+    }
+    if (installed) {
+      final ok = await _launch(uri);
+      if (!ok) {
+        nav.pop();
+        messenger.showSnackBar(
+          const SnackBar(content: Text(S.handoffNoMap), duration: AppMotion.toast),
+        );
+        return;
+      }
+      nav.pop(NavApp.tmap);
+      return;
+    }
+    nav.pop(NavApp.tmap);
+    await _openTmapStore();
+  }
+
+  /// 티맵 미설치 → 스토어로 (SCREENS.md §HND 예외).
+  Future<void> _openTmapStore() async {
+    final uri = Platform.isIOS
+        ? Uri.parse('https://apps.apple.com/kr/app/id431589174')
+        : Uri.parse('market://details?id=com.skt.tmap.ku');
+    await _launch(uri);
+  }
+
+  /// 카카오내비 — **화면에서 뺐다 (2026-09-09).** 안내 중엔 새 목적지를 거절해서 「들르기」가
+  /// 막혔다. 티맵 검증이 끝나면 이 메서드·`_openStore`·`NavApp.kakao`·SDK 의존을 지운다.
+  ///
+  /// (기록) 경유지는 최대 3곳, 무료도로 우선([RpOption.free])으로 넘겼다.
+  // ignore: unused_element
   Future<void> _openKakao(BuildContext context) async {
     if (!destination.hasCoords) return _noCoords(context);
     final messenger = ScaffoldMessenger.of(context);
@@ -291,8 +346,9 @@ class HandoffSheet extends StatelessWidget {
     }
   }
 
-  /// 카카오내비 미설치 → 스토어로 (SCREENS.md §HND 예외).
+  /// 카카오내비 미설치 → 스토어로. `_openKakao` 와 함께 삭제 예정 (2026-09-09).
   /// ⚠ `market://`는 안드로이드 전용이다. iOS에서는 아무것도 안 열린다.
+  // ignore: unused_element
   Future<void> _openStore() async {
     final uri = Platform.isIOS
         ? Uri.parse('https://apps.apple.com/kr/app/id417698849')

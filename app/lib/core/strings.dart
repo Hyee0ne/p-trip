@@ -140,7 +140,16 @@ class S {
 
   /// 노선 번호를 모를 때의 예비 제목 (골든·테스트). 실제 출발은 언제나 번호가 있다.
   static const handoffTitle = '길 안내를 시작해요';
-  static const handoffFreeRoad = '내비에서 \'무료도로 우선\'을 켜면 국도 중심으로 안내돼요';
+
+  /// ⚠ 티맵 URL 스킴엔 경로 옵션 파라미터가 없다 — 사용자가 티맵에서 고른다 (2026-09-09).
+  ///   카카오내비 때는 코드로 '무료도로 우선'을 줬다.
+  static const handoffFreeRoad = '티맵에서 경로 옵션을 \'무료도로\'로 바꾸면 국도 중심으로 안내돼요';
+
+  /// 주 내비. ⚠ 카카오내비 → 티맵 (2026-09-09): 카카오내비는 안내 중 새 목적지를 거절해
+  ///   「들르기」가 막혔다. 티맵은 안내 중에도 경로를 바꾼다 (실기기 확인).
+  static const handoffTmap = '티맵';
+
+  /// 화면에서 뺐다. 코드 삭제와 함께 지울 것 (2026-09-09).
   static const handoffKakao = '카카오내비';
 
   /// ⚠ **애플 지도를 지우지 말 것.** 없으면 App Store 심사에서 반려된다
@@ -148,7 +157,7 @@ class S {
   static const handoffApple = '애플 지도';
 
   /// 경유가 있을 때만 낸다 — 없으면 굳이 할 말이 아니다.
-  static String handoffDestOnly(String name) => '애플 지도는 경유를 못 넘겨요 · $name만 안내돼요';
+  static String handoffDestOnly(String name) => '경유는 못 넘겨요 · $name만 안내돼요';
 
   // ── DR-00 권한 ──
   static const permTitle = '레이더가 주변을 살피려면 위치가 필요해요';

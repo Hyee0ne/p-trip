@@ -190,7 +190,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
 
   /// 핸드오프 시트. **고르면 켜진다.** 내리면 하단에 「내비로 안내받기」 만 남는다.
   ///
-  /// ⚠ 목적지는 **그 길의 진입점**이다 — 선형의 끝을 잡으면 카카오내비가 최단 경로로
+  /// ⚠ 목적지는 **그 길의 진입점**이다 — 선형의 끝을 잡으면 내비가 최단 경로로
   ///   안내해서 고속도로로 빠진다. 국도를 타려고 켠 내비가 국도를 벗어나게 만드는 셈이다.
   Future<void> _openHandoff(Journey journey) async {
     final entry = journey.path.first;

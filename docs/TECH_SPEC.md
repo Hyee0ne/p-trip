@@ -10,7 +10,7 @@
 [Flutter 앱]
   ├─ 발견 탭: Supabase 조회 (spots/courses/routes 캐시 테이블)
   ├─ 레이더: geolocator 위치 → Supabase RPC(반경+방향 쿼리) → 근접 카드
-  │          "들르기" → kakao_flutter_sdk_navi 핸드오프
+  │          "들르기" → 티맵 URL 스킴 핸드오프 (카카오내비 → 티맵, 2026-09-09)
   ├─ 여행기: 로컬 trip 로그 + photo_manager 메타 매칭 → Supabase 저장
   └─ 인증: Supabase Auth (카카오 로그인)
 
@@ -165,7 +165,12 @@ Supabase RPC `discover_nearby(lat, lng, heading, now)`:
 `open_rule`만 있는 비순환 장은 판정 대상에서 제외(MVP).
 ⚠ 월말 처리: 31일은 %10 = 1. 30일장(=끝자리 0)이 있는 달의 31일을 장날로 오판하지 않는지 검수 스크립트로 확인.
 
-### 3.3 카카오내비 핸드오프 (2단)
+### 3.3 ~~카카오내비~~ 티맵 핸드오프 (2026-09-09 교체)
+
+⚠ **카카오내비 → 티맵.** 카카오내비는 안내 중 새 목적지를 거절해 「들르기」가 막혔다 (SCREENS.md §HND).
+  티맵은 `tmap://route?rGoName=&rGoX=&rGoY=` 로 안내 중에도 경로를 바꾼다 (실기기 확인).
+  아래 '2단'(경유지 viaList) 설계는 카카오내비 SDK 전제라 **기록용**이다 — 티맵 URL 은 목적지 단건.
+
 - 출발 시: `NaviApi.navigate(destination: 거점, viaList: [앵커 1~2])`
 - 이동 중 "들르기": `NaviApi.navigate(destination: 스팟)` 단건
 - 티맵·애플 지도 보조(SCREENS.md HND): 딥링크로 **목적지 단건만** 전달. 경유지 미지원
@@ -234,7 +239,8 @@ trip 종료 시:
 | TourAPI (국문관광정보/사진/연관관광지/고캠핑/두루누비/수요강도) | 스팟 수집 | data.go.kr | pipeline + Edge Fn |
 | 전국전통시장표준데이터 | 장날 | data.go.kr | pipeline |
 | 천문연 출몰시각 | 일몰 (레이더 일몰 카드). **전망 스팟이 있는 격자만** 채운다 (약 40칸). 월출·월몰·박명은 받아만 둔다 | data.go.kr | pipeline |
-| 카카오내비 SDK | 핸드오프 | developers.kakao.com | 앱 |
+| 티맵 URL 스킴 (`tmap://route`) | 핸드오프 | SK open API 앱 연동 | 앱 |
+| ~~카카오내비 SDK~~ | ~~핸드오프~~ (2026-09-09 티맵으로 교체, 검증 뒤 삭제) | developers.kakao.com | 앱 |
 | 카카오맵 **네이티브 SDK v2** | 지도 표시 (kakao_map_sdk) | developers.kakao.com | 앱 — **네이티브 앱 키**, 내비와 공용 |
 | 천문연 천문현상 정보 | 유성우·월식·슈퍼문 — **앱에서 읽는 곳 없음** (§3.8 삭제). 테이블만 남겨둔다 | data.go.kr (B090041) | pipeline |
 | 한국관광 데이터랩 (검색·방문 변화율) | CO-01 "조용히 뜨는 길" | datalab.visitkorea.or.kr | pipeline |
@@ -258,7 +264,7 @@ trip 종료 시:
 | CO-07 국도 선택 | `/routes` | routes 51행, drivable 구분 |
 | CO-02 코스 상세 | `/course/:id` | course.geom + 경로변 spots, RouteBadge |
 | CO-03 스팟 상세 | `/spot/:id` | spot + spot_links + 확신도 문구. **마을/스팟 통합** |
-| HND 핸드오프 시트 | (모달) | kakao_flutter_sdk_navi / 티맵·애플 지도 딥링크 |
+| HND 핸드오프 시트 | (모달) | 티맵 · 애플 지도 딥링크 (kakao_flutter_sdk_navi 는 검증 뒤 삭제) |
 | DR-00 위치 권한 | (`/radar` 인라인) | 앱 사용 중 허용만 |
 | DR-01 레이더 | `/radar` | discover_nearby RPC, 위치 스트림, rec 로깅 |
 | DR-02 발견 카드 | (레이더 내 전면 카드) | 점수 상위 1건, 액션: 핸드오프/찜/passed |

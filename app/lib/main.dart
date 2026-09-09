@@ -25,7 +25,8 @@ void main() async {
   // ⚠ 지도와 내비 핸드오프가 같은 키를 쓴다.
   if (Env.hasMapKey) {
     unawaited(KakaoMapSdk.instance.initialize(Env.kakaoNativeAppKey));
-    // 내비 핸드오프도 같은 네이티브 키를 쓴다. 이걸 안 부르면 NaviApi가 조용히 실패한다.
+    // ⚠ 카카오내비는 티맵으로 교체했다 (2026-09-09). 검증이 끝나면 이 init 과
+    //   kakao_flutter_sdk_navi 의존을 지운다. 지도(kakao_map_sdk)는 위 한 줄로 충분하다.
     KakaoSdk.init(nativeAppKey: Env.kakaoNativeAppKey);
   }
 
