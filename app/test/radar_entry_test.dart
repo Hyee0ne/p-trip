@@ -5,6 +5,7 @@ import 'package:p_trip/core/drive.dart';
 import 'package:p_trip/core/journey.dart';
 import 'package:p_trip/core/settings.dart';
 import 'package:p_trip/core/strings.dart';
+import 'package:p_trip/core/trip_log.dart';
 import 'package:p_trip/data/models/models.dart';
 import 'package:p_trip/features/radar/radar_screen.dart';
 import 'package:p_trip/features/radar/radar_view.dart';
@@ -86,6 +87,43 @@ void main() {
     expect(find.text(S.handoffTitleRoute(7)), findsNothing);
     expect(find.text(S.radarHandoffAgain), findsOneWidget, reason: '시트를 다시 여는 유일한 길');
     expect(find.text(S.radarFinish), findsNothing, reason: '여전히 안 켜졌다');
+    expect(tester.takeException(), isNull);
+  });
+
+  /// 「오늘 들른 곳」 자취 (2026-09-09, 시안 A). 들르기 전엔 없고, 들르면 그 이름이 남는다.
+  testWidgets('들른 곳이 생기면 레이더 아래 자취로 남는다 — 없으면 구역 자체가 없다', (tester) async {
+    phone(tester);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [startedJourneyProvider.overrideWith(_WithJourney.new)],
+        child: const MaterialApp(home: RadarScreen()),
+      ),
+    );
+    // 데모 모드(테스트 기본)라 시트 없이 바로 돈다.
+    await settle(tester, 8);
+    expect(find.text(S.radarFinish), findsWidgets, reason: '레이더가 돈다');
+    expect(find.text(S.radarStopsTitle), findsNothing, reason: '들른 곳이 없으면 아무것도 없다');
+    expect(find.text(S.radarNoNavDemo), findsOneWidget, reason: '시트를 건너뛴 이유는 토스트로');
+
+    final c = ProviderScope.containerOf(tester.element(find.byType(RadarScreen)));
+    c
+        .read(tripLogProvider.notifier)
+        .addStop(
+          const Spot(
+            id: 's-market',
+            name: '북평민속오일장',
+            type: SpotType.market,
+            routeId: 7,
+            detourMin: 3,
+            trustScore: 90,
+          ),
+          StopKind.visited,
+        );
+    await settle(tester, 3);
+
+    expect(find.text(S.radarStopsTitle), findsOneWidget);
+    expect(find.text('북평민속오일장'), findsOneWidget, reason: '들른 곳의 이름');
+    expect(find.text(S.radarStopsNext), findsOneWidget, reason: '자취는 이어진다 — 「다음」 점선 원');
     expect(tester.takeException(), isNull);
   });
 }

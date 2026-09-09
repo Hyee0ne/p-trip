@@ -25,6 +25,7 @@ import '../../core/widgets/spot_image.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/providers.dart';
 import '../handoff/handoff_sheet.dart';
+import 'radar_stops.dart';
 import 'radar_view.dart';
 
 /// DR-01 레이더 모드 (SCREENS.md DR-01). 다크 테마 고정.
@@ -124,10 +125,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
   /// 그전엔 화면은 보여도 위치도 서버도 건드리지 않는다 (SCREENS.md DR-01 진입, 2026-09-08).
   bool _armed = false;
 
-  /// 핸드오프 시트를 **건너뛴 이유.** 시트 없이 레이더가 켜지면 화면이 그 이유를 한 줄로 말한다 —
-  /// 안 그러면 오류처럼 보인다 (2026-09-09 실기기: 43번 국도 위에서 출발했더니 시트가 안 떠 놀랐다).
-  String? _noNavNote;
-
   /// 이번 여정에서 핸드오프 시트를 이미 띄웠는가. 탭을 오갈 때마다 다시 띄우지 않는다.
   bool _offered = false;
 
@@ -146,7 +143,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     _flagsFor = next;
     _armed = false;
     _offered = false;
-    _noNavNote = null;
     _started = false;
     _shown.clear();
   }
@@ -178,8 +174,9 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     _offered = true;
     if (ref.read(demoModeProvider) || journey.path.length < 2) {
       // 데모 모드는 시트 없이 돈다 — 시연 리허설에서 내비를 열지 않고도 레이더를 봐야 한다.
-      if (ref.read(demoModeProvider)) setState(() => _noNavNote = S.radarNoNavDemo);
+      final demo = ref.read(demoModeProvider);
       _arm(journey);
+      if (demo) _sayNoNav(S.radarNoNavDemo);
       return;
     }
     // 한 번만 재고, 못 재면 시트를 띄운다. 기다리느라 화면을 붙잡지 않는다.
@@ -190,8 +187,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     final entry = journey.path.first;
     if (fix.hasFix && roughKm(fix.lat!, fix.lng!, entry.lat, entry.lng) <= _entryThresholdKm) {
       // 이미 그 길 위다 — 100m 앞을 목적지로 내비를 열면 켜자마자 '도착'이라 더 이상하다.
-      setState(() => _noNavNote = S.radarNoNavOnRoute(journey.routeId));
       _arm(journey);
+      _sayNoNav(S.radarNoNavOnRoute(journey.routeId));
       return;
     }
     await _openHandoff(journey);
@@ -216,6 +213,12 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     } else {
       setState(() {});
     }
+  }
+
+  /// 시트를 **건너뛴 이유**를 토스트로 말한다 (2026-09-09). 말 안 하면 오류처럼 보였다 —
+  /// 43번 국도 위에서 출발했더니 시트가 안 떠 놀랐다 (실기기). 진입 때 한 번, 지나가는 배너로.
+  void _sayNoNav(String message) {
+    if (mounted) showAppToast(context, message);
   }
 
   void _arm(Journey journey) {
@@ -488,6 +491,10 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
               // ⓪ 길을 안 골랐다 (SCREENS.md DR-01 진입). 아무것도 돌지 않는다.
               if (journey == null && active == null) return _idle();
               final current = _current;
+              final visited = [
+                for (final s in ref.watch(tripLogProvider).active?.stops ?? const <TripStop>[])
+                  if (s.kind == StopKind.visited) s,
+              ];
               return Stack(
                 children: [
                   ListView(
@@ -497,9 +504,10 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
                       const SizedBox(height: AppSpace.x4),
                       _radar(queue),
                       const SizedBox(height: AppSpace.x5),
-                      if (_noNavNote != null) ...[
-                        _noNavNotice(_noNavNote!),
-                        const SizedBox(height: 10),
+                      // 「오늘 들른 곳」 자취 — 들른 곳이 없으면 아예 없다 (radar_stops.dart).
+                      if (visited.isNotEmpty) ...[
+                        StopsTrail(stops: visited),
+                        const SizedBox(height: AppSpace.x5),
                       ],
                       _notRouteNotice(),
                       const SizedBox(height: AppSpace.x8),
@@ -827,29 +835,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
             //   국도 출발이면 그 선형은 120km 창(route_path_ahead)이라 사용자에게 뜻이 없다.
           ],
         ),
-      ),
-    );
-  }
-
-  /// 시트를 건너뛴 이유 한 줄. 본문(`_notRouteNotice`)보다 살짝 밝게 — 한 번은 읽혀야 한다.
-  Widget _noNavNotice(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 3),
-            child: Icon(Icons.info_outline, size: 14, color: AppColors.darkInk2),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 13, height: 1.6, color: AppColors.darkInk),
-            ),
-          ),
-        ],
       ),
     );
   }

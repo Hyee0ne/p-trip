@@ -45,21 +45,24 @@ class _RadarViewState extends State<RadarView> with SingleTickerProviderStateMix
   }
 }
 
+/// 레이더 위 유형색. 블립과 「오늘 들른 곳」 자취가 같은 색을 쓴다 — 한 벌로 읽힌다.
+const radarTypeColors = {
+  SpotType.market: AppColors.marketRed,
+  SpotType.food: AppColors.sun,
+  SpotType.view: AppColors.fieldGreen,
+  SpotType.culture: AppColors.routeBlue,
+  SpotType.stay: AppColors.violet,
+  SpotType.camp: AppColors.fieldGreen,
+  SpotType.attraction: AppColors.routeBlue,
+};
+
 class _RadarPainter extends CustomPainter {
   _RadarPainter({required this.turn, required this.blips});
 
   final double turn;
   final List<Spot> blips;
 
-  static const _typeColors = {
-    SpotType.market: AppColors.marketRed,
-    SpotType.food: AppColors.sun,
-    SpotType.view: AppColors.fieldGreen,
-    SpotType.culture: AppColors.routeBlue,
-    SpotType.stay: AppColors.violet,
-    SpotType.camp: AppColors.fieldGreen,
-    SpotType.attraction: AppColors.routeBlue,
-  };
+  static const _typeColors = radarTypeColors;
 
   @override
   void paint(Canvas canvas, Size size) {
