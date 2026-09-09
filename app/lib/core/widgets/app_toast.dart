@@ -30,6 +30,10 @@ void showAppToast(
             )
           : null,
       duration: hasAction ? const Duration(seconds: 4) : AppMotion.toast,
+      // ⚠ Flutter 3.41 부터 액션이 달린 스낵바는 `persist` 가 기본 참이라 **시간이 지나도 안 닫힌다**
+      //   (실기기 리포트 2026-09-09: 「여행기를 지웠어요」가 4초 뒤에도 남아 있었다).
+      //   되돌리기는 4초 안에 누르라는 창이지 영영 떠 있을 배너가 아니다 — 명시적으로 끈다.
+      persist: false,
       behavior: SnackBarBehavior.floating,
       backgroundColor: const Color(0xEE15201F),
       elevation: 0,
