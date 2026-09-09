@@ -134,9 +134,14 @@ class S {
   static const spotBook = '예약';
 
   // ── HND 핸드오프 ──
-  static const handoffTitle = '카카오내비로 안내를 시작해요';
+  /// 출발 시트 제목. **길 이름으로 말한다** — 앱 이름이 아니다 (2026-09-09).
+  ///   '카카오내비로 안내를 시작해요'는 카카오를 고른 것처럼 읽혔고, 애플 지도가 뒤로 밀렸다.
+  static String handoffTitleRoute(int routeId) => '$routeId번 국도로 안내를 시작해요';
+
+  /// 노선 번호를 모를 때의 예비 제목 (골든·테스트). 실제 출발은 언제나 번호가 있다.
+  static const handoffTitle = '길 안내를 시작해요';
   static const handoffFreeRoad = '내비에서 \'무료도로 우선\'을 켜면 국도 중심으로 안내돼요';
-  static const handoffKakao = '카카오내비 열기';
+  static const handoffKakao = '카카오내비';
 
   /// ⚠ **애플 지도를 지우지 말 것.** 없으면 App Store 심사에서 반려된다
   ///   (2026-09-02, Guideline 4 - Design). SCREENS.md §HND 참조.
@@ -144,9 +149,6 @@ class S {
 
   /// 경유가 있을 때만 낸다 — 없으면 굳이 할 말이 아니다.
   static String handoffDestOnly(String name) => '애플 지도는 경유를 못 넘겨요 · $name만 안내돼요';
-
-  /// 한 번 고른 앱을 기억한 뒤 (HND). 다음부턴 그 앱 버튼 하나만 크게 보이고 이 줄로 바꾼다.
-  static const handoffOtherApp = '다른 앱으로';
 
   // ── DR-00 권한 ──
   static const permTitle = '레이더가 주변을 살피려면 위치가 필요해요';

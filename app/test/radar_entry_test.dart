@@ -74,7 +74,7 @@ void main() {
     // 진입 때 위치를 최대 3초 기다린 뒤 시트를 띄운다.
     await settle(tester, 48);
 
-    expect(find.text(S.handoffTitle), findsOneWidget, reason: '레이더 위에 핸드오프 시트');
+    expect(find.text(S.handoffTitleRoute(7)), findsOneWidget, reason: '레이더 위에 핸드오프 시트');
     expect(find.text(S.handoffKakao), findsOneWidget);
     expect(find.text(S.handoffApple), findsOneWidget);
     expect(find.text(S.radarFinish), findsNothing, reason: '고르기 전엔 마칠 여행이 없다');
@@ -83,7 +83,7 @@ void main() {
     await tester.tapAt(const Offset(10, 10));
     await settle(tester, 6);
 
-    expect(find.text(S.handoffTitle), findsNothing);
+    expect(find.text(S.handoffTitleRoute(7)), findsNothing);
     expect(find.text(S.radarHandoffAgain), findsOneWidget, reason: '시트를 다시 여는 유일한 길');
     expect(find.text(S.radarFinish), findsNothing, reason: '여전히 안 켜졌다');
     expect(tester.takeException(), isNull);

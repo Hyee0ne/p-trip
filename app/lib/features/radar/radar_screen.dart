@@ -198,6 +198,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
       context,
       mode: HandoffMode.depart,
       destination: HandoffPlace(journey.routeName, entry.lat, entry.lng),
+      // 제목이 '{N}번 국도로 안내를 시작해요' 가 되게. 앱 이름이 아니라 길 이름으로 말한다.
+      routeId: journey.routeId,
     );
     if (!mounted) return;
     if (app != null) {
