@@ -292,6 +292,10 @@ class S {
 
   static const photoAccessRow = '사진 접근';
 
+  /// MY-01 여행기 행을 왼쪽으로 밀어 지운다 (2026-09-09). 되돌리기는 토스트 한 번.
+  static const tripDeleted = '여행기를 지웠어요';
+  static const tripUndo = '되돌리기';
+
   /// MY-03 — **기본 음성일 때만** 보이는 행. iOS 고품질 음성은 앱이 못 받고 사용자가
   ///   설정에서 내려받는다. 앱이 열어줄 수 있는 설정 화면도 없다 — 경로만 알려준다.
   static const voiceBetterRow = '더 자연스러운 목소리 받기';

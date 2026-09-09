@@ -200,6 +200,27 @@ class TripLogNotifier extends Notifier<TripLog> {
     _replace(tripId, (t) => _copy(t, routeKm: byRoute));
   }
 
+  /// 여행기를 지운다 (MY-01 옆으로 밀기, 2026-09-09). 되돌리기용으로 (여행, 있던 자리)를 돌려준다.
+  /// ⚠ 달리는 중인 여행은 지우지 않는다 — 목록엔 끝난 여행만 있으니 올 일도 없다.
+  (Trip, int)? delete(String id) {
+    if (id == state.activeId) return null;
+    final idx = state.trips.indexWhere((t) => t.id == id);
+    if (idx < 0) return null;
+    final trip = state.trips[idx];
+    state = TripLog(trips: [...state.trips]..removeAt(idx), activeId: state.activeId);
+    unawaited(_persist());
+    return (trip, idx);
+  }
+
+  /// 방금 지운 여행을 있던 자리로 되돌린다 (토스트 「되돌리기」).
+  void restore(Trip trip, int index) {
+    if (state.trips.any((t) => t.id == trip.id)) return;
+    final list = [...state.trips];
+    list.insert(index.clamp(0, list.length), trip);
+    state = TripLog(trips: list, activeId: state.activeId);
+    unawaited(_persist());
+  }
+
   /// 여행기 대표 사진을 고른다 (MY-02). 빈 문자열이면 자동으로 되돌린다.
   void setCover(String tripId, String assetId) =>
       _replace(tripId, (t) => _copy(t, coverPhotoId: assetId));

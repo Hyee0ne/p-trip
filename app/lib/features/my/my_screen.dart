@@ -11,6 +11,7 @@ import '../../core/os.dart';
 import '../../core/saves.dart';
 import '../../core/proximity_alert.dart';
 import '../../core/settings.dart';
+import '../../core/trip_log.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/voice.dart';
@@ -36,7 +37,8 @@ class _MyScreenState extends ConsumerState<MyScreen> {
   @override
   Widget build(BuildContext context) {
     final saves = ref.watch(savesProvider);
-    final tripsAsync = ref.watch(tripsProvider);
+    // ⚠ 동기로 읽는다. FutureProvider 를 거치면 지운 행이 한 프레임 더 남아 Dismissible 이 죽는다.
+    final trips = ref.watch(tripLogProvider).finished;
     final spotsAsync = ref.watch(savedSpotsProvider(savedKey(saves.idsOf(SaveTargetKind.spot))));
     // 코스·노선도 찜 대상이다 (TECH_SPEC §2).
     final coursesAsync = ref.watch(
@@ -52,9 +54,9 @@ class _MyScreenState extends ConsumerState<MyScreen> {
           // 탭바에 가려지지 않게 여유를 둔다 (pro-rules: 스크롤/고정요소 공존)
           padding: const EdgeInsets.only(bottom: 40),
           children: [
-            _profile(tripsAsync.value?.length ?? 0, saves.liked.length),
+            _profile(trips.length, saves.liked.length),
             const SizedBox(height: AppSpace.x6),
-            _collection(tripsAsync.value ?? const []),
+            _collection(trips),
             const SizedBox(height: AppSpace.x8),
             _savedHeader(saves),
             const SizedBox(height: AppSpace.x3),
@@ -62,7 +64,7 @@ class _MyScreenState extends ConsumerState<MyScreen> {
             _savedCourses(coursesAsync),
             _savedRoutes(routesAsync),
             const SizedBox(height: AppSpace.x8),
-            _tripsSection(tripsAsync),
+            _tripsSection(trips),
             const SizedBox(height: AppSpace.x8),
             _settings(),
           ],
@@ -328,40 +330,60 @@ class _MyScreenState extends ConsumerState<MyScreen> {
     );
   }
 
-  Widget _tripsSection(AsyncValue<List<Trip>> async) {
-    return async.maybeWhen(
-      orElse: () => const SizedBox.shrink(),
-      data: (trips) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
-            child: SectionLabel(S.tripsTitle, trailing: '전체 ${trips.length}편'),
-          ),
-          const SizedBox(height: AppSpace.x3),
-          if (trips.isEmpty)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(AppSpace.gutter, 0, AppSpace.gutter, 20),
-              child: Text(
-                S.tripsEmpty,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, height: 1.6, color: AppColors.ink3),
-              ),
+  Widget _tripsSection(List<Trip> trips) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
+          child: SectionLabel(S.tripsTitle, trailing: '전체 ${trips.length}편'),
+        ),
+        const SizedBox(height: AppSpace.x3),
+        if (trips.isEmpty)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(AppSpace.gutter, 0, AppSpace.gutter, 20),
+            child: Text(
+              S.tripsEmpty,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, height: 1.6, color: AppColors.ink3),
             ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
-            child: Column(
-              children: [
-                for (var i = 0; i < trips.length; i++) ...[
-                  _TripRow(trip: trips[i]),
-                  if (i != trips.length - 1)
-                    const Divider(height: 1, thickness: 1, color: AppColors.line),
-                ],
+          ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
+          child: Column(
+            children: [
+              for (var i = 0; i < trips.length; i++) ...[
+                // 왼쪽으로 밀면 지운다 (2026-09-09). 묻지 않고 지우되 토스트로 한 번 되돌릴 수 있다.
+                Dismissible(
+                  key: ValueKey('trip-${trips[i].id}'),
+                  direction: DismissDirection.endToStart,
+                  background: Container(
+                    color: AppColors.marketRed,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 22),
+                    child: const Icon(Icons.delete_outline, color: Colors.white, size: 22),
+                  ),
+                  onDismissed: (_) => _deleteTrip(trips[i]),
+                  child: _TripRow(trip: trips[i]),
+                ),
+                if (i != trips.length - 1)
+                  const Divider(height: 1, thickness: 1, color: AppColors.line),
               ],
-            ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
+    );
+  }
+
+  void _deleteTrip(Trip trip) {
+    final removed = ref.read(tripLogProvider.notifier).delete(trip.id);
+    if (removed == null) return;
+    showAppToast(
+      context,
+      S.tripDeleted,
+      actionLabel: S.tripUndo,
+      onAction: () => ref.read(tripLogProvider.notifier).restore(removed.$1, removed.$2),
     );
   }
 
