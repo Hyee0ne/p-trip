@@ -134,7 +134,7 @@ class _RouteMapPanelState extends State<RouteMapPanel> {
               polylineId: PolylineId('u-${r.id}-$i'),
               points: pts,
               color: Colors.white,
-              width: 7,
+              width: 6,
               zIndex: 1,
             ),
           );
@@ -144,7 +144,8 @@ class _RouteMapPanelState extends State<RouteMapPanel> {
             polylineId: PolylineId('r-${r.id}-$i'),
             points: pts,
             color: near ? AppColors.routeBlue : AppColors.routeBlue.withValues(alpha: 0.42),
-            width: near ? 5 : 3,
+            // 전국이 한 화면일 때 두꺼우면 덩어리가 된다 — 근처 4pt, 먼 길 3pt(옅게).
+            width: near ? 4 : 3,
             zIndex: near ? 2 : 0,
           ),
         );
