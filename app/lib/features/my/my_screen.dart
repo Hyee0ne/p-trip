@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -19,7 +17,7 @@ import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/cards.dart';
 import '../../core/widgets/heart_button.dart';
 import '../../core/widgets/route_badge.dart';
-import '../../core/widgets/spot_image.dart';
+import '../../core/widgets/trip_cover.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/providers.dart';
 import 'data_sources_sheet.dart';
@@ -598,7 +596,7 @@ class _TripRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 11),
         child: Row(
           children: [
-            _TripThumb(trip),
+            TripCoverThumb(trip: trip),
             const SizedBox(width: 13),
             Expanded(
               child: Column(
@@ -632,69 +630,3 @@ class _TripRow extends StatelessWidget {
 /// ⚠ 원래는 언제나 '첫 들른 곳'이었다 (2026-09-07 이전). 위치와도, 내 사진과도 무관한
 ///   그냥 첫 번째였다. 이제 MY-02 사진 스트립에서 직접 고른다.
 /// ⚠ 사진첩에서 지워졌으면 **조용히 스팟 사진으로 돌아간다.** 깨진 자리를 남기지 않는다.
-class _TripThumb extends StatefulWidget {
-  const _TripThumb(this.trip);
-  final Trip trip;
-
-  @override
-  State<_TripThumb> createState() => _TripThumbState();
-}
-
-class _TripThumbState extends State<_TripThumb> {
-  /// ⚠ build 마다 새 Future를 만들면 스크롤할 때마다 썸네일을 다시 뜬다. 한 번만 잡는다.
-  Future<Uint8List?>? _thumb;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  @override
-  void didUpdateWidget(_TripThumb old) {
-    super.didUpdateWidget(old);
-    if (old.trip.coverPhotoId != widget.trip.coverPhotoId) _load();
-  }
-
-  void _load() {
-    final id = widget.trip.coverPhotoId;
-    _thumb = id.isEmpty
-        ? null
-        : AssetEntity.fromId(
-            id,
-          ).then((a) => a?.thumbnailDataWithSize(const ThumbnailSize(168, 168)));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final trip = widget.trip;
-    final fallback = SpotImage(
-      type: trip.stops.isEmpty ? SpotType.attraction : trip.stops.first.type,
-      spotId: trip.stops.isEmpty ? null : trip.stops.first.spotId,
-      width: 56,
-      height: 56,
-      radius: 13,
-    );
-    final future = _thumb;
-    if (future == null) return fallback;
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(13),
-      child: SizedBox(
-        width: 56,
-        height: 56,
-        child: FutureBuilder<Uint8List?>(
-          future: future,
-          builder: (_, snap) {
-            if (snap.data != null) return Image.memory(snap.data!, fit: BoxFit.cover);
-            // 아직 읽는 중이면 빈 자리. 다 읽었는데 없으면 사진이 지워진 것이다.
-            if (snap.connectionState != ConnectionState.done) {
-              return const ColoredBox(color: AppColors.fill);
-            }
-            return fallback;
-          },
-        ),
-      ),
-    );
-  }
-}

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/cover_store.dart';
 import 'core/env.dart';
 import 'core/router.dart';
 import 'core/strings.dart';
@@ -17,6 +18,9 @@ void main() async {
   }
 
   // ⚠ 지도는 Apple MapKit, 내비는 티맵 URL 스킴 — 둘 다 키가 없다 (카카오 SDK 전부 삭제, 2026-09-09).
+
+  // 사진첩에서 고른 대표 사진의 보관함. 문서 폴더를 한 번 잡아 둔다.
+  await CoverStore.init();
 
   runApp(const ProviderScope(child: PTripApp()));
 }

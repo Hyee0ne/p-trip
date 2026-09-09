@@ -64,6 +64,8 @@ void main() {
     }
     expect(c.read(tripLogProvider).trips.single.coverPhotoId, '', reason: '고른 적 없다');
     expect(find.byKey(const ValueKey('photo-a1')), findsOneWidget, reason: '내 사진이 스트립에 있다');
+    expect(find.byKey(const ValueKey('cover-pick')), findsOneWidget, reason: '사진첩에서 고르기 버튼');
+    expect(find.text(S.coverAuto), findsOneWidget, reason: '아직 안 골랐다');
 
     await tester.tap(find.byKey(const ValueKey('photo-a1')));
     // 화면은 tripProvider(비동기)로 다시 그려진다 — 몇 프레임 준다.
@@ -74,5 +76,6 @@ void main() {
     expect(c.read(tripLogProvider).trips.single.coverPhotoId, 'a1', reason: '누른 사진이 대표가 된다');
     expect(find.text(S.toastCover), findsOneWidget);
     expect(find.text(S.coverBadge), findsOneWidget, reason: '「대표」 뱃지');
+    expect(find.text(S.coverChosen), findsOneWidget, reason: '대표 사진 행도 바뀐다');
   });
 }

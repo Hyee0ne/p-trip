@@ -7,7 +7,9 @@ import 'package:photo_manager/photo_manager.dart';
 
 import '../../core/strings.dart';
 import '../../core/trip_log.dart';
+import '../../core/cover_store.dart';
 import '../../core/trip_photos.dart';
+import '../../core/widgets/trip_cover.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/app_toast.dart';
 import '../../core/widgets/cards.dart';
@@ -88,6 +90,9 @@ class _Body extends ConsumerWidget {
             _photoDenied(),
             const SizedBox(height: AppSpace.x5),
           ],
+          // 대표 사진은 여행 시간대 밖에서도 고를 수 있어야 한다 (2026-09-09) — 사진첩 선택기.
+          _coverRow(context, ref),
+          const SizedBox(height: AppSpace.x5),
           const SizedBox(height: AppSpace.x3),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 22),
@@ -183,6 +188,57 @@ class _Body extends ConsumerWidget {
           child: Text(S.coverHint, style: TextStyle(fontSize: 12, color: AppColors.ink3)),
         ),
       ],
+    );
+  }
+
+  /// 대표 사진 — 지금 것 미리보기 + 「사진첩에서 고르기」. 시스템 선택기라 권한 팝업이 없다.
+  Widget _coverRow(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 22),
+      child: Row(
+        children: [
+          TripCoverThumb(trip: trip, size: 56, radius: 13),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  S.coverTitle,
+                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  trip.coverPath.isNotEmpty || trip.coverPhotoId.isNotEmpty
+                      ? S.coverChosen
+                      : S.coverAuto,
+                  style: const TextStyle(fontSize: 12, color: AppColors.ink3),
+                ),
+              ],
+            ),
+          ),
+          OutlinedButton.icon(
+            key: const ValueKey('cover-pick'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.ink,
+              side: const BorderSide(color: AppColors.line2),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.chip)),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            onPressed: () async {
+              final name = await CoverStore.pick(trip.id, replacing: trip.coverPath);
+              if (name == null || !context.mounted) return;
+              ref.read(tripLogProvider.notifier).setCoverFile(trip.id, name);
+              showAppToast(context, S.toastCover);
+            },
+            icon: const Icon(Icons.photo_library_outlined, size: 16),
+            label: const Text(
+              S.coverPick,
+              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

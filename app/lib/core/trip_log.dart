@@ -221,9 +221,14 @@ class TripLogNotifier extends Notifier<TripLog> {
     unawaited(_persist());
   }
 
-  /// 여행기 대표 사진을 고른다 (MY-02). 빈 문자열이면 자동으로 되돌린다.
+  /// 여행기 대표 사진을 고른다 (MY-02) — 여행 시간대의 내 사진(사진첩 식별자).
+  /// 사진첩에서 고른 파일이 있었으면 그건 내려놓는다 — 둘 중 하나만 산다.
   void setCover(String tripId, String assetId) =>
-      _replace(tripId, (t) => _copy(t, coverPhotoId: assetId));
+      _replace(tripId, (t) => _copy(t, coverPhotoId: assetId, coverPath: ''));
+
+  /// 사진첩에서 직접 고른 대표 사진 (2026-09-09). [fileName] 은 `covers/` 안의 파일 이름.
+  void setCoverFile(String tripId, String fileName) =>
+      _replace(tripId, (t) => _copy(t, coverPhotoId: '', coverPath: fileName));
 
   void _replace(String id, Trip Function(Trip) f) {
     state = TripLog(
@@ -247,6 +252,7 @@ class TripLogNotifier extends Notifier<TripLog> {
     int? photoCount,
     Map<int, int>? routeKm,
     String? coverPhotoId,
+    String? coverPath,
   }) => Trip(
     id: t.id,
     episode: t.episode,
@@ -263,6 +269,7 @@ class TripLogNotifier extends Notifier<TripLog> {
     courseId: t.courseId,
     routeKm: routeKm ?? t.routeKm,
     coverPhotoId: coverPhotoId ?? t.coverPhotoId,
+    coverPath: coverPath ?? t.coverPath,
   );
 
   Map<String, dynamic> _toJson(Trip t) => {
@@ -284,6 +291,7 @@ class TripLogNotifier extends Notifier<TripLog> {
     'photoCount': t.photoCount,
     'courseId': t.courseId,
     'coverPhotoId': t.coverPhotoId,
+    'coverPath': t.coverPath,
     'routeKm': {for (final e in t.routeKm.entries) '${e.key}': e.value},
     'stops': [
       for (final s in t.stops)
@@ -324,6 +332,7 @@ class TripLogNotifier extends Notifier<TripLog> {
     photoCount: (m['photoCount'] as num?)?.toInt() ?? 0,
     courseId: (m['courseId'] as String?) ?? '',
     coverPhotoId: (m['coverPhotoId'] as String?) ?? '',
+    coverPath: (m['coverPath'] as String?) ?? '',
     routeKm: {
       for (final e in (m['routeKm'] as Map<String, dynamic>? ?? const {}).entries)
         if (int.tryParse(e.key) != null) int.parse(e.key): (e.value as num).toInt(),

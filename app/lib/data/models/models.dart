@@ -329,6 +329,7 @@ class Trip {
     this.courseId = '',
     this.routeKm = const {},
     this.coverPhotoId = '',
+    this.coverPath = '',
   });
 
   final String id;
@@ -362,6 +363,14 @@ class Trip {
   /// ⚠ 사진 자체를 복사해 두지 않는다. 사진첩에서 지워지면 후보에서도 사라진다 —
   ///   여행기가 남의 사진첩을 붙들고 있으면 안 된다 (원칙 5, 기기 안의 기록).
   final String coverPhotoId;
+
+  /// 사진첩에서 직접 고른 대표 사진 — 앱 안에 복사한 파일 **이름** (2026-09-09).
+  ///
+  /// 여행 시간대 밖의 사진도 대표가 될 수 있어야 해서 시스템 사진 선택기로 고른다.
+  /// 선택기는 사진 식별자를 안 주고 복사본을 주니, 앱 문서 폴더 `covers/` 에 둔다.
+  /// ⚠ 이름만 저장한다 — Documents 절대경로는 앱을 업데이트하면 바뀐다.
+  /// ⚠ [coverPhotoId] 와 둘 중 하나만 산다. 이게 있으면 이걸 먼저 본다.
+  final String coverPath;
 
   int get visited => stops.where((s) => s.kind == StopKind.visited).length;
   int get skunked => stops.where((s) => s.kind == StopKind.skunked).length;

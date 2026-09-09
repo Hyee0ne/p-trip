@@ -159,6 +159,35 @@ void main() {
     expect(stops.last.imageUrl, isNull, reason: '없는 사진을 지어내지 않는다');
   });
 
+  /// 사진첩에서 고른 대표(파일 이름)와 여행 시간대 사진(식별자)은 둘 중 하나만 산다 (2026-09-09).
+  test('사진첩 대표 사진은 파일 이름으로 남고, 스트립 대표와 서로 밀어낸다', () async {
+    final first = make();
+    final log = first.read(tripLogProvider.notifier);
+    log.start(routeId: 7, routeName: '동해 바닷길', startName: '삼척', endName: '강릉');
+    log.updateDistance(10);
+    final id = log.end()!;
+    log.setCover(id, 'asset-1');
+    log.setCoverFile(id, 't-123.jpg');
+    var trip = first.read(tripLogProvider).finished.single;
+    expect(trip.coverPath, 't-123.jpg');
+    expect(trip.coverPhotoId, '', reason: '파일을 고르면 식별자는 내려놓는다');
+    log.setCover(id, 'asset-2');
+    trip = first.read(tripLogProvider).finished.single;
+    expect(trip.coverPhotoId, 'asset-2');
+    expect(trip.coverPath, '', reason: '스트립을 고르면 파일은 내려놓는다');
+    log.setCoverFile(id, 't-456.jpg');
+    await Future<void>.delayed(Duration.zero);
+
+    final second = make();
+    second.read(tripLogProvider);
+    await Future<void>.delayed(Duration.zero);
+    expect(
+      second.read(tripLogProvider).finished.single.coverPath,
+      't-456.jpg',
+      reason: '재시작 뒤에도 남는다',
+    );
+  });
+
   test('저장소가 열리기 전에 찜해도 남는다', () async {
     // ⚠ 앱을 켜자마자 찜하면 SharedPreferences가 아직 안 열려 있다.
     //   그때 쓰기를 버리면 찜이 사라진다 — 실제로 그랬다.
