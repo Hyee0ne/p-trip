@@ -186,6 +186,10 @@ class S {
   ///   동작이지 이름이 아니다. 버튼은 한 가지만 말한다.
   static const radarFinish = '오늘 여행 마치기';
 
+  /// 핸드오프 시트를 건너뛴 이유 (DR-01 진입 ③). 말 안 하면 오류처럼 보인다 (2026-09-09).
+  static String radarNoNavOnRoute(int routeId) => '이미 $routeId번 국도 위라 안내 없이 켰어요';
+  static const radarNoNavDemo = '데모 모드라 안내 없이 켰어요';
+
   /// DR-01 ⓪ — 레이더 탭인데 길을 안 골랐을 때 (2026-09-08).
   /// ⚠ 아무것도 돌지 않는다. 버튼 하나가 발견 탭으로 보낸다 — 눌러도 아무 일 없는 화면이 아니다.
   static const radarIdleTitle = '어디로 떠나볼까요?';
