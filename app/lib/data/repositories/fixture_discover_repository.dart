@@ -224,6 +224,9 @@ class FixtureDiscoverRepository implements DiscoverRepository {
   @override
   Future<List<RouteLine>> routes() async => _routes;
 
+  @override
+  Future<List<RouteLine>> routeLines() async => _routes;
+
   /// 노선 선형(GeoJSON)이 아직 없어서 거리 계산을 못 한다 (M1 `build-routes.ts`).
   /// 픽스처는 데모 구간(삼척-강릉)만 갖고 있다. 그 밖은 정말로 아무것도 없다.
   @override

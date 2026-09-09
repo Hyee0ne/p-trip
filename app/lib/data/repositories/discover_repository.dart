@@ -12,6 +12,10 @@ abstract interface class DiscoverRepository {
   /// 국도 51선 메타.
   Future<List<RouteLine>> routes();
 
+  /// 51선 **전국 선형** (단순화). CO-07 지도가 한 번 받아 세션 내내 그린다 (2026-09-09).
+  /// ⚠ 좌표를 보내지 않는다 — 위치와 무관한 조회.
+  Future<List<RouteLine>> routeLines();
+
   /// 현 위치에서 탈 수 있는 노선 (SCREENS.md CO-07).
   /// 가까운 순. 근처에 없으면 빈 결과 — 억지로 채우지 않는다.
   /// 데이터가 없는 지역은 `covered: false`로 구분해 돌려준다.

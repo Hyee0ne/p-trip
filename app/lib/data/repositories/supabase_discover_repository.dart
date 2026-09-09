@@ -30,6 +30,16 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
     return [for (final r in rows) _route(r)];
   }
 
+  @override
+  Future<List<RouteLine>> routeLines() async {
+    // 단순화한 전국 선형. 좌표를 안 보낸다 — `_cell` 을 거칠 값이 없다.
+    final rows = await _db.rpc('route_lines_all') as List<dynamic>;
+    return [
+      for (final r in rows.cast<Map<String, dynamic>>())
+        _route(r, paths: _geoJsonPaths(r['geojson'] as String?)),
+    ];
+  }
+
   /// 서버로 나가는 좌표는 **언제나 여기를 거쳐 격자로 뭉갠다** (2026-09-07).
   ///
   /// 0.01도 = 위도 1.11km · 경도 0.88km. 이 앱이 좌표를 쓰는 용도는 전부 이보다 굵다 —

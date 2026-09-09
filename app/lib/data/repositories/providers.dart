@@ -38,6 +38,11 @@ final totalRoadKmProvider = FutureProvider<int>((ref) async {
   return all.fold<int>(0, (a, r) => a + r.totalKm);
 });
 
+/// 51선 전국 선형 — 지도용. 세션에 한 번 받는다 (수백 KB).
+final routeLinesProvider = FutureProvider<List<RouteLine>>(
+  (ref) => ref.watch(discoverRepositoryProvider).routeLines(),
+);
+
 final routesProvider = FutureProvider<List<RouteLine>>(
   (ref) => ref.watch(discoverRepositoryProvider).routes(),
 );

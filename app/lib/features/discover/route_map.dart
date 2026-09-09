@@ -2,6 +2,7 @@ import 'dart:io' show Platform;
 import 'dart:math' as math;
 
 import 'package:apple_maps_flutter/apple_maps_flutter.dart';
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 
 import '../../core/location.dart';
@@ -24,14 +25,18 @@ class RouteMapPanel extends StatefulWidget {
     required this.fix,
     required this.routes,
     required this.bottomInset,
+    this.nearIds = const {},
     this.onRouteTap,
   });
 
   /// 현재 위치. 없으면 남한 전체를 보여준다.
   final LocFix? fix;
 
-  /// 그릴 노선. `path`가 빈 노선은 무시한다 — 없는 선을 그리지 않는다.
+  /// 그릴 노선 — **51선 전부** (단순화 선형). `paths`가 빈 노선은 무시한다.
   final List<m.RouteLine> routes;
+
+  /// 지금 탈 수 있는(30km 안) 노선. 진하게 그린다. 나머지는 옅게 — 지도책의 먼 길.
+  final Set<int> nearIds;
 
   /// 시트에 가려지는 높이. 줌·내 위치 버튼을 그 위로 띄운다.
   final double bottomInset;
@@ -72,6 +77,8 @@ class _RouteMapPanelState extends State<RouteMapPanel> {
     m.RouteLine? best;
     var bestKm = double.infinity;
     for (final r in widget.routes) {
+      // 못 달리는 길(북한 구간)은 그리기만 하고 고르지 못한다.
+      if (!r.drivable) continue;
       for (final chain in r.paths) {
         for (final p in chain) {
           final dx = (p.lng - at.longitude) * 88.0;
@@ -106,33 +113,39 @@ class _RouteMapPanelState extends State<RouteMapPanel> {
     super.didUpdateWidget(old);
     // 위치가 늦게 도착하면 그때 카메라를 옮긴다. 내 위치 점은 MapKit 이 직접 찍는다.
     if (!old.fix.sameAs(widget.fix) && _hasFix) _moveTo(_center, _zoomNear);
-    if (!identical(old.routes, widget.routes)) _polylines = _buildPolylines();
+    if (!identical(old.routes, widget.routes) || !setEquals(old.nearIds, widget.nearIds)) {
+      _polylines = _buildPolylines();
+    }
   }
 
   /// 갈래마다 따로 그린다. 국도는 끊겨 있어서 한 줄로 이으면 없는 길이 생긴다.
-  /// 흰 밑선 + 파란 선 두 겹 — MapKit 폴리라인엔 테두리가 없어서 이렇게 낸다.
+  /// 근처 노선은 흰 밑선 + 파란 선 두 겹(MapKit 선엔 테두리가 없다), 먼 노선은 옅은 파란 선 하나.
   Set<Polyline> _buildPolylines() {
     final out = <Polyline>{};
     for (final r in widget.routes) {
+      final near = widget.nearIds.contains(r.id);
       for (var i = 0; i < r.paths.length; i++) {
         final chain = r.paths[i];
         if (chain.length < 2) continue;
         final pts = [for (final p in chain) LatLng(p.lat, p.lng)];
-        out.add(
-          Polyline(
-            polylineId: PolylineId('u-${r.id}-$i'),
-            points: pts,
-            color: Colors.white,
-            width: 7,
-          ),
-        );
+        if (near) {
+          out.add(
+            Polyline(
+              polylineId: PolylineId('u-${r.id}-$i'),
+              points: pts,
+              color: Colors.white,
+              width: 7,
+              zIndex: 1,
+            ),
+          );
+        }
         out.add(
           Polyline(
             polylineId: PolylineId('r-${r.id}-$i'),
             points: pts,
-            color: AppColors.routeBlue,
-            width: 5,
-            zIndex: 1,
+            color: near ? AppColors.routeBlue : AppColors.routeBlue.withValues(alpha: 0.42),
+            width: near ? 5 : 3,
+            zIndex: near ? 2 : 0,
           ),
         );
       }

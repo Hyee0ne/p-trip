@@ -90,6 +90,7 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
   Widget build(BuildContext context) {
     final routesAsync = ref.watch(routesProvider);
     final nearbyAsync = ref.watch(nearbyRoutesProvider);
+    final linesAsync = ref.watch(routeLinesProvider);
     final fixAsync = ref.watch(currentLocationProvider);
 
     ref.listen(nearbyRoutesProvider, (_, next) {
@@ -119,17 +120,20 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
       //   ('여기서 탈 수 있는 길' / '국도 51선'), 겹쳐 쓰면 같은 말이 두 번 나온다.
       body: LayoutBuilder(
         builder: (context, box) {
-          // ⚠ 지도에 넘길 건 **선형이 실린 근처 노선**이다.
-          //   51선 목록(routesProvider)에는 선형이 없다 — 전국 선형은 수 MB라 안 싣는다.
-          final onMap = [
-            for (final n in nearbyAsync.value?.routes ?? const <NearbyRoute>[]) n.route,
-          ];
+          // ⚠ 지도엔 **51선이 다** 그려진다 (2026-09-09). 전에는 근처 노선의 잘린 선형만 넘겨서
+          //   43번 국도 옆에 서면 파란 선이 그것 하나뿐이었다. 전국 선형은 단순화해 한 번 받는다
+          //   (routeLinesProvider). 가까운 노선은 진하게, 먼 노선은 옅게 — 이름은 그대로 노선이다.
+          final lines = linesAsync.value ?? const <RouteLine>[];
+          final nearIds = {
+            for (final n in nearbyAsync.value?.routes ?? const <NearbyRoute>[]) n.route.id,
+          };
           return Stack(
             children: [
               Positioned.fill(
                 child: RouteMapPanel(
                   fix: fixAsync.value,
-                  routes: onMap,
+                  routes: lines,
+                  nearIds: nearIds,
                   bottomInset: _extent * box.maxHeight,
                   // 지도의 파란 선을 눌러도 길을 고를 수 있다 —
                   // 시트를 뒤져 찾는 것보다 지도에서 바로 짚는 게 지도책의 문법이다.
