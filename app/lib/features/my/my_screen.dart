@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
@@ -345,28 +346,43 @@ class _MyScreenState extends ConsumerState<MyScreen> {
               style: TextStyle(fontSize: 13, height: 1.6, color: AppColors.ink3),
             ),
           ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
-          child: Column(
-            children: [
-              for (var i = 0; i < trips.length; i++) ...[
-                // 왼쪽으로 밀면 지운다 (2026-09-09). 묻지 않고 지우되 토스트로 한 번 되돌릴 수 있다.
-                Dismissible(
-                  key: ValueKey('trip-${trips[i].id}'),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    color: AppColors.marketRed,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 22),
-                    child: const Icon(Icons.delete_outline, color: Colors.white, size: 22),
+        // 왼쪽으로 밀면 **「삭제」 버튼이 드러나고 멈춘다.** 눌러야 지워진다 (2026-09-09 개정).
+        // ⚠ 전엔 끝까지 밀면 바로 지워졌다(Dismissible). 밀기는 쉬운 제스처라 스치듯 한 번에
+        //   지워졌다. 근거 — NN/g 「Contextual swipe」: 파괴적 동작은 삭제 버튼 하나만큼의 확인을
+        //   두라 · 애플 UIKit 은 그래서 `performsFirstActionWithFullSwipe=false` 를 둔다.
+        //   끝까지 밀어도 버튼에서 멈춘다 — 손가락을 떼고 한 번 더 누르는 게 '중간에 걸리는' 그 한 번이다.
+        //   되돌리기 토스트는 그대로 둔다 — 눌러서 지운 뒤에도 4초 안에 돌아올 수 있다.
+        //   한 번에 한 행만 열린다(groupTag) · 스크롤하면 닫힌다.
+        SlidableAutoCloseBehavior(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.gutter),
+            child: Column(
+              children: [
+                for (var i = 0; i < trips.length; i++) ...[
+                  Slidable(
+                    key: ValueKey('trip-${trips[i].id}'),
+                    groupTag: 'trips',
+                    endActionPane: ActionPane(
+                      motion: const ScrollMotion(),
+                      extentRatio: 0.24,
+                      children: [
+                        SlidableAction(
+                          onPressed: (_) => _deleteTrip(trips[i]),
+                          backgroundColor: AppColors.marketRed,
+                          foregroundColor: Colors.white,
+                          icon: Icons.delete_outline,
+                          label: S.tripDeleteAction,
+                          padding: EdgeInsets.zero,
+                        ),
+                      ],
+                    ),
+                    child: _TripRow(trip: trips[i]),
                   ),
-                  onDismissed: (_) => _deleteTrip(trips[i]),
-                  child: _TripRow(trip: trips[i]),
-                ),
-                if (i != trips.length - 1)
-                  const Divider(height: 1, thickness: 1, color: AppColors.line),
+                  if (i != trips.length - 1)
+                    const Divider(height: 1, thickness: 1, color: AppColors.line),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ],

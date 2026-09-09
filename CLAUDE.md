@@ -74,7 +74,8 @@
   iOS 13.0+ / Android minSdk 23
 - **주요 패키지**: geolocator(위치), url_launcher 티맵 URL 스킴(내비 핸드오프),
   flutter_tts(음성), photo_manager(옛 여행기의 대표 사진 식별자 읽기뿐 — 사진 스트립은 2026-09-09 폐기), share_plus(여행기 공유),
-  flutter_local_notifications(DR-06 백그라운드 근접 알림)
+  flutter_local_notifications(DR-06 백그라운드 근접 알림),
+  flutter_slidable(여행기 행 스와이프 → 「삭제」 버튼 드러내기. 끝까지 밀어도 안 지운다)
 - ⚠ 버전 제약: 로컬 Dart 3.11.5 기준. flutter_riverpod 3.4+/go_router 18+ 는 Dart 3.12 요구 —
   `flutter upgrade` 하거나 go_router 17.5.0 / flutter_riverpod 3.3.2 로 핀 고정할 것.
 

@@ -315,6 +315,7 @@ class S {
   ];
 
   /// MY-01 여행기 행을 왼쪽으로 밀어 지운다 (2026-09-09). 되돌리기는 토스트 한 번.
+  static const tripDeleteAction = '삭제';
   static const tripDeleted = '여행기를 지웠어요';
   static const tripUndo = '되돌리기';
 
