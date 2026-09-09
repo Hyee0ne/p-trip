@@ -43,17 +43,23 @@ void main() {
     expect(find.byType(OnboardingScreen), findsOneWidget);
     expect(find.textContaining(S.heroLine1), findsOneWidget, reason: '1장 컨셉');
 
-    await tester.tap(find.text('다음'));
+    await tester.tap(find.text(S.onboardNext));
     await tester.pumpAndSettle();
-    expect(find.text(S.onboard2), findsOneWidget, reason: '2장 국도 읽는 법');
+    expect(find.text(S.onboardHowTitle), findsOneWidget, reason: '2장 어떻게 쓰나');
+    expect(find.text(S.onboardStep1), findsOneWidget);
+    expect(find.text(S.onboardStep2), findsOneWidget);
+    expect(find.text(S.onboardStep3), findsOneWidget);
 
-    await tester.tap(find.text('다음'));
+    await tester.tap(find.text(S.onboardNext));
     await tester.pumpAndSettle();
-    expect(find.text(S.onboardLocation), findsOneWidget, reason: '3장 권한 — 위치');
-    expect(find.text(S.onboardNotif), findsOneWidget, reason: '3장 권한 — 알림');
+    expect(find.text(S.onboardAheadTitle), findsOneWidget, reason: '3장 가면서 알아요');
+    expect(find.text(S.onboardExample), findsOneWidget, reason: '카드는 「예시」라고 말한다');
+    expect(find.text(S.cardMarketDay(S.onboardExampleSpot)), findsOneWidget, reason: '실제 카드 문구 함수');
+    expect(find.text(S.onboardPermissionNote), findsOneWidget, reason: '권한은 언제 물을지만 예고');
     expect(find.text('사진'), findsNothing, reason: '사진 권한 항목은 지웠다');
+    expect(find.textContaining('홀수는 남북'), findsNothing, reason: '국도 상식 장은 지웠다');
 
-    await tester.tap(find.text('시작하기'));
+    await tester.tap(find.text(S.onboardStart));
     await settle(tester, 8);
     expect(find.byType(OnboardingScreen), findsNothing, reason: '홈으로 갔다');
     expect(await Onboarding.isDone(), isTrue, reason: '봤다고 적혔다');
@@ -66,7 +72,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(const ProviderScope(child: PTripApp(initialLocation: '/onboarding')));
     await settle(tester, 4);
-    await tester.tap(find.text('건너뛰기'));
+    await tester.tap(find.text(S.onboardSkip));
     await settle(tester, 8);
     expect(find.byType(OnboardingScreen), findsNothing);
     expect(await Onboarding.isDone(), isTrue);

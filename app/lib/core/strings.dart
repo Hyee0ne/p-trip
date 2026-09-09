@@ -24,13 +24,29 @@ class S {
   static const viewBrowse = '훑어보기';
 
   // ── 온보딩 (§ON) ──
-  static const onboard2 = '홀수는 남북, 짝수는 동서. 한 자리 국도가 나라의 기본 축이에요. 전부 51개 노선, 14,000km';
-  static const onboardLocation = '레이더가 주변을 살피려면요';
+  // ── ON 온보딩 3장 (A안, 2026-09-09) ──
+  // ⚠ 국도 번호 상식('홀수는 남북…')과 권한 카드 두 장을 뺐다. 사용법이 아니었고, 권한은 여기서 묻지 않는다.
+  static const onboardSub = '네비가 못 알려주는 길 위의 발견';
+  static const onboardSkip = '건너뛰기';
+  static const onboardNext = '다음';
+  static const onboardStart = '길 고르러 가기';
+  static const onboardHowTitle = '목적지는 안 정해요.\n길만 골라요.';
+  static const onboardStep1 = '길을 고르고';
+  static const onboardStep1Sub = '지도에서 지금 탈 수 있는 국도';
+  static const onboardStep2 = '방향만 정하고';
+  static const onboardStep2Sub = '어디까지 갈지는 안 물어요';
+  static const onboardStep3 = '달리면 됩니다';
+  static const onboardStep3Sub = '발견은 가면서 나와요';
+  static const onboardStep3Pill = '레이더';
+  static const onboardAheadTitle = '앞쪽에 뭐가 있는지,\n카드 한 장으로 알려드려요';
+  static const onboardExample = '예시';
+  static const onboardExampleSpot = '북평 5일장';
+  static const onboardExampleBody = '3·8일에만 서는 장이라, 다음 장은 5일 뒤예요.';
 
-  /// ⚠ 온보딩은 **설명만** 한다. 시스템 팝업은 출발할 때 한 번 뜬다 (SCREENS.md DR-01 진입).
-  ///   iOS 알림 권한은 평생 한 번만 물을 수 있어서, 이유를 모른 채 거절하면 끝이다 —
-  ///   이 줄이 그 팝업의 이유를 미리 말해 둔다.
-  static const onboardNotif = '앱을 내려둬도 근처 발견을 알려드려요';
+  /// ⚠ 온보딩은 권한을 **묻지 않는다.** 언제 물을지만 예고한다 — 위치는 출발할 때(DR-00),
+  ///   알림은 처음 달린 뒤(DR-06). iOS 알림 권한은 평생 한 번만 물을 수 있어서 이유를 모른 채
+  ///   거절하면 끝이다 — 이 줄이 그 이유를 미리 말해 둔다.
+  static const onboardPermissionNote = '위치는 출발할 때, 알림은 처음 달린 뒤에 물어요.\n지금은 아무것도 안 물어요.';
 
   // ── CO-01 홈 섹션 ──
   static const secRoutes = '국도부터 고르기';
