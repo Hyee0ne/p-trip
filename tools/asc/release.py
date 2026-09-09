@@ -4,6 +4,7 @@
     python3 tools/asc/release.py version 1.0.2   # 버전 레코드 만들고 텍스트·심사노트·스크린샷 채운다 (되돌릴 수 있다)
     python3 tools/asc/release.py attach  1.0.2 7 # 빌드 7 이 처리되길 기다렸다가 버전에 붙인다
     python3 tools/asc/release.py submit  1.0.2   # ⚠ 심사 제출. 바깥으로 나가는 유일한 단계
+    python3 tools/asc/release.py cancel          # 대기 중인 제출을 거둔다 (고치고 다시 submit)
 
 `version`·`attach` 는 몇 번 다시 돌려도 같은 결과다. `submit` 만 한 번이다.
 """
@@ -146,8 +147,24 @@ def cmd_submit(ver):
     print("  state:", r["data"]["attributes"].get("state"))
 
 
+def cmd_cancel():
+    """심사 대기 중인 제출을 거둔다 — 스크린샷·텍스트를 고치려면 먼저 이걸 해야 한다.
+    CANCELING → COMPLETE 로 바뀐 뒤에 다시 `submit` 한다."""
+    rs = a.get(f"reviewSubmissions?filter[app]={a.APP}&filter[state]=WAITING_FOR_REVIEW,IN_REVIEW,READY_FOR_REVIEW,UNRESOLVED_ISSUES&limit=5").get("data", [])
+    if not rs: print("  거둘 제출이 없다"); return
+    for r in rs:
+        rid = r["id"]
+        a.show(f"제출 취소 {rid} ({r['attributes'].get('state')})",
+               a.patch(f"reviewSubmissions/{rid}", {"data": {"type": "reviewSubmissions", "id": rid, "attributes": {"canceled": True}}}))
+        for _ in range(30):
+            st = a.get(f"reviewSubmissions/{rid}")["data"]["attributes"].get("state")
+            if st == "COMPLETE": print("  → COMPLETE"); break
+            print(f"  … {st}"); time.sleep(5)
+
+
 if __name__ == "__main__":
     cmd, args = sys.argv[1], sys.argv[2:]
     {"version": lambda: cmd_version(args[0]),
      "attach": lambda: cmd_attach(args[0], args[1]),
-     "submit": lambda: cmd_submit(args[0])}[cmd]()
+     "submit": lambda: cmd_submit(args[0]),
+     "cancel": cmd_cancel}[cmd]()
