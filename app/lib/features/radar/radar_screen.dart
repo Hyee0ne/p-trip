@@ -510,8 +510,11 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
                             current.spot.lng,
                           ),
                         );
-                        // 들르러 갔으니 잠깐 멈춘다. 정차가 DR-03 몰아보기의 조건이다.
-                        ref.read(driveProvider.notifier).pause();
+                        // ⚠ **주행을 멈추지 않는다** (2026-09-09). 전에는 여기서 `pause()` 를 불렀다 —
+                        //   지운 DR-03 몰아보기의 '정차' 조건을 만들려던 잔재였는데, 그 탓에
+                        //   카카오내비로 넘어간 순간부터 `_pickAhead` 가 `!running` 으로 빠져
+                        //   **다음 발견이 하나도 안 나갔다.** 앱에 돌아와야 resume 으로 살아났다.
+                        //   레이더는 현재 위치 기준이다 (원칙 2) — 들르러 가는 길에도 계속 본다.
                         _advance(saved: true);
                       },
                       onSave: () {
