@@ -65,7 +65,18 @@ class _Body extends ConsumerWidget {
             const SizedBox(height: AppSpace.x4),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 22),
-              child: RouteSketch(points: path, height: 190),
+              // 포스터 — 출발·도착·들른 곳·눈금·거리 (2026-09-09 시안 B).
+              child: RouteSketch(
+                points: path,
+                height: 240,
+                stops: trip.stops,
+                distanceKm: trip.distanceKm,
+                startName: trip.startName,
+                endName: trip.endName,
+                routeId: trip.routeId,
+                startedAt: trip.startedAt,
+                endedAt: trip.endedAt,
+              ),
             ),
           ],
           const SizedBox(height: AppSpace.x5),
@@ -181,6 +192,7 @@ class _Body extends ConsumerWidget {
   Widget _photoTile(BuildContext context, WidgetRef ref, TripPhoto p) {
     final isCover = trip.coverPhotoId == p.asset.id;
     return GestureDetector(
+      key: ValueKey('photo-${p.asset.id}'),
       onTap: () {
         ref.read(tripLogProvider.notifier).setCover(trip.id, p.asset.id);
         showAppToast(context, S.toastCover);

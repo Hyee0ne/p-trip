@@ -157,6 +157,13 @@ class ShareCard extends StatelessWidget {
                 points: trimmed,
                 height: 170,
                 width: 170 * RouteSketch.aspect(trimmed),
+                // 카드엔 제 머리글이 있어 상자 안 거리·뱃지는 끈다. 점·이름·눈금은 같다.
+                stops: t.stops,
+                startName: t.startName,
+                endName: t.endName,
+                startedAt: t.startedAt,
+                endedAt: t.endedAt,
+                header: false,
               ),
             ),
           if (trimmed.length >= 2) const SizedBox(height: AppSpace.x4),
