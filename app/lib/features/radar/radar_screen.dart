@@ -143,6 +143,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     _flagsFor = next;
     _armed = false;
     _offered = false;
+    _nextCard?.cancel();
+    _noAnswer?.cancel();
     _started = false;
     _shown.clear();
   }
@@ -323,7 +325,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
 
     _current = best;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+      // 그 사이 여행을 마쳤으면 내보내지 않는다.
+      if (!mounted || !ref.read(driveProvider).running) return;
       setState(() => _cardVisible = true);
       _announce(best!);
     });
@@ -875,6 +878,13 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
   void _finish() {
     // ⚠ 하드코딩된 'ep3'로 가고 있었다. 지금 막 끝낸 여행으로 간다.
     ref.read(driveProvider.notifier).stop();
+    // ⚠ 마치면 **말도 멈춘다** (2026-09-09). 예약된 카드·낭독이 여행이 끝난 뒤에 나가면
+    //   "혼자서 TTS 가 나왔다"가 된다. 타이머와 낭독 줄을 비운다.
+    _nextCard?.cancel();
+    _noAnswer?.cancel();
+    ref.read(voiceProvider).stop();
+    _current = null;
+    _cardVisible = false;
     final log = ref.read(tripLogProvider.notifier);
     final id = log.end();
     // 51선 수집은 **지나온 점을 노선에 붙여** 센다 (맵매칭).
