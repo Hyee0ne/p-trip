@@ -72,6 +72,12 @@
 	<string>레이더가 주변을 살피려면 위치가 필요해요. 이동 중에만 사용하고, 기록은 내 기기에 먼저 저장돼요.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>여행기에 사진을 자동 정리해드려요. 여행한 시간대의 사진만 봅니다.</string>
+	<!-- ⚠ image_picker(사진 선택기)가 카메라·마이크 문구를 요구한다. 없으면 업로드가
+	     ITMS-90683 로 거절된다. 이 앱은 카메라도 마이크도 쓰지 않는다 — 문구도 그렇게 말한다. -->
+	<key>NSCameraUsageDescription</key>
+	<string>이 앱은 카메라를 쓰지 않아요. 사진 선택 기능의 구성 요소로만 들어 있어요.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>이 앱은 마이크를 쓰지 않아요. 사진 선택 기능의 구성 요소로만 들어 있어요.</string>
 	<!-- DR-06 백그라운드 근접 알림 — 2단계 옵트인. 먼저 묻지 않는다.
 	     ⚠ '항상 허용'을 **요청하지 않는다.** iOS는 '앱을 사용하는 동안'만으로도
 	        UIBackgroundModes:location + allowBackgroundLocationUpdates 조합이면
