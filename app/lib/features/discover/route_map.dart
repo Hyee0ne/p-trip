@@ -26,7 +26,11 @@ class RouteMapPanel extends StatefulWidget {
     required this.routes,
     required this.bottomInset,
     this.onRouteTap,
+    this.focus,
   });
+
+  /// 고른 노선으로 카메라를 옮기는 요청. null 이면 아무것도 안 한다.
+  final MapFocus? focus;
 
   /// 현재 위치. 없으면 남한 전체를 보여준다.
   final LocFix? fix;
@@ -42,6 +46,17 @@ class RouteMapPanel extends StatefulWidget {
 
   @override
   State<RouteMapPanel> createState() => _RouteMapPanelState();
+}
+
+/// 노선을 골랐을 때 지도가 그 길로 가는 요청 (2026-09-09).
+///
+/// [seq] 가 바뀔 때마다 한 번 움직인다 — 같은 길을 다시 골라도 다시 간다.
+/// [visibleFraction] 은 시트에 가려지지 않은 화면 비율. 길이 그 안에 들어오게 남쪽을 늘려 맞춘다.
+class MapFocus {
+  const MapFocus(this.routeId, this.seq, this.visibleFraction);
+  final int routeId;
+  final int seq;
+  final double visibleFraction;
 }
 
 /// 남한 대략 중심 — 위치가 없을 때의 기본 시야.
@@ -126,6 +141,42 @@ class _RouteMapPanelState extends State<RouteMapPanel> {
       _markMe();
     }
     if (!identical(old.routes, widget.routes)) _polylines = _buildPolylines();
+    final f = widget.focus;
+    if (f != null && f.seq != (old.focus?.seq ?? -1)) _fitRoute(f);
+  }
+
+  /// 고른 노선이 화면에 다 들어오게 옮긴다.
+  ///
+  /// ⚠ 아래는 시트가 덮는다. 플러그인의 bounds 맞춤은 사방 여백이 같아서, 길이 시트 뒤로
+  ///   들어간다 — 그래서 **남쪽을 늘린 상자**를 맞춘다. 보이는 비율이 f 면 상자 세로는 길의 1/f.
+  Future<void> _fitRoute(MapFocus f) async {
+    final route = widget.routes.where((r) => r.id == f.routeId).firstOrNull;
+    if (route == null) return;
+    var minLat = 90.0, maxLat = -90.0, minLng = 180.0, maxLng = -180.0;
+    var n = 0;
+    for (final chain in route.paths) {
+      for (final p in chain) {
+        if (p.lat < minLat) minLat = p.lat;
+        if (p.lat > maxLat) maxLat = p.lat;
+        if (p.lng < minLng) minLng = p.lng;
+        if (p.lng > maxLng) maxLng = p.lng;
+        n++;
+      }
+    }
+    if (n < 2) return;
+    final frac = f.visibleFraction.clamp(0.3, 1.0);
+    final latSpan = math.max(maxLat - minLat, 0.05);
+    final lngPad = math.max(maxLng - minLng, 0.05) * 0.06;
+    final south = minLat - latSpan * (1 - frac) / frac;
+    await _controller?.animateCamera(
+      CameraUpdate.newLatLngBounds(
+        LatLngBounds(
+          southwest: LatLng(south, minLng - lngPad),
+          northeast: LatLng(maxLat + latSpan * 0.06, maxLng + lngPad),
+        ),
+        24,
+      ),
+    );
   }
 
   /// 갈래마다 따로 그린다. 국도는 끊겨 있어서 한 줄로 이으면 없는 길이 생긴다.

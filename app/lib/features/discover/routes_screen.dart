@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -41,6 +43,28 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
   bool _autoDeparted = false;
 
   final _sheet = DraggableScrollableController();
+
+  /// 고른 노선으로 지도를 옮기는 요청. 고를 때마다 seq 를 올린다.
+  MapFocus? _focus;
+  int _focusSeq = 0;
+
+  /// 화면 높이. 시트에 가려지지 않는 비율을 셀 때 쓴다.
+  double _boxH = 0;
+
+  /// 노선을 골랐다 — 시트가 펼쳐져 있으면 내리고, 지도를 그 길로 옮긴다 (2026-09-09).
+  /// ⚠ 출발 시트(CO-08, 약 380pt)가 곧 올라오니 그 위에 길이 보이게 잡는다.
+  void _pick(RouteLine r) {
+    if (_sheet.isAttached && _extent > _collapsed + 0.01) {
+      _sheet.animateTo(
+        _collapsed,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOut,
+      );
+    }
+    final covered = _boxH <= 0 ? 0.5 : math.max(_collapsed * _boxH, 380.0) / _boxH;
+    setState(() => _focus = MapFocus(r.id, ++_focusSeq, 1 - covered));
+  }
+
   _Axis _axis = _Axis.all;
   double _extent = _initialExtent;
 
@@ -120,6 +144,7 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
       //   ('여기서 탈 수 있는 길' / '국도 51선'), 겹쳐 쓰면 같은 말이 두 번 나온다.
       body: LayoutBuilder(
         builder: (context, box) {
+          _boxH = box.maxHeight;
           // ⚠ 지도엔 **51선이 다** 그려진다 (2026-09-09). 전에는 근처 노선의 잘린 선형만 넘겨서
           //   43번 국도 옆에 서면 파란 선이 그것 하나뿐이었다. 전국 선형은 단순화해 한 번 받는다
           //   (routeLinesProvider). 전부 같은 파랑 — 근처/먼 길 구분은 뺐다.
@@ -131,10 +156,13 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
                   fix: fixAsync.value,
                   routes: lines,
                   bottomInset: _extent * box.maxHeight,
+                  focus: _focus,
                   // 지도의 파란 선을 눌러도 길을 고를 수 있다 —
                   // 시트를 뒤져 찾는 것보다 지도에서 바로 짚는 게 지도책의 문법이다.
-                  onRouteTap: (r) =>
-                      DepartSheet.show(context, r, note: ref.read(routeNotesProvider).value?[r.id]),
+                  onRouteTap: (r) {
+                    _pick(r);
+                    DepartSheet.show(context, r, note: ref.read(routeNotesProvider).value?[r.id]);
+                  },
                 ),
               ),
               // 검색은 지도 위에 뜬다. 시트 안에 넣으면 끌어올려야 보인다.
@@ -225,7 +253,10 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
         )
       else
         SliverList.list(
-          children: [for (final n in nearby) _RouteRow(route: n.route, distanceKm: n.distanceKm)],
+          children: [
+            for (final n in nearby)
+              _RouteRow(route: n.route, distanceKm: n.distanceKm, onPick: _pick),
+          ],
         ),
 
       // 섹션이 하나뿐이면 라벨을 달지 않는다 — 나눌 게 없는데 나누는 시늉을 하지 않는다.
@@ -676,9 +707,12 @@ class _NearbyState extends StatelessWidget {
 
 /// 노선 한 줄. 그리드 타일을 대체한다 — 뱃지가 커서 스캔이 되고, 보조설명이 한 줄 들어간다.
 class _RouteRow extends ConsumerWidget {
-  const _RouteRow({required this.route, this.distanceKm});
+  const _RouteRow({required this.route, this.distanceKm, this.onPick});
 
   final RouteLine route;
+
+  /// 고르는 순간 지도를 그 길로 옮긴다 (2026-09-09).
+  final void Function(RouteLine)? onPick;
 
   /// 모르면 null — 거리를 지어내지 않는다.
   final double? distanceKm;
@@ -766,6 +800,7 @@ class _RouteRow extends ConsumerWidget {
   /// ⚠ 그전엔 구간 코스 목록으로 빠졌다 — 길을 골랐는데 다시 코스를 고르게 하면
   ///   결국 목적지를 정하는 흐름이고, 그게 내비 문법이다.
   void _depart(BuildContext context, WidgetRef ref) {
+    onPick?.call(route);
     DepartSheet.show(context, route, note: ref.read(routeNotesProvider).value?[route.id]);
   }
 }
