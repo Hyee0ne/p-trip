@@ -132,6 +132,33 @@ void main() {
     expect(trips.single.title, '동해 바닷길에서 생긴 일');
   });
 
+  /// 레이더 「오늘 들른 곳」 자취와 여행기 행이 스팟 사진을 쓴다 (2026-09-09).
+  test('들른 곳의 대표 사진이 기록에 남고, 없던 옛 기록은 비어 있다', () async {
+    const withPhoto = Spot(
+      id: 'spot-photo',
+      name: '어달해변',
+      type: SpotType.view,
+      routeId: 7,
+      detourMin: 2,
+      trustScore: 80,
+      imageUrl: 'https://example.com/eodal.jpg',
+    );
+    final first = make();
+    final log = first.read(tripLogProvider.notifier);
+    log.start(routeId: 7, routeName: '동해 바닷길', startName: '삼척', endName: '강릉');
+    log.addStop(withPhoto, StopKind.visited);
+    log.addStop(spot, StopKind.visited); // 사진 없는 스팟
+    log.end();
+    await Future<void>.delayed(Duration.zero);
+
+    final second = make();
+    second.read(tripLogProvider);
+    await Future<void>.delayed(Duration.zero);
+    final stops = second.read(tripLogProvider).finished.single.stops;
+    expect(stops.first.imageUrl, 'https://example.com/eodal.jpg', reason: '재시작 뒤에도 사진이 남는다');
+    expect(stops.last.imageUrl, isNull, reason: '없는 사진을 지어내지 않는다');
+  });
+
   test('저장소가 열리기 전에 찜해도 남는다', () async {
     // ⚠ 앱을 켜자마자 찜하면 SharedPreferences가 아직 안 열려 있다.
     //   그때 쓰기를 버리면 찜이 사라진다 — 실제로 그랬다.
