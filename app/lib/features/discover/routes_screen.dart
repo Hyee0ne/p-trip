@@ -122,18 +122,14 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
         builder: (context, box) {
           // ⚠ 지도엔 **51선이 다** 그려진다 (2026-09-09). 전에는 근처 노선의 잘린 선형만 넘겨서
           //   43번 국도 옆에 서면 파란 선이 그것 하나뿐이었다. 전국 선형은 단순화해 한 번 받는다
-          //   (routeLinesProvider). 가까운 노선은 진하게, 먼 노선은 옅게 — 이름은 그대로 노선이다.
+          //   (routeLinesProvider). 전부 같은 파랑 — 근처/먼 길 구분은 뺐다.
           final lines = linesAsync.value ?? const <RouteLine>[];
-          final nearIds = {
-            for (final n in nearbyAsync.value?.routes ?? const <NearbyRoute>[]) n.route.id,
-          };
           return Stack(
             children: [
               Positioned.fill(
                 child: RouteMapPanel(
                   fix: fixAsync.value,
                   routes: lines,
-                  nearIds: nearIds,
                   bottomInset: _extent * box.maxHeight,
                   // 지도의 파란 선을 눌러도 길을 고를 수 있다 —
                   // 시트를 뒤져 찾는 것보다 지도에서 바로 짚는 게 지도책의 문법이다.

@@ -1,8 +1,8 @@
 import 'dart:io' show Platform;
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:apple_maps_flutter/apple_maps_flutter.dart';
-import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 
 import '../../core/location.dart';
@@ -25,7 +25,6 @@ class RouteMapPanel extends StatefulWidget {
     required this.fix,
     required this.routes,
     required this.bottomInset,
-    this.nearIds = const {},
     this.onRouteTap,
   });
 
@@ -34,9 +33,6 @@ class RouteMapPanel extends StatefulWidget {
 
   /// 그릴 노선 — **51선 전부** (단순화 선형). `paths`가 빈 노선은 무시한다.
   final List<m.RouteLine> routes;
-
-  /// 지금 탈 수 있는(30km 안) 노선. 진하게 그린다. 나머지는 옅게 — 지도책의 먼 길.
-  final Set<int> nearIds;
 
   /// 시트에 가려지는 높이. 줌·내 위치 버튼을 그 위로 띄운다.
   final double bottomInset;
@@ -61,8 +57,14 @@ class _RouteMapPanelState extends State<RouteMapPanel> {
   /// 지금 줌. 손가락 오차를 미터로 환산할 때 쓴다.
   double _zoom = _zoomWhole;
 
-  /// 노선 폴리라인. 노선 목록이 바뀔 때만 다시 만든다 — 매 프레임 51선을 새로 세지 않는다.
+  /// 노선 폴리라인. 노선 목록이 바뀔 때만 다시 만든다 — 시트를 끄는 매 프레임에
+  /// 51선 수만 점을 새로 세지 않는다.
   Set<Polyline> _polylines = const {};
+
+  /// 현재 위치 마커. **우리가 그린다** — MapKit 의 파란 점(`showsUserLocation`)은 실기기에서
+  /// 안 보였다 (2026-09-09). 한 번 잰 위치(`fix`)에 파란 점 + 헤일로를 찍는다.
+  Set<Annotation> _annotations = const {};
+  BitmapDescriptor? _meIcon;
 
   /// 눌린 자리에서 가장 가까운 노선.
   ///
@@ -109,13 +111,21 @@ class _RouteMapPanelState extends State<RouteMapPanel> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 아이콘은 화면 배율을 알아야 그린다 — 여기서 한 번.
+    if (_meIcon == null) _prepareMe(MediaQuery.devicePixelRatioOf(context));
+  }
+
+  @override
   void didUpdateWidget(RouteMapPanel old) {
     super.didUpdateWidget(old);
-    // 위치가 늦게 도착하면 그때 카메라를 옮긴다. 내 위치 점은 MapKit 이 직접 찍는다.
-    if (!old.fix.sameAs(widget.fix) && _hasFix) _moveTo(_center, _zoomNear);
-    if (!identical(old.routes, widget.routes) || !setEquals(old.nearIds, widget.nearIds)) {
-      _polylines = _buildPolylines();
+    // 위치가 늦게 도착하면 그때 카메라를 옮기고 마커를 찍는다.
+    if (!old.fix.sameAs(widget.fix) && _hasFix) {
+      _moveTo(_center, _zoomNear);
+      _markMe();
     }
+    if (!identical(old.routes, widget.routes)) _polylines = _buildPolylines();
   }
 
   /// 갈래마다 따로 그린다. 국도는 끊겨 있어서 한 줄로 이으면 없는 길이 생긴다.
@@ -123,28 +133,61 @@ class _RouteMapPanelState extends State<RouteMapPanel> {
   /// ⚠ **zIndex 를 쓰지 않는다.** apple_maps_flutter 의 zIndex 는 겹침 순서가 아니라
   ///   `insertOverlay(at:)` 의 **배열 위치**다 — 값을 주면 새 선이 아래로 끼어들어 순서가 뒤섞인다.
   ///   흰 밑선을 깔았더니 실기기에서 선이 죄다 하얗고 87번만 파랬다 (2026-09-09).
-  ///   밑선을 없애고 넣는 순서(먼 길 → 근처)로만 겹침을 정한다. 바뀐 선은 다시 위로 얹힌다.
+  /// ⚠ 전부 같은 파랑이다. 근처/먼 길을 옅기로 나눴다가 뺐다 (2026-09-09) — 지도책의 길은 다 같은 길이다.
   Set<Polyline> _buildPolylines() {
-    Polyline line(m.RouteLine r, int i, List<LatLng> pts, {required bool near}) => Polyline(
-      polylineId: PolylineId('r-${r.id}-$i'),
-      points: pts,
-      // 전국이 한 화면일 때 두꺼우면 덩어리가 된다 — 근처 4pt, 먼 길 3pt(옅게).
-      color: near ? AppColors.routeBlue : AppColors.routeBlue.withValues(alpha: 0.42),
-      width: near ? 4 : 3,
-    );
-    final far = <Polyline>[];
-    final nearLines = <Polyline>[];
+    final out = <Polyline>{};
     for (final r in widget.routes) {
-      final near = widget.nearIds.contains(r.id);
       for (var i = 0; i < r.paths.length; i++) {
         final chain = r.paths[i];
         if (chain.length < 2) continue;
-        final pts = [for (final p in chain) LatLng(p.lat, p.lng)];
-        (near ? nearLines : far).add(line(r, i, pts, near: near));
+        out.add(
+          Polyline(
+            polylineId: PolylineId('r-${r.id}-$i'),
+            points: [for (final p in chain) LatLng(p.lat, p.lng)],
+            color: AppColors.routeBlue,
+            // 전국이 한 화면일 때 두꺼우면 덩어리가 된다.
+            width: 4,
+          ),
+        );
       }
     }
-    // 먼 길을 먼저 깔고 근처를 그 위에.
-    return {...far, ...nearLines};
+    return out;
+  }
+
+  /// 현재 위치 점 — 파란 원 + 흰 테두리 + 옅은 헤일로. 위젯 대신 캔버스로 그려 바이트로 넘긴다.
+  /// 플러그인이 화면 배율로 읽으니(`UIImage(data:scale:)`) 논리 34pt × 배율로 그린다.
+  Future<void> _prepareMe(double dpr) async {
+    const size = 34.0;
+    final rec = ui.PictureRecorder();
+    final canvas = Canvas(rec);
+    final c = Offset(size / 2 * dpr, size / 2 * dpr);
+    canvas.drawCircle(
+      c,
+      size / 2 * dpr,
+      Paint()..color = AppColors.routeBlue.withValues(alpha: 0.16),
+    );
+    canvas.drawCircle(c, 8 * dpr, Paint()..color = Colors.white);
+    canvas.drawCircle(c, 5.5 * dpr, Paint()..color = AppColors.routeBlue);
+    final img = await rec.endRecording().toImage((size * dpr).round(), (size * dpr).round());
+    final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
+    if (!mounted || bytes == null) return;
+    _meIcon = BitmapDescriptor.fromBytes(bytes.buffer.asUint8List());
+    _markMe();
+  }
+
+  void _markMe() {
+    final icon = _meIcon;
+    if (icon == null || !_hasFix) return;
+    setState(() {
+      _annotations = {
+        Annotation(
+          annotationId: AnnotationId('me'),
+          position: _center,
+          icon: icon,
+          anchor: const Offset(0.5, 0.5),
+        ),
+      };
+    });
   }
 
   @override
@@ -167,11 +210,12 @@ class _RouteMapPanelState extends State<RouteMapPanel> {
                 onCameraMove: (pos) => _zoom = pos.zoom,
                 // 나침반·내 위치 버튼은 우리 UI와 겹친다. 지도는 조용해야 한다.
                 compassEnabled: false,
-                myLocationEnabled: _hasFix,
+                myLocationEnabled: false,
                 myLocationButtonEnabled: false,
                 pitchGesturesEnabled: false,
                 rotateGesturesEnabled: false,
                 polylines: _polylines,
+                annotations: _annotations,
                 onTap: widget.onRouteTap == null
                     ? null
                     : (at) {
