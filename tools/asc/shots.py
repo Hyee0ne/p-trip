@@ -1,6 +1,7 @@
-import hashlib, pathlib, sys, urllib.request, urllib.error, ascapi as a
+import hashlib, os, pathlib, sys, urllib.request, urllib.error, ascapi as a
 
-LID="a2da5614-8dbd-4a67-ad7a-5e3ed05fe53b"
+# 버전 로컬라이제이션 id. 새 버전이면 `ASC_LID=<id>` 로 넘긴다 (release.py 가 그렇게 부른다).
+LID=os.environ.get("ASC_LID", "a2da5614-8dbd-4a67-ad7a-5e3ed05fe53b")
 DIR=pathlib.Path(__file__).resolve().parents[2] / "docs" / "screenshots"
 DISPLAY="APP_IPHONE_67"
 
