@@ -21,11 +21,11 @@ import 'theme.dart';
 /// ⚠ **라우터마다 새 키를 만든다.** 전역으로 두면 앱을 두 번 띄울 때
 ///   `!keyReservation.contains(key)`로 터진다 — 테스트가 매번 새로 띄우는데
 ///   앞 트리가 아직 안 걷혔으면 같은 GlobalKey가 두 곳에 붙는다.
-GoRouter buildRouter() {
+GoRouter buildRouter({String? initialLocation}) {
   final rootKey = GlobalKey<NavigatorState>();
   return GoRouter(
     navigatorKey: rootKey,
-    initialLocation: Env.startAt,
+    initialLocation: initialLocation ?? Env.startAt,
     routes: [
       // ── 온보딩 (최초 1회, 탭 밖) ──
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/settings.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/route_badge.dart';
@@ -29,8 +32,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (_page < 2) {
       _controller.nextPage(duration: AppMotion.slow, curve: AppMotion.curve);
     } else {
-      context.go('/');
+      _finish();
     }
+  }
+
+  /// 시작하기·건너뛰기 — 둘 다 '봤다'로 적고 홈으로. 다음 실행부터는 안 뜬다.
+  void _finish() {
+    unawaited(Onboarding.markDone());
+    context.go('/');
   }
 
   @override
@@ -43,7 +52,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
-                onPressed: () => context.go('/'),
+                onPressed: _finish,
                 child: const Text(
                   '건너뛰기',
                   style: TextStyle(color: AppColors.ink3, fontWeight: FontWeight.w600),

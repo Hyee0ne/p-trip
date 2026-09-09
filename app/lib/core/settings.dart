@@ -133,3 +133,24 @@ class BackgroundAlertsNotifier extends Notifier<bool> {
   /// 물어본 적이 있는가 — MY-03 토글이 "거절됐으니 설정으로" 를 가르는 데 쓴다.
   bool get asked => _asked;
 }
+
+// ── 온보딩 (ON — 최초 1회) ──
+const _kOnboardingDone = 'onboarding.done.v1';
+
+/// 온보딩을 봤는지. **시작하기·건너뛰기 둘 다** 본 것으로 적는다 — 다시 보여주는 게 재촉이다.
+///
+/// ⚠ 2026-09-09 까지 `/onboarding` 라우트만 있고 첫 실행에 거기로 보내는 코드가 없었다.
+///   출시 앱(1.0.0·1.0.1)에서 온보딩이 한 번도 안 떴다. 그 사용자들은 업데이트 뒤 한 번 본다.
+class Onboarding {
+  static Future<bool> isDone() async =>
+      (await SharedPreferences.getInstance()).getBool(_kOnboardingDone) ?? false;
+
+  static Future<void> markDone() async =>
+      (await SharedPreferences.getInstance()).setBool(_kOnboardingDone, true);
+
+  /// 앱의 첫 화면. 개발용 `START_AT` 을 명시했으면 그게 이긴다 — 화면 확인이 온보딩에 막히면 안 된다.
+  static Future<String> initialLocation() async {
+    if (Env.startAtSet) return Env.startAt;
+    return await isDone() ? Env.startAt : '/onboarding';
+  }
+}

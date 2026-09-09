@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/cover_store.dart';
 import 'core/env.dart';
 import 'core/router.dart';
+import 'core/settings.dart';
 import 'core/strings.dart';
 import 'core/theme.dart';
 
@@ -22,18 +23,25 @@ void main() async {
   // 사진첩에서 고른 대표 사진의 보관함. 문서 폴더를 한 번 잡아 둔다.
   await CoverStore.init();
 
-  runApp(const ProviderScope(child: PTripApp()));
+  // 첫 실행이면 온보딩(ON)으로. ⚠ 2026-09-09 까지 라우트만 있고 **아무도 거기로 안 갔다** —
+  //   출시 앱에서 온보딩이 한 번도 안 떴다. 플래그는 prefs 에 있고, 여기서 동기로 읽어 라우터에 준다.
+  final start = await Onboarding.initialLocation();
+
+  runApp(ProviderScope(child: PTripApp(initialLocation: start)));
 }
 
 class PTripApp extends StatefulWidget {
-  const PTripApp({super.key});
+  const PTripApp({super.key, this.initialLocation});
+
+  /// 시작 화면. null 이면 `Env.startAt`. main 이 온보딩 여부로 정해 넘긴다.
+  final String? initialLocation;
 
   @override
   State<PTripApp> createState() => _PTripAppState();
 }
 
 class _PTripAppState extends State<PTripApp> {
-  late final _router = buildRouter();
+  late final _router = buildRouter(initialLocation: widget.initialLocation);
 
   @override
   Widget build(BuildContext context) {
