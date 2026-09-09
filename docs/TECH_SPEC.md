@@ -241,15 +241,15 @@ trip 종료 시:
 | 천문연 출몰시각 | 일몰 (레이더 일몰 카드). **전망 스팟이 있는 격자만** 채운다 (약 40칸). 월출·월몰·박명은 받아만 둔다 | data.go.kr | pipeline |
 | 티맵 URL 스킴 (`tmap://route`) | 핸드오프 | SK open API 앱 연동 | 앱 |
 | ~~카카오내비 SDK~~ | ~~핸드오프~~ (2026-09-09 티맵으로 교체, 삭제) | developers.kakao.com | 앱 |
-| 카카오맵 **네이티브 SDK v2** | 지도 표시 (kakao_map_sdk) | developers.kakao.com | 앱 — **네이티브 앱 키**, 내비와 공용 |
+| **Apple MapKit** (apple_maps_flutter) | 지도 표시 — CO-07 | Apple | 앱 — 키 없음 (2026-09-09 카카오맵에서 교체) |
 | 천문연 천문현상 정보 | 유성우·월식·슈퍼문 — **앱에서 읽는 곳 없음** (§3.8 삭제). 테이블만 남겨둔다 | data.go.kr (B090041) | pipeline |
 | 한국관광 데이터랩 (검색·방문 변화율) | CO-01 "조용히 뜨는 길" | datalab.visitkorea.or.kr | pipeline |
 | Supabase | BaaS | supabase.com | 전체 |
 
 ⚠ 기상청 단기예보(우천 시 실내 가중치)는 **스코프 아웃** — 기획문서 §10에 있으나 MVP에서 쓰지 않는다.
 
-환경변수: `SUPABASE_URL/ANON_KEY`(앱), `TOURAPI_KEY, DATA_GO_KR_KEY`(pipeline/EdgeFn),
-`KAKAO_NATIVE_APP_KEY`(앱). 서비스 키는 앱에 절대 포함 금지.
+환경변수: `SUPABASE_URL/ANON_KEY`(앱), `TOURAPI_KEY, DATA_GO_KR_KEY`(pipeline/EdgeFn).
+앱에 서드파티 키는 없다 (카카오 키는 2026-09-09 삭제). 서비스 키는 앱에 절대 포함 금지.
 
 ⚠ data.go.kr 인증키는 **계정 단위**다. 출몰시각·천문현상·전통시장은 API마다 활용신청만
 따로 하면 같은 `DATA_GO_KR_KEY`를 쓴다 — 키가 늘지 않는다.

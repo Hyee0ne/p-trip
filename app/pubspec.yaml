@@ -33,7 +33,7 @@ dependencies:
   # 유틸
   intl: ^0.20.2
   url_launcher: ^6.3.1
-  kakao_map_sdk: ^1.2.6
+  apple_maps_flutter: ^1.4.0   # 홈 지도 — Apple MapKit (카카오맵 → 2026-09-09 교체, 키 불필요)
   shared_preferences: ^2.5.5
 
 dev_dependencies:

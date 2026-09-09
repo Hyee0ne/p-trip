@@ -65,9 +65,10 @@
 - **앱**: Flutter (Dart), 상태관리 Riverpod, 라우팅 go_router
 - **백엔드**: Supabase (Postgres + PostGIS, Auth, Storage, Edge Functions)
 - **데이터 파이프라인**: Node.js 스크립트 (TourAPI 수집 → Supabase 적재, 로컬/cron 실행)
-- **지도**: kakao_map_sdk (카카오맵 **네이티브** SDK v2 래퍼). 2026-08-29 확정.
-  WebView 기반 kakao_map_plugin에서 갈아탔다 — 노선 폴리라인을 여러 개 얹어야 해서
-  네이티브 렌더링이 필요하다. **네이티브 앱 키**를 쓰고, 내비 핸드오프와 같은 키다.
+- **지도**: **Apple MapKit** (apple_maps_flutter). 2026-09-09 카카오맵(kakao_map_sdk)에서 교체.
+  키가 없고 타일 요청이 Apple 밖으로 안 나간다 — 카카오 SDK·키는 앱에서 전부 지웠다
+  (내비는 티맵 URL 스킴). 노선 폴리라인은 흰 밑선 + 파란 선 두 겹. 위젯 테스트(macOS)에선
+  지도 자리에 '준비 중' 문구가 뜬다 — 가짜 지도를 그리지 않는다.
   iOS 13.0+ / Android minSdk 23
 - **주요 패키지**: geolocator(위치), url_launcher 티맵 URL 스킴(내비 핸드오프),
   flutter_tts(음성), photo_manager(사진 메타데이터), share_plus(여행기 공유),

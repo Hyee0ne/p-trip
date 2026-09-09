@@ -113,7 +113,6 @@ class S {
   static const routesLocCta = '위치 켜기';
   static const routesLocFinding = '위치를 찾는 중이에요';
   static const routesMapPending = '지도는 준비 중이에요';
-  static const routesMapFailed = '지도를 불러오지 못했어요';
   static String routesNearCount(int n) => '$n개';
 
   // ── CO-02 코스 상세 ──

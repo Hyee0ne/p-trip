@@ -12,11 +12,8 @@ class Env {
 
   static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
   static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
-  static const kakaoNativeAppKey = String.fromEnvironment('KAKAO_NATIVE_APP_KEY');
-
-  /// ⚠ 더 이상 쓰지 않는다. 지도는 네이티브 SDK로 전환했다 (2026-08-29).
-  ///   웹 지도를 다시 붙일 일이 생기면 그때 되살린다.
-  static const kakaoJsAppKey = String.fromEnvironment('KAKAO_JS_APP_KEY');
+  // ⚠ 카카오 키(KAKAO_NATIVE_APP_KEY·KAKAO_JS_APP_KEY)는 지웠다 (2026-09-09).
+  //   지도는 Apple MapKit, 내비는 티맵 URL 스킴 — 서드파티 키가 하나도 없다.
 
   /// 개발용 — 앱을 특정 화면에서 시작시킨다.
   /// `flutter run --dart-define=START_AT=/radar`
@@ -65,12 +62,6 @@ class Env {
 
   static const driveScale = int.fromEnvironment('DRIVE_SCALE', defaultValue: 20) * 1.0;
 
-  /// 카카오 지도 키가 붙었는지. 없으면 CO-07은 지도 자리를 비워둔다.
-  ///
-  /// ⚠ 2026-08-29 네이티브 SDK(kakao_map_sdk)로 전환하면서 **네이티브 앱 키**를 본다.
-  ///   지도와 내비 핸드오프가 같은 키를 쓴다. JS 키는 더 이상 쓰지 않는다.
-  static bool get hasMapKey => kakaoNativeAppKey.isNotEmpty;
-
   /// 레이더 발견 카드를 자동으로 띄울지. 스크린샷·시연 중 수동 제어용.
   /// `--dart-define=AUTO_CARD=false`
   static const autoCard = String.fromEnvironment('AUTO_CARD', defaultValue: 'true') != 'false';
@@ -81,6 +72,5 @@ class Env {
   static List<String> get missing => [
     if (supabaseUrl.isEmpty) 'SUPABASE_URL',
     if (supabaseAnonKey.isEmpty) 'SUPABASE_ANON_KEY',
-    if (kakaoNativeAppKey.isEmpty) 'KAKAO_NATIVE_APP_KEY',
   ];
 }

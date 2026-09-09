@@ -92,10 +92,9 @@
 		<string>audio</string>
 	</array>
 	<!-- ⚠ iOS는 여기 없는 스킴에 대해 canLaunchUrl이 **항상 false**다.
-	     선언하지 않으면 티맵 버튼이 조용히 아무것도 안 한다. (카카오내비 스킴은 지웠다, 2026-09-09) -->
+	     선언하지 않으면 티맵 버튼이 조용히 아무것도 안 한다. (카카오 스킴은 전부 지웠다, 2026-09-09) -->
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
-		<string>kakaomap</string>
 		<string>tmap</string>
 	</array>
 </dict>

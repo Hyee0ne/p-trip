@@ -1,9 +1,9 @@
+import 'dart:io' show Platform;
 import 'dart:math' as math;
 
+import 'package:apple_maps_flutter/apple_maps_flutter.dart';
 import 'package:flutter/material.dart';
-import 'package:kakao_map_sdk/kakao_map_sdk.dart';
 
-import '../../core/env.dart';
 import '../../core/location.dart';
 import '../../core/strings.dart';
 import '../../core/theme.dart';
@@ -11,9 +11,10 @@ import '../../data/models/models.dart' as m;
 
 /// CO-07 지도 자리.
 ///
-/// 카카오 **네이티브 SDK**(kakao_map_sdk)로 그린다 — 2026-08-29 전환.
-/// WebView가 아니라 실제 네이티브 렌더링이라 노선 폴리라인을 여러 개 얹어도 견딘다.
-/// 키가 없으면 [_MapPending]이 뜬다 — 가짜 지도를 그리지 않는다.
+/// **Apple MapKit**(apple_maps_flutter)으로 그린다 — 2026-09-09 카카오맵에서 교체.
+/// 키가 없고, 타일 요청이 OS 제조사(Apple) 밖으로 나가지 않는다. 지난 반려(Guideline 4,
+/// "내장 지도와 연결되지 않는다")와도 같은 방향이다. iOS 전용 앱이라 잃는 게 없다.
+/// ⚠ iOS 가 아닌 곳(위젯 테스트)에서는 [_MapPending] 이 뜬다 — 가짜 지도를 그리지 않는다.
 ///
 /// ⚠ 원칙 1: 이 지도는 **어디로 갈지 고르는 지도**다.
 /// 경로선·턴바이턴·ETA를 올리지 않는다. 레이더(DR-01)에는 지도를 두지 않는다.
@@ -45,20 +46,22 @@ class RouteMapPanel extends StatefulWidget {
 /// 남한 대략 중심 — 위치가 없을 때의 기본 시야.
 const _koreaCenter = LatLng(36.5, 127.9);
 
-/// 카카오 줌 레벨은 클수록 확대다 (JS SDK와 반대).
-const _zoomNear = 13;
-const _zoomWhole = 7;
+/// MapKit 줌은 구글식이다 — 클수록 확대. 6.6이면 남한이 한 화면, 13이면 동네.
+const _zoomNear = 13.0;
+const _zoomWhole = 6.6;
 
 class _RouteMapPanelState extends State<RouteMapPanel> {
-  KakaoMapController? _controller;
-  Object? _error;
+  AppleMapController? _controller;
 
   /// 지금 줌. 손가락 오차를 미터로 환산할 때 쓴다.
-  int _zoom = _zoomWhole;
+  double _zoom = _zoomWhole;
+
+  /// 노선 폴리라인. 노선 목록이 바뀔 때만 다시 만든다 — 매 프레임 51선을 새로 세지 않는다.
+  Set<Polyline> _polylines = const {};
 
   /// 눌린 자리에서 가장 가까운 노선.
   ///
-  /// ⚠ SDK가 폴리라인 탭을 직접 주지 않아 좌표로 찾는다.
+  /// ⚠ 폴리라인 탭 대신 지도 탭 좌표로 찾는다 — 선이 가늘어 정확히 누르기 어렵다.
   /// ⚠ 허용 오차를 **줌에 따라 바꾼다.** 전국이 보이는 화면에서 1km는 1픽셀도 안 되고,
   ///   확대한 화면에서 1km는 화면 절반이다. 고정값을 쓰면 둘 중 하나는 못 쓴다.
   m.RouteLine? _routeAt(LatLng at) {
@@ -85,12 +88,6 @@ class _RouteMapPanelState extends State<RouteMapPanel> {
     return bestKm <= tolKm ? best : null;
   }
 
-  /// 이미 그린 노선. 같은 선을 두 번 얹지 않는다.
-  final _drawn = <int>{};
-
-  /// 현재 위치 마커. 위치가 갱신되면 지우고 다시 찍는다.
-  Poi? _me;
-
   LatLng get _center {
     final f = widget.fix;
     return f != null && f.hasFix ? LatLng(f.lat!, f.lng!) : _koreaCenter;
@@ -99,144 +96,108 @@ class _RouteMapPanelState extends State<RouteMapPanel> {
   bool get _hasFix => widget.fix?.hasFix ?? false;
 
   @override
-  void didUpdateWidget(RouteMapPanel old) {
-    super.didUpdateWidget(old);
-    // 위치가 늦게 도착하면 그때 카메라를 옮기고 마커를 찍는다.
-    if (!old.fix.sameAs(widget.fix) && _hasFix) {
-      _moveTo(_center, _zoomNear);
-      _markMe();
-    }
-    if (old.routes.length != widget.routes.length) _drawRoutes();
+  void initState() {
+    super.initState();
+    _polylines = _buildPolylines();
   }
 
   @override
-  Widget build(BuildContext context) {
-    if (!Env.hasMapKey || _error != null) {
-      return _MapPending(bottomInset: widget.bottomInset, failed: _error != null);
-    }
-
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: KakaoMap(
-            option: KakaoMapOption(position: _center, zoomLevel: _hasFix ? _zoomNear : _zoomWhole),
-            onMapReady: _onReady,
-            onCameraMoveEnd: (pos, _) => _zoom = pos.zoomLevel,
-            onMapClick: widget.onRouteTap == null
-                ? null
-                : (_, at) {
-                    final r = _routeAt(at);
-                    if (r != null) widget.onRouteTap!(r);
-                  },
-            // 키가 틀리면 여기로 온다. 조용히 빈 화면을 두지 않는다.
-            onMapError: (e) {
-              if (mounted) setState(() => _error = e);
-            },
-          ),
-        ),
-        Positioned(
-          right: AppSpace.x3,
-          bottom: widget.bottomInset + AppSpace.x3,
-          child: _Controls(
-            onZoomIn: () => _controller?.moveCamera(CameraUpdate.zoomIn()),
-            onZoomOut: () => _controller?.moveCamera(CameraUpdate.zoomOut()),
-            onLocate: _hasFix ? () => _moveTo(_center, _zoomNear) : null,
-          ),
-        ),
-      ],
-    );
+  void didUpdateWidget(RouteMapPanel old) {
+    super.didUpdateWidget(old);
+    // 위치가 늦게 도착하면 그때 카메라를 옮긴다. 내 위치 점은 MapKit 이 직접 찍는다.
+    if (!old.fix.sameAs(widget.fix) && _hasFix) _moveTo(_center, _zoomNear);
+    if (!identical(old.routes, widget.routes)) _polylines = _buildPolylines();
   }
 
-  Future<void> _onReady(KakaoMapController controller) async {
-    _controller = controller;
-    // 나침반·축척은 우리 UI와 겹친다. 지도는 조용해야 한다.
-    await controller.compass.hide();
-    await _markMe();
-    await _drawRoutes();
-  }
-
-  Future<void> _moveTo(LatLng position, int zoom) async {
-    await _controller?.moveCamera(
-      CameraUpdate.newCenterPosition(position, zoomLevel: zoom),
-      animation: const CameraAnimation(300),
-    );
-  }
-
-  /// 현재 위치 점. 에셋 대신 위젯을 그려 이미지로 만든다 —
-  /// 색이 테마 토큰과 항상 같이 움직인다.
-  Future<void> _markMe() async {
-    final c = _controller;
-    if (c == null || !_hasFix) return;
-    final icon = await KImage.fromWidget(
-      const _MeDot(),
-      const Size(34, 34),
-      context: mounted ? context : null,
-    );
-    // 이미 찍혀 있으면 지우고 다시 찍는다 (위치가 갱신된 경우).
-    final old = _me;
-    if (old != null) {
-      _me = null;
-      await c.labelLayer.removePoi(old);
-    }
-    _me = await c.labelLayer.addPoi(_center, style: PoiStyle(icon: icon));
-  }
-
-  /// 노선 선형. M1 `build-routes.ts`가 GeoJSON을 채우기 전에는 그릴 게 없다.
-  Future<void> _drawRoutes() async {
-    final c = _controller;
-    if (c == null) return;
-    final style = RouteStyle(AppColors.routeBlue, 6, strokeColor: Colors.white, strokeWidth: 1);
+  /// 갈래마다 따로 그린다. 국도는 끊겨 있어서 한 줄로 이으면 없는 길이 생긴다.
+  /// 흰 밑선 + 파란 선 두 겹 — MapKit 폴리라인엔 테두리가 없어서 이렇게 낸다.
+  Set<Polyline> _buildPolylines() {
+    final out = <Polyline>{};
     for (final r in widget.routes) {
-      if (r.paths.isEmpty || _drawn.contains(r.id)) continue;
-      _drawn.add(r.id);
-      // 갈래마다 따로 그린다. 국도는 끊겨 있어서 한 줄로 이으면 없는 길이 생긴다.
       for (var i = 0; i < r.paths.length; i++) {
         final chain = r.paths[i];
         if (chain.length < 2) continue;
-        await c.routeLayer.addRoute(
-          [for (final p in chain) LatLng(p.lat, p.lng)],
-          style,
-          id: 'route-${r.id}-$i',
+        final pts = [for (final p in chain) LatLng(p.lat, p.lng)];
+        out.add(
+          Polyline(
+            polylineId: PolylineId('u-${r.id}-$i'),
+            points: pts,
+            color: Colors.white,
+            width: 7,
+          ),
+        );
+        out.add(
+          Polyline(
+            polylineId: PolylineId('r-${r.id}-$i'),
+            points: pts,
+            color: AppColors.routeBlue,
+            width: 5,
+            zIndex: 1,
+          ),
         );
       }
     }
+    return out;
   }
-}
-
-/// 위치가 실제로 바뀌었는지. 매 프레임 마커를 다시 찍지 않으려고 본다.
-extension on LocFix? {
-  bool sameAs(LocFix? other) =>
-      this?.lat == other?.lat && this?.lng == other?.lng && this?.status == other?.status;
-}
-
-/// 현재 위치 점 — 파란 원 + 흰 테두리 + 옅은 헤일로.
-class _MeDot extends StatelessWidget {
-  const _MeDot();
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 34,
-        height: 34,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: AppColors.routeBlue.withValues(alpha: 0.16),
-        ),
-        child: Center(
-          child: Container(
-            width: 16,
-            height: 16,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.routeBlue,
-              border: Border.all(color: Colors.white, width: 3),
+    if (!Platform.isIOS) return _MapPending(bottomInset: widget.bottomInset);
+
+    return LayoutBuilder(
+      builder: (context, box) {
+        // 시트를 끝까지 올리면 지도가 손가락 두 마디만 남는다. 그 위에 버튼 셋을 얹으면 상태바를 뚫는다.
+        final showControls = box.maxHeight - widget.bottomInset >= 200;
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: AppleMap(
+                initialCameraPosition: CameraPosition(
+                  target: _center,
+                  zoom: _hasFix ? _zoomNear : _zoomWhole,
+                ),
+                onMapCreated: (c) => _controller = c,
+                onCameraMove: (pos) => _zoom = pos.zoom,
+                // 나침반·내 위치 버튼은 우리 UI와 겹친다. 지도는 조용해야 한다.
+                compassEnabled: false,
+                myLocationEnabled: _hasFix,
+                myLocationButtonEnabled: false,
+                pitchGesturesEnabled: false,
+                rotateGesturesEnabled: false,
+                polylines: _polylines,
+                onTap: widget.onRouteTap == null
+                    ? null
+                    : (at) {
+                        final r = _routeAt(at);
+                        if (r != null) widget.onRouteTap!(r);
+                      },
+              ),
             ),
-          ),
-        ),
-      ),
+            if (showControls)
+              Positioned(
+                right: AppSpace.x3,
+                bottom: widget.bottomInset + AppSpace.x3,
+                child: _Controls(
+                  onZoomIn: () => _controller?.animateCamera(CameraUpdate.zoomIn()),
+                  onZoomOut: () => _controller?.animateCamera(CameraUpdate.zoomOut()),
+                  onLocate: _hasFix ? () => _moveTo(_center, _zoomNear) : null,
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
+
+  Future<void> _moveTo(LatLng position, double zoom) async {
+    await _controller?.animateCamera(CameraUpdate.newLatLngZoom(position, zoom));
+  }
+}
+
+/// 위치가 실제로 바뀌었는지. 매 프레임 카메라를 옮기지 않으려고 본다.
+extension on LocFix? {
+  bool sameAs(LocFix? other) =>
+      this?.lat == other?.lat && this?.lng == other?.lng && this?.status == other?.status;
 }
 
 /// 줌 ± / 내 위치. 시트 위로 떠 있다.
@@ -294,11 +255,10 @@ class _Controls extends StatelessWidget {
   }
 }
 
-/// 카카오 키가 없거나 인증에 실패했을 때. 가짜 지도를 그리는 대신 비어 있다고 말한다.
+/// iOS 가 아닐 때(위젯 테스트·macOS). 가짜 지도를 그리는 대신 비어 있다고 말한다.
 class _MapPending extends StatelessWidget {
-  const _MapPending({required this.bottomInset, this.failed = false});
+  const _MapPending({required this.bottomInset});
   final double bottomInset;
-  final bool failed;
 
   @override
   Widget build(BuildContext context) {
@@ -321,10 +281,10 @@ class _MapPending extends StatelessWidget {
                       color: AppColors.ink3.withValues(alpha: 0.7),
                     ),
                     const SizedBox(height: AppSpace.x3),
-                    Text(
-                      failed ? S.routesMapFailed : S.routesMapPending,
+                    const Text(
+                      S.routesMapPending,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13.5,
                         height: 1.3,
                         fontWeight: FontWeight.w600,
