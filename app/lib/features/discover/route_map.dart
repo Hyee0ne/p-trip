@@ -27,10 +27,14 @@ class RouteMapPanel extends StatefulWidget {
     required this.bottomInset,
     this.onRouteTap,
     this.focus,
+    this.selectedId,
   });
 
   /// 고른 노선으로 카메라를 옮기는 요청. null 이면 아무것도 안 한다.
   final MapFocus? focus;
+
+  /// 지금 고른 노선. **노란색**으로 맨 위에 그린다 — 지도가 움직인 뒤 "어디"가 보여야 한다 (2026-09-09).
+  final int? selectedId;
 
   /// 현재 위치. 없으면 남한 전체를 보여준다.
   final LocFix? fix;
@@ -140,7 +144,9 @@ class _RouteMapPanelState extends State<RouteMapPanel> {
       _moveTo(_center, _zoomNear);
       _markMe();
     }
-    if (!identical(old.routes, widget.routes)) _polylines = _buildPolylines();
+    if (!identical(old.routes, widget.routes) || old.selectedId != widget.selectedId) {
+      _polylines = _buildPolylines();
+    }
     final f = widget.focus;
     if (f != null && f.seq != (old.focus?.seq ?? -1)) _fitRoute(f);
   }
@@ -185,24 +191,30 @@ class _RouteMapPanelState extends State<RouteMapPanel> {
   ///   `insertOverlay(at:)` 의 **배열 위치**다 — 값을 주면 새 선이 아래로 끼어들어 순서가 뒤섞인다.
   ///   흰 밑선을 깔았더니 실기기에서 선이 죄다 하얗고 87번만 파랬다 (2026-09-09).
   /// ⚠ 전부 같은 파랑이다. 근처/먼 길을 옅기로 나눴다가 뺐다 (2026-09-09) — 지도책의 길은 다 같은 길이다.
+  ///   고른 노선만 **노란색**, 맨 나중에 넣어 위에 오게 한다.
   Set<Polyline> _buildPolylines() {
     final out = <Polyline>{};
+    final picked = <Polyline>[];
     for (final r in widget.routes) {
+      final selected = r.id == widget.selectedId;
       for (var i = 0; i < r.paths.length; i++) {
         final chain = r.paths[i];
         if (chain.length < 2) continue;
-        out.add(
-          Polyline(
-            polylineId: PolylineId('r-${r.id}-$i'),
-            points: [for (final p in chain) LatLng(p.lat, p.lng)],
-            color: AppColors.routeBlue,
-            // 전국이 한 화면일 때 두꺼우면 덩어리가 된다.
-            width: 4,
-          ),
+        final line = Polyline(
+          polylineId: PolylineId('r-${r.id}-$i'),
+          points: [for (final p in chain) LatLng(p.lat, p.lng)],
+          color: selected ? AppColors.sun : AppColors.routeBlue,
+          // 전국이 한 화면일 때 두꺼우면 덩어리가 된다.
+          width: selected ? 6 : 4,
         );
+        if (selected) {
+          picked.add(line);
+        } else {
+          out.add(line);
+        }
       }
     }
-    return out;
+    return {...out, ...picked};
   }
 
   /// 현재 위치 점 — 파란 원 + 흰 테두리 + 옅은 헤일로. 위젯 대신 캔버스로 그려 바이트로 넘긴다.

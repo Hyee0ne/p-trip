@@ -51,9 +51,12 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
   /// 화면 높이. 시트에 가려지지 않는 비율을 셀 때 쓴다.
   double _boxH = 0;
 
-  /// 노선을 골랐다 — 시트가 펼쳐져 있으면 내리고, 지도를 그 길로 옮긴다 (2026-09-09).
-  /// ⚠ 출발 시트(CO-08, 약 380pt)가 곧 올라오니 그 위에 길이 보이게 잡는다.
-  void _pick(RouteLine r) {
+  /// 지금 고른 노선 — 지도에 노란색으로. 출발 시트가 닫히면 푼다.
+  int? _selectedId;
+
+  /// 노선을 골랐다 — 시트가 펼쳐져 있으면 내리고, 지도를 그 길로 옮기고, 노란색으로 표시한 채
+  /// 출발 시트(CO-08)를 띄운다 (2026-09-09). ⚠ 출발 시트가 약 380pt 라 그 위에 길이 보이게 잡는다.
+  Future<void> _pick(RouteLine r) async {
     if (_sheet.isAttached && _extent > _collapsed + 0.01) {
       _sheet.animateTo(
         _collapsed,
@@ -62,7 +65,13 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
       );
     }
     final covered = _boxH <= 0 ? 0.5 : math.max(_collapsed * _boxH, 380.0) / _boxH;
-    setState(() => _focus = MapFocus(r.id, ++_focusSeq, 1 - covered));
+    setState(() {
+      _focus = MapFocus(r.id, ++_focusSeq, 1 - covered);
+      _selectedId = r.id;
+    });
+    await DepartSheet.show(context, r, note: ref.read(routeNotesProvider).value?[r.id]);
+    // 내렸든 출발했든 노란 표시는 푼다. 출발했으면 이 화면은 이미 뒤로 갔다.
+    if (mounted) setState(() => _selectedId = null);
   }
 
   _Axis _axis = _Axis.all;
@@ -157,12 +166,10 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
                   routes: lines,
                   bottomInset: _extent * box.maxHeight,
                   focus: _focus,
+                  selectedId: _selectedId,
                   // 지도의 파란 선을 눌러도 길을 고를 수 있다 —
                   // 시트를 뒤져 찾는 것보다 지도에서 바로 짚는 게 지도책의 문법이다.
-                  onRouteTap: (r) {
-                    _pick(r);
-                    DepartSheet.show(context, r, note: ref.read(routeNotesProvider).value?[r.id]);
-                  },
+                  onRouteTap: _pick,
                 ),
               ),
               // 검색은 지도 위에 뜬다. 시트 안에 넣으면 끌어올려야 보인다.
@@ -769,7 +776,12 @@ class _RouteRow extends ConsumerWidget {
   /// ⚠ 그전엔 구간 코스 목록으로 빠졌다 — 길을 골랐는데 다시 코스를 고르게 하면
   ///   결국 목적지를 정하는 흐름이고, 그게 내비 문법이다.
   void _depart(BuildContext context, WidgetRef ref) {
-    onPick?.call(route);
+    final pick = onPick;
+    if (pick != null) {
+      // 화면이 지도 이동·노란 표시·시트까지 한 번에 한다.
+      pick(route);
+      return;
+    }
     DepartSheet.show(context, route, note: ref.read(routeNotesProvider).value?[route.id]);
   }
 }
