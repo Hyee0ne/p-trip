@@ -208,7 +208,8 @@ class _Permissions extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           item(Icons.my_location, '위치', S.onboardLocation),
-          item(Icons.photo_library_outlined, '사진', S.onboardPhoto),
+          // ⚠ 「사진」 항목이 있었다 → 지웠다 (2026-09-09). 사진첩을 읽는 기능(여행기 사진 스트립)을 없앴다 —
+          //   쓰지 않는 권한을 미리 설명하면 거짓이고, 애플도 근거 없는 권한을 반려한다.
           // ⚠ 설명만. 팝업은 출발할 때 한 번 — 여기서 띄우면 이유를 모른 채 거절하고 그게 끝이다.
           item(Icons.notifications_none, '알림', S.onboardNotif),
           const SizedBox(height: AppSpace.x3),

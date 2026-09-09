@@ -26,7 +26,6 @@ class S {
   // ── 온보딩 (§ON) ──
   static const onboard2 = '홀수는 남북, 짝수는 동서. 한 자리 국도가 나라의 기본 축이에요. 전부 51개 노선, 14,000km';
   static const onboardLocation = '레이더가 주변을 살피려면요';
-  static const onboardPhoto = '여행기에 사진을 자동 정리해드려요';
 
   /// ⚠ 온보딩은 **설명만** 한다. 시스템 팝업은 출발할 때 한 번 뜬다 (SCREENS.md DR-01 진입).
   ///   iOS 알림 권한은 평생 한 번만 물을 수 있어서, 이유를 모른 채 거절하면 끝이다 —
@@ -267,12 +266,9 @@ class S {
   static const coverChosen = '내가 고른 사진';
   static const coverPick = '사진첩에서 고르기';
   static const toastCover = '대표 사진을 바꿨어요';
-  static const photoOpenSettings = '설정 열기';
-  static String photoCaption(int n) => '사진 $n장이 GPS·촬영 시각으로 경로 위에 자동 정리됐어요';
   static const tripShare = '여행기 공유하기';
   static const tripSharing = '카드 만드는 중…';
   static const tripEmpty = '이번엔 그냥 달린 날 — 길만 남은 것도 여행이에요';
-  static const photoDenied = '사진 접근을 허용하면 자동으로 정리해드려요';
 
   // ── MY-01 마이 ──
   static const collectionTitle = '대한민국 국도 51선';
@@ -317,8 +313,6 @@ class S {
     (org: '소상공인시장진흥공단', what: '전국전통시장표준데이터'),
     (org: '국토교통부', what: '일반국도 도로중심선'),
   ];
-
-  static const photoAccessRow = '사진 접근';
 
   /// MY-01 여행기 행을 왼쪽으로 밀어 지운다 (2026-09-09). 되돌리기는 토스트 한 번.
   static const tripDeleted = '여행기를 지웠어요';

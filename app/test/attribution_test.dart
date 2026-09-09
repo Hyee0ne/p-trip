@@ -63,7 +63,7 @@ void main() {
   testWidgets('화살표를 단 설정 행은 전부 눌린다 — 죽은 행이 없다', (tester) async {
     await pumpMy(tester);
 
-    for (final label in [S.photoAccessRow, S.sourcesRow]) {
+    for (final label in [S.sourcesRow]) {
       final row = find.text(label);
       await tester.scrollUntilVisible(row, 300);
       // 화살표가 붙은 행은 InkWell 안에 있어야 한다 (onTap이 있다는 뜻).

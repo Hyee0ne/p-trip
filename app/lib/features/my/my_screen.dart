@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
-import 'package:photo_manager/photo_manager.dart';
 
 import '../../core/env.dart';
 import '../../core/os.dart';
@@ -473,13 +472,7 @@ class _MyScreenState extends ConsumerState<MyScreen> {
                   ),
                 ),
               ],
-              const Divider(height: 1, thickness: 1, color: AppColors.line),
-              row(
-                S.photoAccessRow,
-                const Icon(Icons.chevron_right, size: 18, color: AppColors.ink3),
-                // 권한을 앱에서 바꿀 수는 없다. iOS 설정을 열어주는 게 할 수 있는 전부다.
-                onTap: PhotoManager.openSetting,
-              ),
+              // ⚠ 「사진 접근」 행이 있었다 → 지웠다 (2026-09-09). 사진첩을 읽는 기능이 없어졌다.
               const Divider(height: 1, thickness: 1, color: AppColors.line),
               // ⚠ **기본 음성일 때만** 보인다. 고품질이 있거나 모르면(엔진 실패) 안 그린다 —
               //   눌러도 할 게 없는 행을 남기지 않는다. 앱이 그 설정 화면을 열어줄 수도 없어

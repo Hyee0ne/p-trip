@@ -73,7 +73,7 @@
   지도 자리에 '준비 중' 문구가 뜬다 — 가짜 지도를 그리지 않는다.
   iOS 13.0+ / Android minSdk 23
 - **주요 패키지**: geolocator(위치), url_launcher 티맵 URL 스킴(내비 핸드오프),
-  flutter_tts(음성), photo_manager(사진 메타데이터), share_plus(여행기 공유),
+  flutter_tts(음성), photo_manager(옛 여행기의 대표 사진 식별자 읽기뿐 — 사진 스트립은 2026-09-09 폐기), share_plus(여행기 공유),
   flutter_local_notifications(DR-06 백그라운드 근접 알림)
 - ⚠ 버전 제약: 로컬 Dart 3.11.5 기준. flutter_riverpod 3.4+/go_router 18+ 는 Dart 3.12 요구 —
   `flutter upgrade` 하거나 go_router 17.5.0 / flutter_riverpod 3.3.2 로 핀 고정할 것.

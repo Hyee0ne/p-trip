@@ -71,7 +71,7 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>레이더가 주변을 살피려면 위치가 필요해요. 이동 중에만 사용하고, 기록은 내 기기에 먼저 저장돼요.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>여행기에 사진을 자동 정리해드려요. 여행한 시간대의 사진만 봅니다.</string>
+	<string>예전 여행기에서 대표로 골라둔 사진을 보여주는 데만 씁니다.</string>
 	<!-- ⚠ image_picker(사진 선택기)가 카메라·마이크 문구를 요구한다. 없으면 업로드가
 	     ITMS-90683 로 거절된다. 이 앱은 카메라도 마이크도 쓰지 않는다 — 문구도 그렇게 말한다. -->
 	<key>NSCameraUsageDescription</key>

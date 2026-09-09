@@ -1,14 +1,10 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:photo_manager/photo_manager.dart';
 
 import '../../core/strings.dart';
 import '../../core/trip_log.dart';
 import '../../core/cover_store.dart';
-import '../../core/trip_photos.dart';
 import '../../core/widgets/trip_cover.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/app_toast.dart';
@@ -48,7 +44,6 @@ class _Body extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final photos = ref.watch(tripPhotosProvider(trip.id)).value;
     // 코스에 뭐가 있었는지 알아야 '계획에 없던' 밥을 셀 수 있다.
     final planned = trip.courseId.isEmpty
         ? const <String>{}
@@ -82,15 +77,10 @@ class _Body extends ConsumerWidget {
             ),
           ],
           const SizedBox(height: AppSpace.x5),
-          // 사진이 없으면 자리도 만들지 않는다 — 없는 걸 채우지 않는다.
-          if (photos != null && photos.photos.isNotEmpty) ...[
-            _photoStrip(context, ref, photos.photos),
-            const SizedBox(height: AppSpace.x5),
-          ] else if (photos != null && photos.access == PhotoAccess.denied) ...[
-            _photoDenied(),
-            const SizedBox(height: AppSpace.x5),
-          ],
-          // 대표 사진은 여행 시간대 밖에서도 고를 수 있어야 한다 (2026-09-09) — 사진첩 선택기.
+          // ⚠ ~~사진 스트립~~ → **지웠다 (2026-09-09).** 여행 시간대의 사진첩을 훑어 늘어놓던 줄이다.
+          //   그 시간에 찍은 스크린샷까지 여행 사진으로 실렸고, 무엇인지 설명이 없어 낯선 카드로 읽혔다.
+          //   사진첩 권한을 묻는 이유도 이 줄뿐이었다 — 같이 없앴다 (온보딩 「사진」·설정 「사진 접근」).
+          // 대표 사진은 사진첩 선택기(PHPicker)로 고른다 — 권한 팝업이 없다.
           _coverRow(context, ref),
           const SizedBox(height: AppSpace.x5),
           const SizedBox(height: AppSpace.x3),
@@ -101,10 +91,6 @@ class _Body extends ConsumerWidget {
           const SizedBox(height: AppSpace.x3),
           _timeline(),
           const SizedBox(height: AppSpace.x5),
-          if (photos != null && photos.photos.isNotEmpty) ...[
-            _photoNote(photos.photos.length),
-            const SizedBox(height: AppSpace.x3),
-          ],
           const SizedBox(height: AppSpace.x6),
           _actions(context, path, meals),
         ],
@@ -163,29 +149,6 @@ class _Body extends ConsumerWidget {
     );
   }
 
-  /// 사진 스트립 — **내 사진만.** 보기만 한다 (SCREENS.md MY-02).
-  ///
-  /// ⚠ 스팟 사진을 내 사진인 척 채우지 않는다. 그건 여행기가 아니라 카탈로그다.
-  /// ⚠ ~~탭하면 대표 사진~~ → **지웠다 (2026-09-09).** 대표는 「대표 사진」 행의 사진첩 선택기로만
-  ///   고른다. 파란 테두리·「대표」 뱃지·힌트 줄도 같이 뺐다. 4장에서 끊지 않는 건 그대로다.
-  Widget _photoStrip(BuildContext context, WidgetRef ref, List<TripPhoto> photos) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          height: 150,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 22),
-            itemCount: photos.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 6),
-            itemBuilder: (_, i) => _photoTile(context, ref, photos[i]),
-          ),
-        ),
-      ],
-    );
-  }
-
   /// 대표 사진 — 지금 것 미리보기 + 「사진첩에서 고르기」. 시스템 선택기라 권한 팝업이 없다.
   Widget _coverRow(BuildContext context, WidgetRef ref) {
     return Padding(
@@ -237,59 +200,6 @@ class _Body extends ConsumerWidget {
     );
   }
 
-  /// ⚠ 사진 위에 **아무것도 얹지 않는다** (2026-09-07). 스팟명·시각 라벨이 있었는데,
-  ///   규칙(300m 안에 들른 곳이 있으면 이름, 없으면 시각)이 화면에 드러나 보였다.
-  ///   내 사진이 규칙의 결과물처럼 보이면 그건 여행기가 아니다. 사진은 사진으로 둔다.
-  Widget _photoTile(BuildContext context, WidgetRef ref, TripPhoto p) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(15),
-      child: SizedBox(
-        width: 118,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Container(color: AppColors.fill),
-            FutureBuilder<Uint8List?>(
-              future: p.asset.thumbnailDataWithSize(const ThumbnailSize(300, 380)),
-              builder: (_, snap) => snap.data == null
-                  ? const SizedBox.shrink()
-                  : Image.memory(snap.data!, fit: BoxFit.cover),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// 권한이 없을 때. 막지 않고 왜 비어 있는지만 말한다 (SCREENS.md MY-02 상태).
-  Widget _photoDenied() => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 22),
-    child: Container(
-      padding: const EdgeInsets.all(AppSpace.x4),
-      decoration: BoxDecoration(
-        color: AppColors.fill,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.photo_library_outlined, size: 18, color: AppColors.ink3),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Text(
-              S.photoDenied,
-              style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.ink2),
-            ),
-          ),
-          TextButton(
-            onPressed: PhotoManager.openSetting,
-            style: TextButton.styleFrom(minimumSize: const Size(0, AppTouch.min)),
-            child: const Text(S.photoOpenSettings, style: TextStyle(fontSize: 13)),
-          ),
-        ],
-      ),
-    ),
-  );
-
   Widget _timeline() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -300,24 +210,6 @@ class _Body extends ConsumerWidget {
             if (i != trip.stops.length - 1)
               const Divider(height: 1, thickness: 1, color: AppColors.line),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _photoNote(int photoCount) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 22),
-      child: Row(
-        children: [
-          const Icon(Icons.photo_camera_outlined, size: 13, color: AppColors.ink3),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              S.photoCaption(photoCount),
-              style: const TextStyle(fontSize: 11.5, height: 1.5, color: AppColors.ink3),
-            ),
-          ),
         ],
       ),
     );
