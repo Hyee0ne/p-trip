@@ -25,7 +25,8 @@ void main() {
     expect(opened, ['/spot/early', '/spot/later'], reason: '붙은 뒤엔 바로 연다');
     a.handleTap('next');
     expect(opened.last, '/radar', reason: '앞쪽 후보 알림은 레이더로');
+    final before = opened.length;
     a.handleTap(null);
-    expect(opened, ['early', 'later'], reason: '접힘 알림은 아무 데도 안 간다');
+    expect(opened.length, before, reason: '접힘 알림은 아무 데도 안 간다');
   });
 }
