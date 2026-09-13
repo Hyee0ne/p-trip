@@ -111,6 +111,9 @@ class DriveNotifier extends Notifier<DriveState> {
   /// 구간별 누적 거리(km). 진행률↔거리 변환에 쓴다.
   List<double> _cum = const [];
 
+  /// 모의 주행에서 선형을 갈아탄 시점의 누적거리 — 새 선형은 여기서부터 잰다 (DR-08).
+  double _demoOffset = 0;
+
   /// 시연용 배속. 65km를 실시간으로 달리면 87분이라 아무도 못 기다린다.
   /// ⚠ 너무 빠르면 카드가 스쳐 지나간다 — 3~7분 창이 실시간 1초도 안 된다.
   double _scale = 20;
@@ -143,6 +146,7 @@ class DriveNotifier extends Notifier<DriveState> {
       _cum.add(_cum[i - 1] + _distKm(path[i - 1], path[i]));
     }
     final total = _cum.last;
+    _demoOffset = 0;
     state = DriveState(
       running: true,
       lat: path.first.lat,
@@ -154,6 +158,29 @@ class DriveNotifier extends Notifier<DriveState> {
 
     const dt = Duration(milliseconds: 250);
     _tick = Timer.periodic(dt, (_) => _step(dt.inMilliseconds / 1000.0));
+  }
+
+  /// 여행 중 다른 국도로 갈아탄다 (DR-08). **거리·시간은 이어지고 선형만 바뀐다.**
+  /// 모의 주행은 새 선형의 첫 점부터 이어서 달리고, 실주행은 진행률 기준만 바꾼다.
+  void switchPath(List<GeoPoint> path) {
+    if (path.length < 2) return;
+    _path = path;
+    _cum = [0];
+    for (var i = 1; i < path.length; i++) {
+      _cum.add(_cum[i - 1] + _distKm(path[i - 1], path[i]));
+    }
+    if (_live) {
+      state = state.copyWith(frac: 0, courseKm: _cum.last);
+      return;
+    }
+    _demoOffset = state.distanceKm;
+    state = state.copyWith(
+      lat: path.first.lat,
+      lng: path.first.lng,
+      headingDeg: _bearing(path[0], path[1]),
+      frac: 0,
+      courseKm: _cum.last,
+    );
   }
 
   void stop() {
@@ -339,11 +366,13 @@ class DriveNotifier extends Notifier<DriveState> {
     if (total <= 0) return;
     final moved = _kmh / 3600 * seconds * _scale;
     final next = state.distanceKm + moved;
+    // 선형 위 위치는 갈아탄 시점부터 잰다 — 누적거리는 여행 전체다 (DR-08).
+    final along = next - _demoOffset;
 
-    if (next >= total) {
+    if (along >= total) {
       final last = _path.last;
       state = state.copyWith(
-        distanceKm: total,
+        distanceKm: _demoOffset + total,
         frac: 1,
         lat: last.lat,
         lng: last.lng,
@@ -355,12 +384,12 @@ class DriveNotifier extends Notifier<DriveState> {
       return;
     }
 
-    final p = _pointAt(next);
+    final p = _pointAt(along);
     state = state.copyWith(
       elapsedSec: state.elapsedSec + seconds,
       stoppedSec: 0,
       distanceKm: next,
-      frac: next / total,
+      frac: along / total,
       lat: p.$1.lat,
       lng: p.$1.lng,
       headingDeg: p.$2,

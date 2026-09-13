@@ -17,7 +17,12 @@ class Journey {
     this.courseId = '',
     this.startName = '',
     this.endName = '',
+    this.continues = false,
   });
+
+  /// **여행 중 갈아타기** (DR-08). true 면 레이더가 여행을 새로 시작하지 않고 구간만 늘린다 —
+  /// 거리·들른 곳·알린 곳이 그대로 이어진다. 발견 탭 「길 떠나기」와 레이더 「길 바꾸기」 둘 다 여기로.
+  final bool continues;
 
   final int routeId;
   final String routeName;

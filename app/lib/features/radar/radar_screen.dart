@@ -28,6 +28,7 @@ import '../handoff/handoff_sheet.dart';
 import 'card_gap.dart';
 import 'radar_next.dart';
 import 'radar_stops.dart';
+import 'radar_switch.dart';
 import 'radar_view.dart';
 
 /// DR-01 레이더 모드 (SCREENS.md DR-01). 다크 테마 고정.
@@ -163,6 +164,11 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
 
   void _resetForJourney(Journey? next) {
     if (identical(next, _flagsFor)) return;
+    // DR-08 — 여행 중 갈아타기. 여정만 바꾸고 여행·거리·알린 곳은 그대로 잇는다.
+    if (next != null && next.continues && _started) {
+      _applySwitch(next);
+      return;
+    }
     _flagsFor = next;
     _armed = false;
     _offered = false;
@@ -252,6 +258,71 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
       _nextOpen = false;
       _nextAuto = false;
     });
+  }
+
+  // ── DR-08 길 바꾸기 ──
+
+  /// 갈아탄 여정을 적용한다 — 구간 추가 · 선형 교체 · 새 길 진입점까지 핸드오프. 여행은 그대로다.
+  void _applySwitch(Journey j) {
+    final drive = ref.read(driveProvider);
+    ref
+        .read(tripLogProvider.notifier)
+        .switchRoute(routeId: j.routeId, routeName: j.routeName, atKm: drive.distanceKm);
+    ref.read(driveProvider.notifier).switchPath(j.path);
+    _flagsFor = j;
+    _nextOpen = false;
+    _nextAuto = false;
+    _next = const [];
+    if (mounted) setState(() {});
+    _sayNoNav(S.switchedTo(j.routeId));
+    // 데모는 시트 없이 새 선형을 바로 달린다. 실주행은 출발 때처럼 진입점까지 티맵.
+    if (!ref.read(demoModeProvider)) unawaited(_openHandoff(j));
+  }
+
+  /// 상단 국도 뱃지를 누르면 — 여기서 탈 수 있는 국도 목록. 홈과 같은 조회다.
+  Future<void> _openRouteSwitch() async {
+    final drive = ref.read(driveProvider);
+    final journey = ref.read(startedJourneyProvider);
+    if (journey == null || !drive.hasFix) return;
+    final result = await ref
+        .read(discoverRepositoryProvider)
+        .nearbyRoutes(lat: drive.lat!, lng: drive.lng!);
+    if (!mounted) return;
+    final picked = await RouteSwitchSheet.show(
+      context,
+      currentRouteId: journey.routeId,
+      result: result,
+    );
+    if (picked == null || !mounted) return;
+    await _switchTo(picked.$1, picked.$2);
+  }
+
+  Future<void> _switchTo(RouteLine route, bool northOrEast) async {
+    final drive = ref.read(driveProvider);
+    if (!drive.hasFix) return;
+    final path = await ref
+        .read(discoverRepositoryProvider)
+        .routePathAhead(
+          routeId: route.id,
+          lat: drive.lat!,
+          lng: drive.lng!,
+          northOrEast: northOrEast,
+        );
+    if (!mounted) return;
+    if (path.length < 2) {
+      showAppToast(context, S.departNoPath);
+      return;
+    }
+    ref
+        .read(startedJourneyProvider.notifier)
+        .set(
+          Journey(
+            routeId: route.id,
+            routeName: route.name.isEmpty ? S.routeNumber(route.id) : route.name,
+            path: path,
+            continues: true,
+          ),
+        );
   }
 
   /// 「그냥 N번 국도로 돌아가기」 — 출발 때와 같은 핸드오프. 목적지는 원래 방향의 국도 진입점.
@@ -796,7 +867,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
   ///   `routeId: 0` 은 trip_log 의 '모름' 값이다 (옛 기록에 남아 있을 수 있다).
   int? get _routeNo {
     final id =
-        ref.watch(startedJourneyProvider)?.routeId ?? ref.watch(tripLogProvider).active?.routeId;
+        ref.watch(startedJourneyProvider)?.routeId ??
+        ref.watch(tripLogProvider).active?.currentRouteId;
     return (id == null || id == 0) ? null : id;
   }
 
@@ -884,7 +956,19 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
         children: [
           // 노선을 모르면 뱃지를 비운다. 번호를 지어내면 거짓말이 된다.
           if (_routeNo != null) ...[
-            RouteBadge('$_routeNo', size: BadgeSize.sm),
+            // 뱃지를 누르면 「길을 바꿀까요?」 (DR-08). 달리는 중일 때만.
+            Semantics(
+              button: _armed,
+              label: S.switchTitle,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _armed ? _openRouteSwitch : null,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: RouteBadge('$_routeNo', size: BadgeSize.sm),
+                ),
+              ),
+            ),
             const SizedBox(width: 10),
           ],
           const Expanded(

@@ -268,6 +268,16 @@ class S {
   static const nextEmpty = '앞쪽 10km엔 아직 없어요.\n그냥 길로 돌아가도 돼요.';
   static String nextBackToRoute(int id) => '그냥 $id번 국도로 돌아가기';
 
+  // ── DR-08 길 바꾸기 (2026-09-13) ──
+  static const switchTitle = '길을 바꿀까요?';
+  static const switchSub = '여기서 탈 수 있는 국도예요. 여행과 기록은 그대로 이어져요.';
+  static const switchCurrent = '지금 이 길';
+  static const switchEmpty = '근처에 갈아탈 국도가 없어요';
+  static String departSwitchNote(int cur, int next) => '$cur번 여행 중이에요. $next번으로 갈아타도 여행과 기록은 이어져요.';
+  static String switchedTo(int id) => '$id번 국도로 갈아탔어요';
+  static String tripSwitched(int id, int prevId, int prevKm) =>
+      '$id번 국도로 갈아탐 · $prevId번 ${prevKm}km';
+
   // ── DR-06 백그라운드 알림 ──
   static const bgStopped = '레이더를 접어뒀어요';
   static const bgDemoNote = '데모 모드에선 앱을 내리면 주행이 멈춰요 — 알림은 실제 주행에서 나갑니다.';

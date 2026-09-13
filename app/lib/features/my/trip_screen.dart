@@ -71,6 +71,11 @@ class _Body extends ConsumerWidget {
                 startName: trip.startName,
                 endName: trip.endName,
                 routeId: trip.routeId,
+                routeIds: trip.routeIds,
+                splits: [
+                  for (final s in trip.segmentsOrSelf.skip(1))
+                    if (s.atEpoch > 0) DateTime.fromMillisecondsSinceEpoch(s.atEpoch * 1000),
+                ],
                 startedAt: trip.startedAt,
                 endedAt: trip.endedAt,
               ),
@@ -132,7 +137,15 @@ class _Body extends ConsumerWidget {
           const SizedBox(height: 14),
           Row(
             children: [
-              RouteBadge('${trip.routeId}', size: BadgeSize.sm),
+              // 갈아탄 여행은 뱃지를 잇는다 — 43 → 6 (DR-08).
+              for (var i = 0; i < trip.routeIds.length; i++) ...[
+                if (i > 0)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 5),
+                    child: Icon(Icons.arrow_forward, size: 12, color: AppColors.ink3),
+                  ),
+                RouteBadge('${trip.routeIds[i]}', size: BadgeSize.sm),
+              ],
               const SizedBox(width: 9),
               Text(
                 '${trip.startName} → ${trip.endName} · ${trip.distanceKm}km',
@@ -201,14 +214,20 @@ class _Body extends ConsumerWidget {
   }
 
   Widget _timeline() {
+    // 들른 곳과 갈아탄 국도(첫 구간 제외)를 시각순으로 섞는다 (DR-08). 'HH:mm' 은 그대로 정렬된다.
+    final segs = trip.segmentsOrSelf;
+    final rows = <(String, Widget)>[
+      for (final s in trip.stops) (s.at, _StopRow(stop: s)),
+      for (var i = 1; i < segs.length; i++)
+        (segs[i].at, _SwitchRow(seg: segs[i], prev: segs[i - 1])),
+    ]..sort((a, b) => a.$1.compareTo(b.$1));
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 22),
       child: Column(
         children: [
-          for (var i = 0; i < trip.stops.length; i++) ...[
-            _StopRow(stop: trip.stops[i]),
-            if (i != trip.stops.length - 1)
-              const Divider(height: 1, thickness: 1, color: AppColors.line),
+          for (var i = 0; i < rows.length; i++) ...[
+            rows[i].$2,
+            if (i != rows.length - 1) const Divider(height: 1, thickness: 1, color: AppColors.line),
           ],
         ],
       ),
@@ -366,6 +385,48 @@ class _ShareButtonState extends State<_ShareButton> {
           _busy ? S.tripSharing : S.tripShare,
           style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700),
         ),
+      ),
+    );
+  }
+}
+
+/// 타임라인의 「N번 국도로 갈아탐」 행 (DR-08). 점은 국도 파랑 — 들른 곳(유형색)과 구분된다.
+class _SwitchRow extends StatelessWidget {
+  const _SwitchRow({required this.seg, required this.prev});
+  final TripSegment seg;
+  final TripSegment prev;
+
+  @override
+  Widget build(BuildContext context) {
+    final prevKm = (seg.fromKm - prev.fromKm).round();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 44,
+            child: Text(
+              seg.at,
+              style: const TextStyle(
+                fontSize: 12.5,
+                color: AppColors.ink3,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Container(
+            width: 9,
+            height: 9,
+            decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.routeBlue),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              S.tripSwitched(seg.routeId, prev.routeId, prevKm),
+              style: AppType.title.copyWith(fontSize: 14),
+            ),
+          ),
+        ],
       ),
     );
   }

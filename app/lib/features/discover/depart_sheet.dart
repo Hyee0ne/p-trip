@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/journey.dart';
+import '../../core/trip_log.dart';
 import '../../core/nav.dart';
 import '../../core/location.dart';
 import '../../core/proximity_alert.dart';
@@ -100,6 +101,8 @@ class _DepartSheetState extends ConsumerState<DepartSheet> {
                 ? S.routeNumber(widget.route.id)
                 : widget.route.name,
             path: path,
+            // 여행 중이면 새 여행이 아니라 갈아타기다 (DR-08) — 거리·기록이 이어진다.
+            continues: ref.read(tripLogProvider).active != null,
           ),
         );
 
@@ -116,6 +119,8 @@ class _DepartSheetState extends ConsumerState<DepartSheet> {
   Widget build(BuildContext context) {
     final r = widget.route;
     final title = r.name.isEmpty ? S.routeNumber(r.id) : r.name;
+    // 여행 중이면 한 줄 — 갈아타도 기록이 이어진다고 말해 둔다 (DR-08).
+    final activeRoute = ref.watch(tripLogProvider).active?.currentRouteId;
     final note = widget.note;
 
     return Container(
@@ -187,6 +192,25 @@ class _DepartSheetState extends ConsumerState<DepartSheet> {
           ),
           const SizedBox(height: AppSpace.x5),
           const Text(S.departWhichWay, style: TextStyle(fontSize: 13.5, color: AppColors.ink2)),
+          if (activeRoute != null && activeRoute != r.id) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: AppColors.tintSun,
+                borderRadius: BorderRadius.circular(AppRadius.card),
+              ),
+              child: Text(
+                S.departSwitchNote(activeRoute, r.id),
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  height: 1.45,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.onTintSun,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpace.x3),
           Row(
             children: [

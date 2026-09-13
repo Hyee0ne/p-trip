@@ -127,6 +127,16 @@ class TripLogNotifier extends Notifier<TripLog> {
       stops: const [],
       photoCount: 0,
       courseId: courseId,
+      // 첫 구간 — 여행은 하루, 국도는 구간이다 (DR-08).
+      segments: [
+        TripSegment(
+          routeId: routeId,
+          routeName: routeName,
+          fromKm: 0,
+          at: '${_pad(now.hour)}:${_pad(now.minute)}',
+          atEpoch: now.millisecondsSinceEpoch ~/ 1000,
+        ),
+      ],
     );
     _points[id] = [];
     state = TripLog(trips: [...state.trips, trip], activeId: id);
@@ -174,6 +184,25 @@ class TripLogNotifier extends Notifier<TripLog> {
   }
 
   /// 주행 거리 갱신. 여행기의 'Nkm 달림'과 마이 탭 51선 진행률이 이걸 쓴다.
+  /// 여행 중 다른 국도로 갈아탄다 (DR-08). 여행은 그대로, 구간만 는다.
+  /// 같은 국도면 아무 일도 없다. [atKm] 은 갈아탄 시점의 누적 주행거리.
+  void switchRoute({required int routeId, required String routeName, required double atKm}) {
+    final id = state.activeId;
+    if (id == null) return;
+    final t = state.trips.firstWhere((x) => x.id == id);
+    final segs = t.segmentsOrSelf;
+    if (segs.last.routeId == routeId) return;
+    final now = DateTime.now();
+    final seg = TripSegment(
+      routeId: routeId,
+      routeName: routeName,
+      fromKm: atKm,
+      at: '${_pad(now.hour)}:${_pad(now.minute)}',
+      atEpoch: now.millisecondsSinceEpoch ~/ 1000,
+    );
+    _replace(id, (x) => _copy(x, segments: [...segs, seg]));
+  }
+
   void updateDistance(double km) {
     final trip = state.active;
     if (trip == null) return;
@@ -250,6 +279,7 @@ class TripLogNotifier extends Notifier<TripLog> {
     Map<int, int>? routeKm,
     String? coverPhotoId,
     String? coverPath,
+    List<TripSegment>? segments,
   }) => Trip(
     id: t.id,
     episode: t.episode,
@@ -267,6 +297,7 @@ class TripLogNotifier extends Notifier<TripLog> {
     routeKm: routeKm ?? t.routeKm,
     coverPhotoId: coverPhotoId ?? t.coverPhotoId,
     coverPath: coverPath ?? t.coverPath,
+    segments: segments ?? t.segments,
   );
 
   Map<String, dynamic> _toJson(Trip t) => {
@@ -290,6 +321,16 @@ class TripLogNotifier extends Notifier<TripLog> {
     'coverPhotoId': t.coverPhotoId,
     'coverPath': t.coverPath,
     'routeKm': {for (final e in t.routeKm.entries) '${e.key}': e.value},
+    'segments': [
+      for (final s in t.segments)
+        {
+          'routeId': s.routeId,
+          'routeName': s.routeName,
+          'fromKm': s.fromKm,
+          'at': s.at,
+          'atEpoch': s.atEpoch,
+        },
+    ],
     'stops': [
       for (final s in t.stops)
         {
@@ -334,6 +375,17 @@ class TripLogNotifier extends Notifier<TripLog> {
       for (final e in (m['routeKm'] as Map<String, dynamic>? ?? const {}).entries)
         if (int.tryParse(e.key) != null) int.parse(e.key): (e.value as num).toInt(),
     },
+    // 옛 기록엔 없다 — 비어 있으면 segmentsOrSelf 가 출발 국도 하나로 읽는다.
+    segments: [
+      for (final s in (m['segments'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>())
+        TripSegment(
+          routeId: (s['routeId'] as num?)?.toInt() ?? 0,
+          routeName: (s['routeName'] as String?) ?? '',
+          fromKm: (s['fromKm'] as num?)?.toDouble() ?? 0,
+          at: (s['at'] as String?) ?? '',
+          atEpoch: (s['atEpoch'] as num?)?.toInt() ?? 0,
+        ),
+    ],
     stops: [
       for (final s in (m['stops'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>())
         // ⚠ 옛 '스쳐간 곳'은 **버린다** (2026-09-07 기능 삭제).

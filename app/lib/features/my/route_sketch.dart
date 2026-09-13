@@ -26,6 +26,8 @@ class RouteSketch extends StatelessWidget {
     this.startName = '',
     this.endName = '',
     this.routeId,
+    this.routeIds = const [],
+    this.splits = const [],
     this.startedAt = '',
     this.endedAt = '',
     this.header = true,
@@ -43,6 +45,12 @@ class RouteSketch extends StatelessWidget {
   final String startName;
   final String endName;
   final int? routeId;
+
+  /// 거쳐 간 국도 번호(DR-08). 둘 이상이면 헤더에 '43 → 6번 국도'.
+  final List<int> routeIds;
+
+  /// 갈아탄 시각들 — 경로를 그 시각에서 잘라 구간마다 색을 바꾼다 (파랑·노랑 번갈아).
+  final List<DateTime> splits;
   final String startedAt;
   final String endedAt;
 
@@ -70,6 +78,8 @@ class RouteSketch extends StatelessWidget {
               startName: startName,
               endName: endName,
               routeId: routeId,
+              routeIds: routeIds,
+              splits: splits,
               startedAt: startedAt,
               endedAt: endedAt,
               header: header,
@@ -107,6 +117,8 @@ class RoutePainter extends CustomPainter {
     this.startName = '',
     this.endName = '',
     this.routeId,
+    this.routeIds = const [],
+    this.splits = const [],
     this.startedAt = '',
     this.endedAt = '',
     this.header = true,
@@ -118,6 +130,12 @@ class RoutePainter extends CustomPainter {
   final String startName;
   final String endName;
   final int? routeId;
+
+  /// 거쳐 간 국도 번호(DR-08). 둘 이상이면 헤더에 '43 → 6번 국도'.
+  final List<int> routeIds;
+
+  /// 갈아탄 시각들 — 경로를 그 시각에서 잘라 구간마다 색을 바꾼다 (파랑·노랑 번갈아).
+  final List<DateTime> splits;
   final String startedAt;
   final String endedAt;
   final bool header;
@@ -168,22 +186,30 @@ class RoutePainter extends CustomPainter {
       size.height - offY - (lat - minLat) * 111.0 * scale,
     );
 
-    // 선.
+    // 선 — 갈아탄 시각마다 잘라 구간 색을 번갈아 칠한다 (DR-08). 갈아탄 적 없으면 파랑 하나.
+    Paint stroke(Color c) => Paint()
+      ..color = c
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    const colors = [AppColors.routeBlue, AppColors.sun];
     final first = at(points.first.lat, points.first.lng);
-    final path = Path()..moveTo(first.dx, first.dy);
+    var seg = 0;
+    var path = Path()..moveTo(first.dx, first.dy);
+    var prev = first;
     for (final p in points.skip(1)) {
       final o = at(p.lat, p.lng);
+      final nextSeg = splits.where((t) => !p.at.isBefore(t)).length;
+      if (nextSeg != seg) {
+        canvas.drawPath(path, stroke(colors[seg % colors.length]));
+        seg = nextSeg;
+        path = Path()..moveTo(prev.dx, prev.dy);
+      }
       path.lineTo(o.dx, o.dy);
+      prev = o;
     }
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = AppColors.routeBlue
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 4.5
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
+    canvas.drawPath(path, stroke(colors[seg % colors.length]));
 
     _paintTicks(canvas, at);
 
@@ -371,6 +397,7 @@ class RoutePainter extends CustomPainter {
       y += tp.height + 1;
     }
     final sub = [
+      if (routeIds.length > 1) '${routeIds.join(' → ')}번 국도',
       if (startName.isNotEmpty && endName.isNotEmpty) '$startName → $endName',
       if (startedAt.isNotEmpty && endedAt.isNotEmpty) '$startedAt–$endedAt',
     ].join(' · ');

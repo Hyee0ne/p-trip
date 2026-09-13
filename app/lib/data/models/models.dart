@@ -312,6 +312,30 @@ class TripPoint {
   final DateTime at;
 }
 
+/// 여행 안의 국도 구간 (DR-08, 2026-09-13). **여행은 하루, 국도는 구간이다.**
+/// 43번을 달리다 6번으로 갈아타도 여행은 하나고, 구간이 하나 늘 뿐이다.
+class TripSegment {
+  const TripSegment({
+    required this.routeId,
+    required this.routeName,
+    required this.fromKm,
+    required this.at,
+    required this.atEpoch,
+  });
+
+  final int routeId;
+  final String routeName;
+
+  /// 이 구간이 시작된 누적 주행거리(km). 첫 구간은 0.
+  final double fromKm;
+
+  /// 'HH:mm' — 타임라인용.
+  final String at;
+
+  /// 초 단위 epoch — 포스터가 경로를 구간 색으로 나누는 기준. 옛 기록은 0.
+  final int atEpoch;
+}
+
 class Trip {
   const Trip({
     required this.id,
@@ -330,6 +354,7 @@ class Trip {
     this.routeKm = const {},
     this.coverPhotoId = '',
     this.coverPath = '',
+    this.segments = const [],
   });
 
   final String id;
@@ -372,6 +397,28 @@ class Trip {
   /// ⚠ [coverPhotoId] 와 둘 중 하나만 산다. 이게 있으면 이걸 먼저 본다.
   final String coverPath;
 
+  /// 거쳐 간 국도 구간 (DR-08). 비어 있으면 옛 기록 — [segmentsOrSelf] 가 출발 국도 하나로 읽는다.
+  final List<TripSegment> segments;
+
+  List<TripSegment> get segmentsOrSelf => segments.isNotEmpty
+      ? segments
+      : [TripSegment(routeId: routeId, routeName: routeName, fromKm: 0, at: startedAt, atEpoch: 0)];
+
+  /// 거쳐 간 국도 번호, 순서대로 (같은 번호가 이어지면 하나로).
+  List<int> get routeIds {
+    final out = <int>[];
+    for (final s in segmentsOrSelf) {
+      if (out.isEmpty || out.last != s.routeId) out.add(s.routeId);
+    }
+    return out;
+  }
+
+  /// 지금(마지막) 구간의 국도.
+  int get currentRouteId => segmentsOrSelf.last.routeId;
+
+  /// '7번 국도' 또는 '43 → 6번 국도' — 갈아탄 여행은 번호를 잇는다.
+  String get routeLabel => routeIds.length <= 1 ? routeName : '${routeIds.join(' → ')}번 국도';
+
   int get visited => stops.where((s) => s.kind == StopKind.visited).length;
   int get skunked => stops.where((s) => s.kind == StopKind.skunked).length;
 
@@ -392,8 +439,8 @@ class Trip {
         .length;
   }
 
-  /// '7번 국도에서 생긴 일'
-  String get title => '$routeName에서 생긴 일';
+  /// '7번 국도에서 생긴 일' · 갈아탔으면 '43 → 6번 국도에서 생긴 일'
+  String get title => '$routeLabel에서 생긴 일';
 }
 
 /// DR-02 근접 발견 카드에 실을 한 건.
