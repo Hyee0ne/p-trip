@@ -10,14 +10,21 @@ import 'radar_view.dart';
 ///
 /// 현재 여행에서 「들르기」를 누른 곳이 들른 순서대로 사진 원으로 이어진다.
 /// 테두리는 레이더 블립과 같은 유형색 — 위 그림과 한 벌로 읽힌다. 가장 최근이 오른쪽.
-/// ⚠ **기록이지 버튼이 아니다.** 눌러도 아무 일 없다.
+/// ⚠ 들른 원들은 **기록이지 버튼이 아니다.** 눌러도 아무 일 없다.
 /// ⚠ 들른 곳이 없으면 이 위젯을 아예 그리지 않는다 — 빈 칸을 남기지 않는다 (호출부 책임).
 /// ⚠ 맨 끝 「다음」 점선 원은 자취가 이어진다는 뜻이지 재촉이 아니다 (원칙 6).
+///   2026-09-13 부터 이 원이 DR-07 「여기서 앞쪽으로」의 손잡이다 — 누르면 앞쪽 후보가 펼쳐진다.
 class StopsTrail extends StatefulWidget {
-  const StopsTrail({super.key, required this.stops});
+  const StopsTrail({super.key, required this.stops, this.onNext, this.nextOpen = false});
 
   /// 들른 순서대로. `kind == visited` 만 넘길 것.
   final List<TripStop> stops;
+
+  /// 「다음」 원을 눌렀을 때 (DR-07). null 이면 그냥 기록이다.
+  final VoidCallback? onNext;
+
+  /// 앞쪽 후보가 펼쳐져 있는가 — 원이 노란색으로 켜진다.
+  final bool nextOpen;
 
   @override
   State<StopsTrail> createState() => _StopsTrailState();
@@ -91,7 +98,7 @@ class _StopsTrailState extends State<StopsTrail> {
             children: [
               for (var i = 0; i < stops.length; i++)
                 _StopItem(stop: stops[i], first: i == 0, latest: i == stops.length - 1),
-              const _NextItem(),
+              _NextItem(on: widget.nextOpen, onTap: widget.onNext),
             ],
           ),
         ),
@@ -178,39 +185,55 @@ class _StopItem extends StatelessWidget {
 
 /// 맨 끝 「다음」 — 점선 원. 다음 발견이 오면 채워진다.
 class _NextItem extends StatelessWidget {
-  const _NextItem();
+  const _NextItem({this.on = false, this.onTap});
+  final bool on;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: _itemW,
-      child: Stack(
-        children: [
-          Positioned.fill(child: CustomPaint(painter: _DashPainter(toCenter: true))),
-          Column(
-            children: [
-              SizedBox(
-                width: _circle + 6,
-                height: _circle + 6,
-                child: Center(
-                  child: CustomPaint(
-                    size: const Size(_circle, _circle),
-                    painter: _DashedCirclePainter(),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: SizedBox(
+        width: _itemW,
+        child: Stack(
+          children: [
+            Positioned.fill(child: CustomPaint(painter: _DashPainter(toCenter: true))),
+            Column(
+              children: [
+                SizedBox(
+                  width: _circle + 6,
+                  height: _circle + 6,
+                  child: Center(
+                    child: Container(
+                      width: _circle,
+                      height: _circle,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        // 펼쳐져 있으면 켜진다 — 어디를 눌러 열었는지 보이게.
+                        color: on ? AppColors.sun.withValues(alpha: 0.18) : null,
+                      ),
+                      child: CustomPaint(
+                        painter: _DashedCirclePainter(
+                          color: on ? AppColors.sun : AppColors.darkInk.withValues(alpha: 0.35),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 7),
-              const Text(
-                S.radarStopsNext,
-                style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.darkInk3,
+                const SizedBox(height: 7),
+                Text(
+                  S.radarStopsNext,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: on ? AppColors.sun : AppColors.darkInk3,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -244,12 +267,15 @@ class _DashPainter extends CustomPainter {
 }
 
 class _DashedCirclePainter extends CustomPainter {
+  _DashedCirclePainter({required this.color});
+  final Color color;
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5
-      ..color = AppColors.darkInk.withValues(alpha: 0.35);
+      ..color = color;
     final r = size.width / 2 - 1;
     final c = Offset(size.width / 2, size.height / 2);
     // 점 24개짜리 원. 배경은 비워 둔다 — 아직 없는 곳이다.

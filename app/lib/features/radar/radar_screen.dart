@@ -26,6 +26,7 @@ import '../../data/models/models.dart';
 import '../../data/repositories/providers.dart';
 import '../handoff/handoff_sheet.dart';
 import 'card_gap.dart';
+import 'radar_next.dart';
 import 'radar_stops.dart';
 import 'radar_view.dart';
 
@@ -63,6 +64,20 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
 
   /// 카드 사이 간격 (card_gap.dart). 여정이 바뀌면 처음부터.
   final _gap = CardGap();
+
+  // ── DR-07 「여기서 앞쪽으로」 (radar_next.dart) ──
+  bool _nextOpen = false;
+
+  /// 정차로 **자동으로** 펼친 것인가 — 다시 달리면 접는다. 손으로 연 건 손으로 닫는다.
+  bool _nextAuto = false;
+  bool _nextLoading = false;
+  List<Discovery> _next = const [];
+
+  /// 레이더(5km)보다 넓게 본다 — 서 있으니 시간이 있다.
+  static const _nextKm = 10.0;
+
+  /// 들르기 뒤 이만큼 서 있으면 자동으로 펼친다. 밥 먹고 돌아오면 이미 열려 있다.
+  static const _nextStopSec = 120.0;
 
   /// [_current] 가 뜬 **그 순간**의 현 위치↔스팟 직선거리(km). 좌표가 없으면 null.
   /// ⚠ 한 번 재고 갱신하지 않는다 — 줄어드는 숫자는 카운트다운이다 (원칙 6).
@@ -156,6 +171,115 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     _started = false;
     _shown.clear();
     _gap.reset();
+    _nextOpen = false;
+    _nextAuto = false;
+    _next = const [];
+  }
+
+  /// 「다음」 원을 눌렀을 때 / 정차로 자동 펼침. 열면 앞쪽을 새로 본다.
+  void _toggleNext({bool auto = false}) {
+    if (_nextOpen && !auto) {
+      setState(() {
+        _nextOpen = false;
+        _nextAuto = false;
+      });
+      return;
+    }
+    setState(() {
+      _nextOpen = true;
+      _nextAuto = auto;
+    });
+    unawaited(_loadNext());
+  }
+
+  /// 정차 2분 + 들른 곳이 있으면 자동으로 펼치고, 다시 달리면(자동으로 연 것만) 접는다.
+  void _maybeAutoNext(DriveState d) {
+    if (!d.running) return;
+    final stops = ref.read(tripLogProvider).active?.stops ?? const <TripStop>[];
+    final hasVisited = stops.any((s) => s.kind == StopKind.visited);
+    if (!_nextOpen && !_cardVisible && hasVisited && d.stoppedSec >= _nextStopSec) {
+      _toggleNext(auto: true);
+    } else if (_nextOpen && _nextAuto && d.stoppedSec < 5) {
+      setState(() {
+        _nextOpen = false;
+        _nextAuto = false;
+      });
+    }
+  }
+
+  /// 현재 위치에서 **원래 진행 방향**으로 10km. 방향은 여정 선형에서 — 서 있으면 GPS 헤딩이 흔들린다.
+  /// 좌표는 저장소가 0.01° 격자로 뭉개서 보낸다 (위치정보 문의와 같은 규칙).
+  Future<void> _loadNext() async {
+    final drive = ref.read(driveProvider);
+    final journey = ref.read(startedJourneyProvider);
+    if (!drive.hasFix || journey == null) return;
+    setState(() => _nextLoading = true);
+    final heading = routeBearingAt(journey.path, drive.lat!, drive.lng!) ?? drive.headingDeg;
+    try {
+      final q = await ref
+          .read(discoverRepositoryProvider)
+          .radarQueue(lat: drive.lat!, lng: drive.lng!, headingDeg: heading, km: _nextKm);
+      if (!mounted) return;
+      final visitedIds = {
+        for (final s in ref.read(tripLogProvider).active?.stops ?? const <TripStop>[]) s.spotId,
+      };
+      final now = DateTime.now();
+      final list = pickNextAhead(
+        [for (final d in q) applySunset(d, _sky, now)],
+        {..._shown, ...visitedIds},
+        _score,
+      );
+      setState(() {
+        _next = list;
+        _nextLoading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _nextLoading = false);
+    }
+  }
+
+  /// 후보의 「들르기」 — 카드와 같은 핸드오프. 앱을 골랐을 때만 들른 곳으로 적는다.
+  Future<void> _visitNext(Discovery d) async {
+    final app = await HandoffSheet.show(
+      context,
+      mode: HandoffMode.visit,
+      destination: HandoffPlace(d.spot.name, d.spot.lat, d.spot.lng),
+    );
+    if (!mounted || app == null) return;
+    ref.read(tripLogProvider.notifier).addStop(d.spot, StopKind.visited);
+    _shown.add(d.spot.id);
+    setState(() {
+      _nextOpen = false;
+      _nextAuto = false;
+    });
+  }
+
+  /// 「그냥 N번 국도로 돌아가기」 — 출발 때와 같은 핸드오프. 목적지는 원래 방향의 국도 진입점.
+  Future<void> _backToRoute() async {
+    final drive = ref.read(driveProvider);
+    final journey = ref.read(startedJourneyProvider);
+    if (journey == null || !drive.hasFix) return;
+    final path = await ref
+        .read(discoverRepositoryProvider)
+        .routePathAhead(
+          routeId: journey.routeId,
+          lat: drive.lat!,
+          lng: drive.lng!,
+          northOrEast: pathGoesNorthOrEast(journey.path),
+        );
+    if (!mounted) return;
+    final entry = path.isNotEmpty ? path.first : journey.path.first;
+    await HandoffSheet.show(
+      context,
+      mode: HandoffMode.depart,
+      destination: HandoffPlace(journey.routeName, entry.lat, entry.lng),
+      routeId: journey.routeId,
+    );
+    if (!mounted) return;
+    setState(() {
+      _nextOpen = false;
+      _nextAuto = false;
+    });
   }
 
   void _setRunning(bool run) {
@@ -517,6 +641,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
       // ⚠ **뒤에 있을 땐 build가 안 돈다.** 그래서 여기서 키를 다시 만들어 read 한다 —
       //   watch 에만 기대면 백그라운드에서 큐가 그 자리에 얼어붙는다.
       final k = _queueKey(next);
+      _maybeAutoNext(next);
       _pickAhead(next, k == null ? const [] : (ref.read(radarQueueProvider(k)).value ?? const []));
     });
 
@@ -551,7 +676,20 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
                       const SizedBox(height: AppSpace.x5),
                       // 「오늘 들른 곳」 자취 — 들른 곳이 없으면 아예 없다 (radar_stops.dart).
                       if (visited.isNotEmpty) ...[
-                        StopsTrail(stops: visited),
+                        StopsTrail(stops: visited, nextOpen: _nextOpen, onNext: _toggleNext),
+                        // DR-07 — 「다음」을 열었거나 정차로 열렸을 때만. 카드가 떠 있으면 카드가 위에 있다.
+                        if (_nextOpen) ...[
+                          const SizedBox(height: AppSpace.x3),
+                          NextAhead(
+                            routeId: journey?.routeId ?? active?.routeId ?? 0,
+                            items: _next,
+                            loading: _nextLoading,
+                            kmOf: (s) => _kmFromHere(drive, s),
+                            onVisit: _visitNext,
+                            onOpen: (d) => context.push('/radar/spot/${d.spot.id}'),
+                            onBackToRoute: _backToRoute,
+                          ),
+                        ],
                         const SizedBox(height: AppSpace.x5),
                       ],
                       _notRouteNotice(),

@@ -262,6 +262,12 @@ class S {
   static String nextMarketDay(int days) => '다음 장은 $days일 뒤예요';
   static String nextVisited(String spot) => '들른 차들은 다음에 $spot로 갔어요';
 
+  // ── DR-07 들른 뒤, 다음 (2026-09-13) ──
+  static const nextTitle = '여기서 앞쪽으로';
+  static String nextSub(int n) => '10km 안 · $n곳';
+  static const nextEmpty = '앞쪽 10km엔 아직 없어요.\n그냥 길로 돌아가도 돼요.';
+  static String nextBackToRoute(int id) => '그냥 $id번 국도로 돌아가기';
+
   // ── DR-06 백그라운드 알림 ──
   static const bgStopped = '레이더를 접어뒀어요';
   static const bgDemoNote = '데모 모드에선 앱을 내리면 주행이 멈춰요 — 알림은 실제 주행에서 나갑니다.';

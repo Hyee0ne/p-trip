@@ -10,6 +10,42 @@ double roughKm(double aLat, double aLng, double bLat, double bLng) {
   return math.sqrt(dx * dx + dy * dy);
 }
 
+/// 두 점 사이 방위(도). 북 0, 동 90, 시계 방향. core/drive.dart 의 계산과 같다.
+double bearingDeg(GeoPoint a, GeoPoint b) {
+  double rad(double d) => d * math.pi / 180;
+  final dLng = rad(b.lng - a.lng);
+  final y = math.sin(dLng) * math.cos(rad(b.lat));
+  final x =
+      math.cos(rad(a.lat)) * math.sin(rad(b.lat)) -
+      math.sin(rad(a.lat)) * math.cos(rad(b.lat)) * math.cos(dLng);
+  return (math.atan2(y, x) * 180 / math.pi + 360) % 360;
+}
+
+/// 선형 위에서 (lat,lng)에 가장 가까운 점의 **진행 방위**. 서 있을 땐 GPS 헤딩이 흔들려
+/// 여정 선형의 방향을 대신 쓴다 (DR-07). 점이 둘 미만이면 null — 방향을 지어내지 않는다.
+double? routeBearingAt(List<GeoPoint> path, double lat, double lng) {
+  if (path.length < 2) return null;
+  var best = 0;
+  var bestKm = double.infinity;
+  for (var i = 0; i < path.length; i++) {
+    final d = roughKm(lat, lng, path[i].lat, path[i].lng);
+    if (d < bestKm) {
+      bestKm = d;
+      best = i;
+    }
+  }
+  final i = best == path.length - 1 ? path.length - 2 : best;
+  return bearingDeg(path[i], path[i + 1]);
+}
+
+/// 선형이 북·동으로 가는가 — 위도·경도 변화 중 큰 쪽으로 본다. `routePathAhead` 의 northOrEast.
+bool pathGoesNorthOrEast(List<GeoPoint> path) {
+  if (path.length < 2) return true;
+  final dLat = (path.last.lat - path.first.lat) * 111.0;
+  final dLng = (path.last.lng - path.first.lng) * 88.0;
+  return dLat.abs() >= dLng.abs() ? dLat > 0 : dLng > 0;
+}
+
 /// 경로의 **양 끝을 잘라낸다.** 공유 카드에 집·숙소가 찍히지 않게 하는 장치다
 /// (SCREENS.md MY-02 "시작·끝 300m는 가려져요").
 ///

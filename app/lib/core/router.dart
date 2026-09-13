@@ -79,7 +79,19 @@ GoRouter buildRouter({String? initialLocation}) {
 
           // 탭2 레이더 — 다크 고정
           StatefulShellBranch(
-            routes: [GoRoute(path: '/radar', builder: (_, _) => const RadarScreen())],
+            routes: [
+              GoRoute(
+                path: '/radar',
+                builder: (_, _) => const RadarScreen(),
+                routes: [
+                  // DR-07 「여기서 앞쪽으로」 행을 누르면 — 탭을 안 바꾸고 레이더 위에 상세를 얹는다.
+                  GoRoute(
+                    path: 'spot/:id',
+                    builder: (_, s) => SpotScreen(spotId: s.pathParameters['id']!),
+                  ),
+                ],
+              ),
+            ],
           ),
 
           // 탭3 마이
