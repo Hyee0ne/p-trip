@@ -274,7 +274,10 @@ class _RadarPill extends StatelessWidget {
   );
 }
 
-/// 3장 · 가면서 알아요 — 발견 카드(DR-02)의 축소 예시 + 권한을 언제 물을지 한 줄.
+/// 3장 · 가면서 알아요 — 발견 카드(DR-02)의 축소 예시 + 세 줄 (소리 · 알림 흔적 · 권한 시점).
+///
+/// 카드 아래 세 줄은 **내비를 앞에 둔 채 달리는 사람**에게 이 앱이 어떻게 닿는지다 (2026-09-13 보강).
+/// 소리로 먼저 오고, 놓쳐도 알림에 남아 눌러 되돌아갈 수 있고, 권한은 그때 가서 묻는다.
 class _Ahead extends StatelessWidget {
   const _Ahead();
   @override
@@ -291,11 +294,40 @@ class _Ahead extends StatelessWidget {
           ),
           const SizedBox(height: AppSpace.x5),
           const _ExampleCard(),
-          const SizedBox(height: AppSpace.x4),
-          const Text(
-            S.onboardPermissionNote,
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12.5, height: 1.5, color: AppColors.ink3),
+          const SizedBox(height: AppSpace.x5),
+          const _AheadRow(Icons.volume_up_outlined, S.onboardAheadVoice),
+          const _AheadRow(Icons.notifications_none, S.onboardAheadTrace),
+          const _AheadRow(Icons.my_location, S.onboardPermissionNote, muted: true),
+        ],
+      ),
+    );
+  }
+}
+
+/// 카드 아래 한 줄. 아이콘은 그 줄이 말하는 채널(소리·알림·위치)이다.
+class _AheadRow extends StatelessWidget {
+  const _AheadRow(this.icon, this.text, {this.muted = false});
+  final IconData icon;
+  final String text;
+
+  /// 권한 예고 줄은 한 톤 낮춘다 — 기능이 아니라 "지금은 안 묻는다"는 안심이다.
+  final bool muted;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = muted ? AppColors.ink3 : AppColors.ink2;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(icon, size: 17, color: muted ? AppColors.ink3 : AppColors.routeBlue),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(text, style: TextStyle(fontSize: 13, height: 1.45, color: color)),
           ),
         ],
       ),
@@ -384,14 +416,16 @@ class _ExampleCard extends StatelessWidget {
             style: TextStyle(fontSize: 12.5, height: 1.5, color: Color(0xD9FFFFFF)),
           ),
           const SizedBox(height: 14),
+          // 세 동작에 이름을 단다 — 실제 카드는 아이콘뿐이지만, 처음 보는 사람에겐 뭘 하는 버튼인지가 정보다.
           const Row(
             mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _MiniAction(Icons.close, 34),
-              SizedBox(width: 12),
-              _MiniAction(Icons.near_me, 46, filled: true),
-              SizedBox(width: 12),
-              _MiniAction(Icons.favorite_border, 34),
+              _MiniAction(Icons.close, 34, label: S.onboardActSkip),
+              SizedBox(width: 18),
+              _MiniAction(Icons.near_me, 46, filled: true, label: S.cardVisit),
+              SizedBox(width: 18),
+              _MiniAction(Icons.favorite_border, 34, label: S.onboardActSave),
             ],
           ),
         ],
@@ -401,19 +435,38 @@ class _ExampleCard extends StatelessWidget {
 }
 
 class _MiniAction extends StatelessWidget {
-  const _MiniAction(this.icon, this.size, {this.filled = false});
+  const _MiniAction(this.icon, this.size, {this.filled = false, required this.label});
   final IconData icon;
   final double size;
   final bool filled;
+  final String label;
   @override
-  Widget build(BuildContext context) => Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: filled ? Colors.white : const Color(0x2EFFFFFF),
-      border: filled ? null : Border.all(color: const Color(0x80FFFFFF), width: 1.5),
+  Widget build(BuildContext context) => SizedBox(
+    width: 56,
+    child: Column(
+      children: [
+        // 가운데(들르기)가 크다. 작은 둘은 위를 맞춰 라벨 줄이 한 줄에 놓이게 아래로 내린다.
+        SizedBox(height: filled ? 0 : 6),
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: filled ? Colors.white : const Color(0x2EFFFFFF),
+            border: filled ? null : Border.all(color: const Color(0x80FFFFFF), width: 1.5),
+          ),
+          child: Icon(icon, size: size * 0.46, color: filled ? AppColors.ink : Colors.white),
+        ),
+        SizedBox(height: filled ? 6 : 12),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w700,
+            color: Color(0xE0FFFFFF),
+          ),
+        ),
+      ],
     ),
-    child: Icon(icon, size: size * 0.46, color: filled ? AppColors.ink : Colors.white),
   );
 }

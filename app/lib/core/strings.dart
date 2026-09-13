@@ -46,7 +46,14 @@ class S {
   /// ⚠ 온보딩은 권한을 **묻지 않는다.** 언제 물을지만 예고한다 — 위치는 출발할 때(DR-00),
   ///   알림은 처음 달린 뒤(DR-06). iOS 알림 권한은 평생 한 번만 물을 수 있어서 이유를 모른 채
   ///   거절하면 끝이다 — 이 줄이 그 이유를 미리 말해 둔다.
+  // ⚠ 줄바꿈을 직접 넣는다 — 자동 줄바꿈은 '아무/것도'처럼 단어 가운데서 꺾는다 (렌더 확인 2026-09-13).
   static const onboardPermissionNote = '위치는 출발할 때, 알림은 처음 달린 뒤에 물어요.\n지금은 아무것도 안 물어요.';
+
+  // 3장 보강 (2026-09-13) — 카드 세 동작의 이름과, 내비 위에서 어떻게 닿는지 두 줄.
+  static const onboardActSkip = '넘기기';
+  static const onboardActSave = '찜';
+  static const onboardAheadVoice = '내비를 켜둔 채여도 소리로 먼저 알려드려요';
+  static const onboardAheadTrace = '놓쳐도 알림에 남아요. 눌러서 되돌아갈 수 있어요';
 
   // ── CO-01 홈 섹션 ──
   static const secRoutes = '국도부터 고르기';
