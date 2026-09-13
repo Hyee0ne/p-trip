@@ -701,6 +701,9 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
   @override
   Widget build(BuildContext context) {
     final drive = ref.watch(driveProvider);
+    // 발견 간격 설정(자주·보통·가끔) — 바뀌면 바로 반영. 기준점은 그대로.
+    final gapLevel = ref.watch(cardGapProvider);
+    _gap.configure(km: gapLevel.km, sec: gapLevel.sec);
     // ⚠ 위치를 잡기 전에는 물어볼 좌표가 없다. 그렇다고 **스피너로 덮지 않는다** —
     //   아래 data 분기가 DR-00('위치를 못 받는다')을 이미 말해준다.
     //   덮으면 이유도 모른 채 도는 원만 보인다.
@@ -775,6 +778,8 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
                         const SizedBox(height: AppSpace.x5),
                       ],
                       _notRouteNotice(),
+                      // 테스트 빌드에만 — "안 뜨는 게 간격 때문인가, 후보가 없어서인가"를 눈으로 본다.
+                      if (Env.demoAvailable) _diagLine(queue, drive),
                       const SizedBox(height: AppSpace.x8),
                       // 내비 앱을 고르기 전엔 마칠 여행이 없다 — 시트를 다시 여는 버튼만.
                       if (_armed) _finishButton() else _handoffButton(),
@@ -1129,6 +1134,24 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
       child: Text(
         S.radarNotRoute,
         style: TextStyle(fontSize: 13, height: 1.7, color: AppColors.darkInk2),
+      ),
+    );
+  }
+
+  /// 진단 한 줄 (DEMO_BUILD 빌드만). 후보 수 · 이번 여정에 알린 수 · 다음 카드까지 남은 간격 · 정차 초.
+  /// ⚠ 출시 빌드엔 없다 — 줄어드는 숫자는 카운트다운이라(원칙 6) 사용자에게 보여줄 것이 아니다.
+  Widget _diagLine(List<Discovery> queue, DriveState drive) {
+    final fresh = queue.where((d) => !_shown.contains(d.spot.id)).length;
+    final (dk, ds) = _gap.remaining(drivenKm: drive.distanceKm, elapsedSec: drive.elapsedSec);
+    final gap = dk <= 0 || ds <= 0 ? '간격 OK' : '간격 ${dk.toStringAsFixed(1)}km/${ds.round()}s';
+    final text =
+        'DIAG 후보 ${queue.length}(새 $fresh) · 알린 ${_shown.length} · $gap · '
+        '정차 ${drive.stoppedSec.round()}s · 카드 ${_cardVisible ? "표시" : "없음"}';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 8, 18, 0),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 11, height: 1.5, color: AppColors.darkInk3),
       ),
     );
   }

@@ -154,3 +154,50 @@ class Onboarding {
     return await isDone() ? Env.startAt : '/onboarding';
   }
 }
+
+// ── 발견 간격 (DR-02 카드 간격, 2026-09-13) ──
+const _kCardGap = 'cardGap.v1';
+
+/// 카드 사이 최소 간격의 세기. 실기기에서 "너무 많다"(간격 없음)와 "너무 안 뜬다"(2km/3분)가 하루 사이에
+/// 나왔다 — 길·속도·취향에 따라 다르니 사용자가 고른다. 보통이 기본이다.
+enum CardGapLevel {
+  often(km: 1.0, sec: 90),
+  normal(km: 2.0, sec: 180),
+  rare(km: 4.0, sec: 360);
+
+  const CardGapLevel({required this.km, required this.sec});
+  final double km;
+  final double sec;
+}
+
+final cardGapProvider = NotifierProvider<CardGapNotifier, CardGapLevel>(CardGapNotifier.new);
+
+class CardGapNotifier extends Notifier<CardGapLevel> {
+  @override
+  CardGapLevel build() {
+    unawaited(_restore());
+    return CardGapLevel.normal;
+  }
+
+  bool _dirty = false;
+
+  Future<void> _restore() async {
+    try {
+      final v = (await SharedPreferences.getInstance()).getString(_kCardGap);
+      if (v == null || _dirty) return;
+      state = CardGapLevel.values.firstWhere((e) => e.name == v, orElse: () => CardGapLevel.normal);
+    } catch (_) {
+      /* 못 읽으면 보통 */
+    }
+  }
+
+  Future<void> set(CardGapLevel v) async {
+    _dirty = true;
+    state = v;
+    try {
+      await (await SharedPreferences.getInstance()).setString(_kCardGap, v.name);
+    } catch (_) {
+      /* 이번 실행에만 남는다 */
+    }
+  }
+}

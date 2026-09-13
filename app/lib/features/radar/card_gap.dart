@@ -12,8 +12,23 @@ import '../../data/models/models.dart';
 class CardGap {
   CardGap({this.km = 2.0, this.sec = 180});
 
-  final double km;
-  final double sec;
+  double km;
+  double sec;
+
+  /// 설정(자주·보통·가끔)이 바뀌면 여기로. 마지막 카드 기준점은 그대로다.
+  void configure({required double km, required double sec}) {
+    this.km = km;
+    this.sec = sec;
+  }
+
+  /// 진단용 — 다음 카드까지 남은 거리·시간 (둘 중 하나만 차면 된다). 첫 카드면 (0, 0).
+  (double, double) remaining({required double drivenKm, required double elapsedSec}) {
+    if (_lastKm == double.negativeInfinity) return (0, 0);
+    final dk = (km - (drivenKm - _lastKm)).clamp(0.0, km);
+    final ds = (sec - (elapsedSec - _lastSec)).clamp(0.0, sec);
+    return (dk, ds);
+  }
+
   double _lastKm = double.negativeInfinity;
   double _lastSec = double.negativeInfinity;
 

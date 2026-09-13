@@ -490,6 +490,54 @@ class _MyScreenState extends ConsumerState<MyScreen> {
               ],
               // ⚠ 「사진 접근」 행이 있었다 → 지웠다 (2026-09-09). 사진첩을 읽는 기능이 없어졌다.
               const Divider(height: 1, thickness: 1, color: AppColors.line),
+              // 발견 간격 — 카드가 너무 많다/너무 안 뜬다가 하루 사이에 나왔다. 사용자가 고른다 (2026-09-13).
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            S.gapRow,
+                            style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        for (final lv in CardGapLevel.values) ...[
+                          ChoiceChip(
+                            key: ValueKey('gap-${lv.name}'),
+                            label: Text(switch (lv) {
+                              CardGapLevel.often => S.gapOften,
+                              CardGapLevel.normal => S.gapNormal,
+                              CardGapLevel.rare => S.gapRare,
+                            }),
+                            selected: ref.watch(cardGapProvider) == lv,
+                            onSelected: (_) => ref.read(cardGapProvider.notifier).set(lv),
+                            selectedColor: AppColors.routeBlue,
+                            labelStyle: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: ref.watch(cardGapProvider) == lv
+                                  ? Colors.white
+                                  : AppColors.ink2,
+                            ),
+                            showCheckmark: false,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          if (lv != CardGapLevel.rare) const SizedBox(width: 6),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      S.gapNote,
+                      style: TextStyle(fontSize: 12, height: 1.5, color: AppColors.ink3),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, thickness: 1, color: AppColors.line),
               // ⚠ **기본 음성일 때만** 보인다. 고품질이 있거나 모르면(엔진 실패) 안 그린다 —
               //   눌러도 할 게 없는 행을 남기지 않는다. 앱이 그 설정 화면을 열어줄 수도 없어
               //   경로를 글로 보여주는 게 전부다.

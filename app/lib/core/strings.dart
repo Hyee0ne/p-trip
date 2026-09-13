@@ -270,6 +270,13 @@ class S {
   static const nextNotifTitle = '앞쪽 10km에 갈 만한 곳이 있어요';
   static String nextNotifBody(int n) => '여기서 앞쪽으로 $n곳 · 눌러서 보기';
 
+  // ── MY-03 발견 간격 (2026-09-13) ──
+  static const gapRow = '발견 간격';
+  static const gapOften = '자주';
+  static const gapNormal = '보통';
+  static const gapRare = '가끔';
+  static const gapNote = '카드 사이 최소 간격 · 자주 1km/1분 30초 · 보통 2km/3분 · 가끔 4km/6분';
+
   // ── DR-08 길 바꾸기 (2026-09-13) ──
   static const switchTitle = '길을 바꿀까요?';
   static const switchSub = '여기서 탈 수 있는 국도예요. 여행과 기록은 그대로 이어져요.';
