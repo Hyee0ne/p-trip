@@ -205,6 +205,7 @@ class DriveNotifier extends Notifier<DriveState> {
     _path = course;
     _live = true;
     _wasBackground = background;
+    _resetClock();
     _cum = [0];
     for (var i = 1; i < course.length; i++) {
       _cum.add(_cum[i - 1] + _distKm(course[i - 1], course[i]));
@@ -230,6 +231,7 @@ class DriveNotifier extends Notifier<DriveState> {
 
     try {
       _sub = Geolocator.getPositionStream(locationSettings: _settings(background)).listen(_onFix);
+      _startLiveClock();
     } catch (_) {
       // 기기가 못 주면 멈춰 있는다. 좌표를 지어내지 않는다.
       state = state.copyWith(running: false, needsLocation: true);
@@ -272,20 +274,79 @@ class DriveNotifier extends Notifier<DriveState> {
 
   GeoPoint? _lastFix;
 
+  /// 실주행 시계. 경과·정차 초는 **벽시계**로 잰다 (2026-09-13 실기기 빌드 14).
+  /// ⚠ 전에는 픽스마다 +1 을 했다. `distanceFilter: 10` 이라 픽스는 10m 마다 오고, 티맵이 앞에 있으면
+  ///   더 드문드문 온다 — 1.5km 를 달렸는데 "4초 지났다"가 찍혔다. 그래서 카드 간격의 시간 쪽(3분)은
+  ///   사실상 안 찼고(거리 쪽만 돌았다), 정차 초는 서 있으면 픽스가 안 와서(10m 를 안 옮기니까) 안 늘었다.
+  ///   지금은 1초 시계와 픽스 둘 다 [_clockAt] 부터 지난 **실제 시간**을 더한다.
+  DateTime? _clockAt;
+  DateTime? _fixAt;
+
+  /// 서 있기 시작한 시각. 정차 초 = 지금 − 이것. 움직이면 null.
+  DateTime? _stillSince;
+
+  /// 픽스가 이만큼 안 오면 서 있는 것으로 본다 — 10m 를 8초에 못 갔으면 1.25m/s 밑이다.
+  static const _quietSec = 8;
+
+  double _advanceClock(DateTime now) {
+    final dt = _clockAt == null ? 0.0 : now.difference(_clockAt!).inMilliseconds / 1000.0;
+    _clockAt = now;
+    return dt.clamp(0.0, 3600.0);
+  }
+
+  void _resetClock() {
+    _lastFix = null;
+    _clockAt = DateTime.now();
+    _fixAt = null;
+    _stillSince = null;
+  }
+
+  void _startLiveClock() {
+    _tick?.cancel();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) => _liveTick());
+  }
+
+  /// 픽스가 없어도 시계는 간다. 서 있으면 픽스가 안 오니까 — 이게 없으면 정차 2분(DR-07)이 영영 안 찬다.
+  void _liveTick() {
+    if (!state.running) return;
+    final now = DateTime.now();
+    final dt = _advanceClock(now);
+    // 앱이 잠들었다 깬 뒤의 첫 틱(dt 가 큼)은 그동안 뭘 했는지 모른다 — 다음 픽스가 정하게 둔다.
+    final quiet = _fixAt != null && now.difference(_fixAt!).inSeconds >= _quietSec;
+    if (_stillSince == null && dt < 3 && quiet) _stillSince = _fixAt;
+    state = state.copyWith(elapsedSec: state.elapsedSec + dt, stoppedSec: _stoppedSec(now));
+  }
+
+  double _stoppedSec(DateTime now) =>
+      _stillSince == null ? 0.0 : now.difference(_stillSince!).inMilliseconds / 1000.0;
+
   /// 서 있는가. ⚠ 속도만 보면 안 된다 (2026-09-13 실기기) — 서 있어도 GPS 속도가 1~2m/s 로 튀어
   ///   `< 0.5` 가 매초 리셋되고, 정차 2분(DR-07)이 영영 안 찼다. 속도가 느리고 **자리도 안 옮겼을 때**
   ///   서 있는 것으로 본다. 속도를 모르면(-1) 자리로만 본다. 4m 는 정차 중 GPS 흔들림 폭이다.
-  static bool isStill(double speedMps, double movedKm) {
+  /// [sinceSec] — 직전 픽스 뒤로 지난 시간. 30초에 12m 흘러온 건 옮긴 게 아니다 (0.4m/s) —
+  ///   서 있으면 픽스가 10m 흔들릴 때만 오니, 이걸 안 보면 주차장에서 정차가 매번 0 으로 돌아간다.
+  static bool isStill(double speedMps, double movedKm, {double sinceSec = 1}) {
     const slow = 1.5; // m/s ≈ 5.4km/h
     const jitterKm = 0.004;
-    if (speedMps < 0) return movedKm < jitterKm;
-    return speedMps < slow && movedKm < jitterKm;
+    final stayed = movedKm < jitterKm || movedKm * 1000 / math.max(sinceSec, 1.0) < slow;
+    if (speedMps < 0) return stayed;
+    return speedMps < slow && stayed;
   }
 
   void _onFix(Position p) {
     final here = GeoPoint(p.latitude, p.longitude);
+    final now = DateTime.now();
     final moved = _lastFix == null ? 0.0 : _distKm(_lastFix!, here);
+    final sinceFix = _fixAt == null ? 1.0 : now.difference(_fixAt!).inMilliseconds / 1000.0;
     _lastFix = here;
+    _fixAt = now;
+    final dt = _advanceClock(now);
+    if (isStill(p.speed, moved, sinceSec: sinceFix)) {
+      // 직전 픽스 때부터 여기 있었다.
+      _stillSince ??= now.subtract(Duration(milliseconds: (sinceFix * 1000).round()));
+    } else {
+      _stillSince = null;
+    }
 
     // 코스 위 어디쯤인지 — 가장 가까운 점을 찾아 누적거리 비율로 환산한다.
     var best = 0;
@@ -311,8 +372,8 @@ class DriveNotifier extends Notifier<DriveState> {
       // ⚠ 코스에서 500m 넘게 떨어지면 진행률을 갱신하지 않는다.
       //   벗어난 채로 %를 계속 올리면 있지도 않은 진행을 말하게 된다.
       frac: bestD > 0.5 || total <= 0 ? state.frac : _cum[best] / total,
-      elapsedSec: state.elapsedSec + 1,
-      stoppedSec: isStill(p.speed, moved) ? state.stoppedSec + 1 : 0,
+      elapsedSec: state.elapsedSec + dt,
+      stoppedSec: _stoppedSec(now),
     );
   }
 
@@ -354,12 +415,18 @@ class DriveNotifier extends Notifier<DriveState> {
     if (state.running || _path.length < 2) return;
     _tick?.cancel();
     if (_live) {
+      // 멈춰 있던 시간은 잊는다. 마지막 좌표는 남긴다 — 다음 픽스가 "그동안 얼마나 옮겼나"로
+      // 서 있는지 정한다. 기준 시각만 지금으로 — 옛 시각을 두면 첫 틱이 그동안을 정차로 센다.
+      _clockAt = DateTime.now();
+      _fixAt = _clockAt;
+      _stillSince = null;
       state = state.copyWith(running: true, stoppedSec: 0);
       _sub?.cancel();
       try {
         _sub = Geolocator.getPositionStream(
           locationSettings: _settings(_wasBackground),
         ).listen(_onFix);
+        _startLiveClock();
       } catch (_) {
         state = state.copyWith(running: false, needsLocation: true);
       }

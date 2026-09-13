@@ -1143,7 +1143,14 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
   Widget _diagLine(List<Discovery> queue, DriveState drive) {
     final fresh = queue.where((d) => !_shown.contains(d.spot.id)).length;
     final (dk, ds) = _gap.remaining(drivenKm: drive.distanceKm, elapsedSec: drive.elapsedSec);
-    final gap = dk <= 0 || ds <= 0 ? '간격 OK' : '간격 ${dk.toStringAsFixed(1)}km/${ds.round()}s';
+    final level = switch (ref.read(cardGapProvider)) {
+      CardGapLevel.often => S.gapOften,
+      CardGapLevel.normal => S.gapNormal,
+      CardGapLevel.rare => S.gapRare,
+    };
+    final gap = dk <= 0 || ds <= 0
+        ? '간격[$level] OK'
+        : '간격[$level] ${dk.toStringAsFixed(1)}km/${ds.round()}s';
     final text =
         'DIAG 후보 ${queue.length}(새 $fresh) · 알린 ${_shown.length} · $gap · '
         '정차 ${drive.stoppedSec.round()}s · 카드 ${_cardVisible ? "표시" : "없음"}';
