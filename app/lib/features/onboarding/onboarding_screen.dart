@@ -12,7 +12,7 @@ import '../../core/widgets/route_badge.dart';
 ///
 /// ⚠ 국도 번호 상식('홀수는 남북…')과 권한 카드 두 장을 뺐다. 사용법이 아니었고,
 ///   권한은 여기서 묻지 않는다 — 위치는 출발할 때(DR-00), 알림은 처음 달린 뒤(DR-06).
-///   3장 하단 한 줄이 그 순서를 예고할 뿐이다.
+///   ~~3장 하단에 그 순서를 예고하는 한 줄~~ → 뺐다 (2026-09-13). 권한 얘기는 물을 때 한다.
 /// 로그인을 여기서 강제하지 않는다 — guest로 진입할 수 있다. 건너뛰기는 항상 보인다.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -274,10 +274,10 @@ class _RadarPill extends StatelessWidget {
   );
 }
 
-/// 3장 · 가면서 알아요 — 발견 카드(DR-02)의 축소 예시 + 세 줄 (소리 · 알림 흔적 · 권한 시점).
+/// 3장 · 가면서 알아요 — 발견 카드(DR-02)의 축소 예시 + 두 줄 (소리 · 알림 흔적).
 ///
-/// 카드 아래 세 줄은 **내비를 앞에 둔 채 달리는 사람**에게 이 앱이 어떻게 닿는지다 (2026-09-13 보강).
-/// 소리로 먼저 오고, 놓쳐도 알림에 남아 눌러 되돌아갈 수 있고, 권한은 그때 가서 묻는다.
+/// 카드 아래 두 줄은 **내비를 앞에 둔 채 달리는 사람**에게 이 앱이 어떻게 닿는지다 (2026-09-13 보강).
+/// 소리로 먼저 오고, 놓쳐도 알림에 남아 눌러 되돌아갈 수 있다. 권한 예고 줄은 뺐다 — 물을 때 말한다.
 class _Ahead extends StatelessWidget {
   const _Ahead();
   @override
@@ -297,7 +297,6 @@ class _Ahead extends StatelessWidget {
           const SizedBox(height: AppSpace.x5),
           const _AheadRow(Icons.volume_up_outlined, S.onboardAheadVoice),
           const _AheadRow(Icons.notifications_none, S.onboardAheadTrace),
-          const _AheadRow(Icons.my_location, S.onboardPermissionNote, muted: true),
         ],
       ),
     );
@@ -306,16 +305,12 @@ class _Ahead extends StatelessWidget {
 
 /// 카드 아래 한 줄. 아이콘은 그 줄이 말하는 채널(소리·알림·위치)이다.
 class _AheadRow extends StatelessWidget {
-  const _AheadRow(this.icon, this.text, {this.muted = false});
+  const _AheadRow(this.icon, this.text);
   final IconData icon;
   final String text;
 
-  /// 권한 예고 줄은 한 톤 낮춘다 — 기능이 아니라 "지금은 안 묻는다"는 안심이다.
-  final bool muted;
-
   @override
   Widget build(BuildContext context) {
-    final color = muted ? AppColors.ink3 : AppColors.ink2;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
@@ -323,11 +318,14 @@ class _AheadRow extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.only(top: 1),
-            child: Icon(icon, size: 17, color: muted ? AppColors.ink3 : AppColors.routeBlue),
+            child: Icon(icon, size: 17, color: AppColors.routeBlue),
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(text, style: TextStyle(fontSize: 13, height: 1.45, color: color)),
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 13, height: 1.45, color: AppColors.ink2),
+            ),
           ),
         ],
       ),

@@ -55,7 +55,9 @@ void main() {
     expect(find.text(S.onboardAheadTitle), findsOneWidget, reason: '3장 가면서 알아요');
     expect(find.text(S.onboardExample), findsOneWidget, reason: '카드는 「예시」라고 말한다');
     expect(find.text(S.cardMarketDay(S.onboardExampleSpot)), findsOneWidget, reason: '실제 카드 문구 함수');
-    expect(find.text(S.onboardPermissionNote), findsOneWidget, reason: '권한은 언제 물을지만 예고');
+    expect(find.text(S.onboardAheadVoice), findsOneWidget, reason: '소리로 먼저');
+    expect(find.text(S.onboardAheadTrace), findsOneWidget, reason: '놓쳐도 알림에 남는다');
+    expect(find.textContaining('권한'), findsNothing, reason: '권한 예고 줄은 뺐다');
     expect(find.text('사진'), findsNothing, reason: '사진 권한 항목은 지웠다');
     expect(find.textContaining('홀수는 남북'), findsNothing, reason: '국도 상식 장은 지웠다');
 
