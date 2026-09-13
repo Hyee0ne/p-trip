@@ -22,9 +22,12 @@ class RouteSwitchSheet extends StatelessWidget {
     required NearbyResult result,
   }) => showModalBottomSheet<(RouteLine, bool)>(
     context: context,
+    // ⚠ 루트 내비게이터에 띄운다 (2026-09-13 실기기). 레이더 브랜치에 띄우면 하단 탭바 뒤로 들어가
+    //   마지막 행이 잘렸다. 루트에 띄우면 탭바 위를 덮고, 홈 인디케이터만 아래 여백으로 비운다.
+    useRootNavigator: true,
     backgroundColor: Colors.transparent,
     isScrollControlled: true,
-    builder: (_) => RouteSwitchSheet(currentRouteId: currentRouteId, result: result),
+    builder: (ctx) => RouteSwitchSheet(currentRouteId: currentRouteId, result: result),
   );
 
   @override
@@ -35,7 +38,12 @@ class RouteSwitchSheet extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
       ),
-      padding: const EdgeInsets.fromLTRB(AppSpace.gutter, 12, AppSpace.gutter, 26),
+      padding: EdgeInsets.fromLTRB(
+        AppSpace.gutter,
+        12,
+        AppSpace.gutter,
+        18 + MediaQuery.paddingOf(context).bottom,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
