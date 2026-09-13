@@ -44,6 +44,8 @@ class ProximityAlerts {
             requestSoundPermission: false,
           ),
         ),
+        // 알림을 누르면 그 스팟으로 (2026-09-13). 앱이 뒤에 살아 있을 때 여기로 온다.
+        onDidReceiveNotificationResponse: (r) => handleTap(r.payload),
       );
       _plugin = p;
       return p;
@@ -52,6 +54,50 @@ class ProximityAlerts {
       _failed = true;
       return null;
     }
+  }
+
+  /// 알림을 눌렀을 때 그 스팟으로 보내는 손잡이. 앱이 라우터를 만든 뒤 [attach] 로 꽂는다.
+  void Function(String spotId)? onOpenSpot;
+
+  /// 라우터가 생기기 전에 눌린 알림. [attach] 때 처리한다.
+  String? _pending;
+
+  /// `spot:<id>` 페이로드에서 id 를 뽑는다. 접힘 알림(페이로드 없음)은 null — 갈 데가 없다.
+  static String? spotIdOf(String? payload) {
+    if (payload == null || !payload.startsWith('spot:')) return null;
+    final id = payload.substring(5).trim();
+    return id.isEmpty ? null : id;
+  }
+
+  /// 알림 탭. 플러그인 콜백(앱이 살아 있을 때)과 콜드 스타트(앱이 알림으로 켜질 때) 둘 다 여기로 온다.
+  ///
+  /// ⚠ 소리를 듣고 바로 못 눌러도 알림은 알림 센터에 남는다 — 나중에 눌러도 그 스팟으로 간다.
+  ///   기획(DR-06)엔 "탭 → 해당 카드"라고 적혀 있었지만 처리 코드가 없어서 앱만 열렸다 (2026-09-13 실기기).
+  void handleTap(String? payload) {
+    final id = spotIdOf(payload);
+    if (id == null) return;
+    final open = onOpenSpot;
+    if (open == null) {
+      _pending = id;
+      return;
+    }
+    open(id);
+  }
+
+  /// 라우터가 준비되면 한 번 부른다. 앱이 **알림으로 켜졌으면** 그 스팟으로 간다.
+  Future<void> attach(void Function(String spotId) open) async {
+    onOpenSpot = open;
+    final p = await _engine();
+    String? launched;
+    try {
+      final d = await p?.getNotificationAppLaunchDetails();
+      if (d?.didNotificationLaunchApp == true) launched = d!.notificationResponse?.payload;
+    } catch (_) {
+      /* 못 읽어도 앱은 뜬다 */
+    }
+    final id = _pending ?? spotIdOf(launched);
+    _pending = null;
+    if (id != null) open(id);
   }
 
   /// OS 권한 요청. **DR-06a에서 사용자가 [허용하러 가기]를 눌렀을 때만** 부른다.

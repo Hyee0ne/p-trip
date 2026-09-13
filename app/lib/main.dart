@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/cover_store.dart';
 import 'core/env.dart';
+import 'core/proximity_alert.dart';
 import 'core/router.dart';
 import 'core/settings.dart';
 import 'core/strings.dart';
@@ -42,6 +45,18 @@ class PTripApp extends StatefulWidget {
 
 class _PTripAppState extends State<PTripApp> {
   late final _router = buildRouter(initialLocation: widget.initialLocation);
+
+  @override
+  void initState() {
+    super.initState();
+    // 알림 탭 → 그 스팟 상세 (DR-06, 2026-09-13). 라우터가 생긴 뒤에 꽂는다 —
+    // 앱이 알림으로 켜진 경우도 attach 가 잡는다. 첫 프레임 뒤에 옮겨야 라우터가 붙어 있다.
+    unawaited(
+      ProximityAlerts.instance.attach(
+        (id) => WidgetsBinding.instance.addPostFrameCallback((_) => _router.go('/spot/$id')),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
