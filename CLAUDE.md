@@ -202,6 +202,9 @@ p-trip/
     ```
   ⚠ 설치·실행은 **아이폰 잠금이 풀려 있어야** 한다 (`kAMDMobileImageMounterDeviceLocked`).
   ⚠ `flutter run -d <기기>`는 **`iproxy` 포트 포워딩이 깨져서 못 붙는다.**
+- **알림 탭은 AppDelegate 가 받아야 플러그인에 닿는다.** `UNUserNotificationCenter.current().delegate = self`
+  (2026-09-13). 이 줄이 없으면 알림을 눌러도 앱만 열리고 페이로드는 버려진다 — Dart 쪽 코드는 멀쩡한데
+  실기기에서만 안 되는 형태라 찾기 어려웠다. 시뮬레이터는 OS 탭을 못 흉내내니 재현이 안 된다.
 - **실기기 Dart 로그는 잡히지 않는다.** release 빌드는 `flutter logs`·`devicectl --console` 둘 다
   아무것도 안 준다. 원인 좁히기는 **같은 코드를 시뮬레이터에서 돌리고**
   `xcrun simctl spawn <sim> log stream --predicate 'processImagePath CONTAINS "Runner"'`로 본다.
