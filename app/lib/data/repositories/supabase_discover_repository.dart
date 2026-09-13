@@ -31,10 +31,14 @@ class SupabaseDiscoverRepository implements DiscoverRepository {
     return [for (final r in rows) _route(r)];
   }
 
+  /// 전국 선형 단순화 허용 오차(도). 2026-09-13 측정: 0.002°(~200m) 9,982점·216KB,
+  /// 0.004°(~400m) 6,559점·145KB. 길을 **고르는** 지도라 400m 면 충분하고 MapKit 에 올리는 점이 1/3 준다.
+  static const _lineTol = 0.004;
+
   @override
   Future<List<RouteLine>> routeLines() async {
     // 단순화한 전국 선형. 좌표를 안 보낸다 — `_cell` 을 거칠 값이 없다.
-    final rows = await _db.rpc('route_lines_all') as List<dynamic>;
+    final rows = await _db.rpc('route_lines_all', params: {'p_tol': _lineTol}) as List<dynamic>;
     return [
       for (final r in rows.cast<Map<String, dynamic>>())
         _route(r, paths: _geoJsonPaths(r['geojson'] as String?)),

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:apple_maps_flutter/apple_maps_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/location.dart';
@@ -24,7 +25,7 @@ class RouteMapPanel extends StatefulWidget {
     super.key,
     required this.fix,
     required this.routes,
-    required this.bottomInset,
+    required this.sheetExtent,
     this.onRouteTap,
     this.focus,
     this.selectedId,
@@ -42,8 +43,9 @@ class RouteMapPanel extends StatefulWidget {
   /// 그릴 노선 — **51선 전부** (단순화 선형). `paths`가 빈 노선은 무시한다.
   final List<m.RouteLine> routes;
 
-  /// 시트에 가려지는 높이. 줌·내 위치 버튼을 그 위로 띄운다.
-  final double bottomInset;
+  /// 시트가 덮는 비율(0~1)의 알림자. 줌·내 위치 버튼을 그 위로 띄운다.
+  /// ⚠ 매 프레임 바뀌지만 **지도는 다시 그리지 않는다** — 듣는 건 버튼 자리뿐이다 (2026-09-13).
+  final ValueListenable<double> sheetExtent;
 
   /// 지도 위의 파란 선을 눌렀을 때. 그 노선을 돌려준다.
   final void Function(m.RouteLine)? onRouteTap;
@@ -72,6 +74,14 @@ const _zoomWhole = 6.6;
 
 class _RouteMapPanelState extends State<RouteMapPanel> {
   AppleMapController? _controller;
+
+  /// 지도 위젯 **인스턴스**를 들고 있는다 (2026-09-13 발견 탭 렉).
+  ///
+  /// apple_maps_flutter 는 `didUpdateWidget` 마다 폴리라인 **전부**를 '바뀐 것'으로 플랫폼에 다시 보낸다
+  /// (`_PolylineUpdates.from` — 같은 id 는 무조건 change, 점 비교를 안 한다). 51선 1만 점이 부모가
+  /// 다시 그려질 때마다 채널을 건넜다. 같은 인스턴스를 넘기면 Flutter 가 그 서브트리 갱신을 건너뛴다.
+  /// 선·마커가 바뀔 때만 [_remap] 으로 새로 만든다.
+  Widget? _map;
 
   /// 지금 줌. 손가락 오차를 미터로 환산할 때 쓴다.
   double _zoom = _zoomWhole;
@@ -127,6 +137,34 @@ class _RouteMapPanelState extends State<RouteMapPanel> {
   void initState() {
     super.initState();
     _polylines = _buildPolylines();
+    _remap();
+  }
+
+  void _remap() {
+    _map = AppleMap(
+      initialCameraPosition: CameraPosition(
+        target: _center,
+        zoom: _hasFix ? _zoomNear : _zoomWhole,
+      ),
+      onMapCreated: (c) => _controller = c,
+      onCameraMove: (pos) => _zoom = pos.zoom,
+      // 나침반·내 위치 버튼은 우리 UI와 겹친다. 지도는 조용해야 한다.
+      compassEnabled: false,
+      myLocationEnabled: false,
+      myLocationButtonEnabled: false,
+      pitchGesturesEnabled: false,
+      rotateGesturesEnabled: false,
+      polylines: _polylines,
+      annotations: _annotations,
+      onTap: _onMapTap,
+    );
+  }
+
+  void _onMapTap(LatLng at) {
+    final onTap = widget.onRouteTap;
+    if (onTap == null) return;
+    final r = _routeAt(at);
+    if (r != null) onTap(r);
   }
 
   @override
@@ -146,6 +184,7 @@ class _RouteMapPanelState extends State<RouteMapPanel> {
     }
     if (!identical(old.routes, widget.routes) || old.selectedId != widget.selectedId) {
       _polylines = _buildPolylines();
+      _remap();
     }
     final f = widget.focus;
     if (f != null && f.seq != (old.focus?.seq ?? -1)) _fitRoute(f);
@@ -250,53 +289,38 @@ class _RouteMapPanelState extends State<RouteMapPanel> {
           anchor: const Offset(0.5, 0.5),
         ),
       };
+      _remap();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!Platform.isIOS) return _MapPending(bottomInset: widget.bottomInset);
+    if (!Platform.isIOS) return _MapPending(sheetExtent: widget.sheetExtent);
 
     return LayoutBuilder(
       builder: (context, box) {
-        // 시트를 끝까지 올리면 지도가 손가락 두 마디만 남는다. 그 위에 버튼 셋을 얹으면 상태바를 뚫는다.
-        final showControls = box.maxHeight - widget.bottomInset >= 200;
         return Stack(
           children: [
-            Positioned.fill(
-              child: AppleMap(
-                initialCameraPosition: CameraPosition(
-                  target: _center,
-                  zoom: _hasFix ? _zoomNear : _zoomWhole,
-                ),
-                onMapCreated: (c) => _controller = c,
-                onCameraMove: (pos) => _zoom = pos.zoom,
-                // 나침반·내 위치 버튼은 우리 UI와 겹친다. 지도는 조용해야 한다.
-                compassEnabled: false,
-                myLocationEnabled: false,
-                myLocationButtonEnabled: false,
-                pitchGesturesEnabled: false,
-                rotateGesturesEnabled: false,
-                polylines: _polylines,
-                annotations: _annotations,
-                onTap: widget.onRouteTap == null
-                    ? null
-                    : (at) {
-                        final r = _routeAt(at);
-                        if (r != null) widget.onRouteTap!(r);
-                      },
-              ),
+            // ⚠ 같은 인스턴스. 여기서 AppleMap(...) 을 새로 쓰면 매 rebuild 마다 51선을 다시 보낸다.
+            Positioned.fill(child: _map!),
+            // 버튼만 시트를 따라간다 — 지도 서브트리는 이 빌더 바깥이라 손대지 않는다.
+            ValueListenableBuilder<double>(
+              valueListenable: widget.sheetExtent,
+              builder: (context, extent, _) {
+                final inset = extent * box.maxHeight;
+                // 시트를 끝까지 올리면 지도가 손가락 두 마디만 남는다. 그 위에 버튼 셋을 얹으면 상태바를 뚫는다.
+                if (box.maxHeight - inset < 200) return const SizedBox.shrink();
+                return Positioned(
+                  right: AppSpace.x3,
+                  bottom: inset + AppSpace.x3,
+                  child: _Controls(
+                    onZoomIn: () => _controller?.animateCamera(CameraUpdate.zoomIn()),
+                    onZoomOut: () => _controller?.animateCamera(CameraUpdate.zoomOut()),
+                    onLocate: _hasFix ? () => _moveTo(_center, _zoomNear) : null,
+                  ),
+                );
+              },
             ),
-            if (showControls)
-              Positioned(
-                right: AppSpace.x3,
-                bottom: widget.bottomInset + AppSpace.x3,
-                child: _Controls(
-                  onZoomIn: () => _controller?.animateCamera(CameraUpdate.zoomIn()),
-                  onZoomOut: () => _controller?.animateCamera(CameraUpdate.zoomOut()),
-                  onLocate: _hasFix ? () => _moveTo(_center, _zoomNear) : null,
-                ),
-              ),
           ],
         );
       },
@@ -371,44 +395,45 @@ class _Controls extends StatelessWidget {
 
 /// iOS 가 아닐 때(위젯 테스트·macOS). 가짜 지도를 그리는 대신 비어 있다고 말한다.
 class _MapPending extends StatelessWidget {
-  const _MapPending({required this.bottomInset});
-  final double bottomInset;
+  const _MapPending({required this.sheetExtent});
+  final ValueListenable<double> sheetExtent;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
-      builder: (context, box) {
-        // 시트가 올라와 지도 자리가 거의 안 남으면 문구를 접는다.
-        final free = box.maxHeight - bottomInset;
-        return Container(
-          color: AppColors.fill,
-          padding: EdgeInsets.only(bottom: bottomInset),
-          alignment: Alignment.center,
-          child: free < 76
-              ? const SizedBox.shrink()
-              : Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.map_outlined,
-                      size: 30,
-                      color: AppColors.ink3.withValues(alpha: 0.7),
-                    ),
-                    const SizedBox(height: AppSpace.x3),
-                    const Text(
-                      S.routesMapPending,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        height: 1.3,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.ink3,
-                      ),
-                    ),
-                  ],
+      builder: (context, box) => ValueListenableBuilder<double>(
+        valueListenable: sheetExtent,
+        builder: (context, extent, _) => _body(extent * box.maxHeight, box.maxHeight),
+      ),
+    );
+  }
+
+  Widget _body(double bottomInset, double height) {
+    // 시트가 올라와 지도 자리가 거의 안 남으면 문구를 접는다.
+    final free = height - bottomInset;
+    return Container(
+      color: AppColors.fill,
+      padding: EdgeInsets.only(bottom: bottomInset),
+      alignment: Alignment.center,
+      child: free < 76
+          ? const SizedBox.shrink()
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.map_outlined, size: 30, color: AppColors.ink3.withValues(alpha: 0.7)),
+                const SizedBox(height: AppSpace.x3),
+                const Text(
+                  S.routesMapPending,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    height: 1.3,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.ink3,
+                  ),
                 ),
-        );
-      },
+              ],
+            ),
     );
   }
 }

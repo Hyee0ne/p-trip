@@ -57,7 +57,7 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
   /// 노선을 골랐다 — 시트가 펼쳐져 있으면 내리고, 지도를 그 길로 옮기고, 노란색으로 표시한 채
   /// 출발 시트(CO-08)를 띄운다 (2026-09-09). ⚠ 출발 시트가 약 380pt 라 그 위에 길이 보이게 잡는다.
   Future<void> _pick(RouteLine r) async {
-    if (_sheet.isAttached && _extent > _collapsed + 0.01) {
+    if (_sheet.isAttached && _extent.value > _collapsed + 0.01) {
       _sheet.animateTo(
         _collapsed,
         duration: const Duration(milliseconds: 260),
@@ -75,16 +75,24 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
   }
 
   _Axis _axis = _Axis.all;
-  double _extent = _initialExtent;
+
+  /// 시트 높이(비율). ⚠ `setState` 로 들고 있지 않는다 (2026-09-13 발견 탭 렉).
+  ///   시트를 끄는 **매 프레임** 화면 전체가 다시 그려졌고, 그 안의 AppleMap 이 `didUpdateWidget` 마다
+  ///   51선 1만 점을 플랫폼 채널로 다시 보냈다 (apple_maps_flutter 는 같은 id 폴리라인을 무조건 '바뀜'으로
+  ///   보낸다). 지금은 알림자로 흘리고, 듣는 쪽(지도 버튼 위치·'준비 중' 문구)만 제 자리에서 다시 그린다.
+  ///   화면은 접힘↔펼침 **문턱을 넘을 때만** 다시 그린다.
+  final _extent = ValueNotifier<double>(_initialExtent);
 
   /// 자동으로 펼친 적이 있는지 (한 번만 한다. 그 뒤로는 사용자 것이다).
   bool _autoExpanded = false;
 
-  bool get _isExpanded => _extent > _expandedFrom;
+  /// '51선 전체' 모드인가 — 문턱(_expandedFrom)을 넘을 때만 바뀐다.
+  bool _isExpanded = _initialExtent > _expandedFrom;
 
   @override
   void dispose() {
     _sheet.dispose();
+    _extent.dispose();
     super.dispose();
   }
 
@@ -164,7 +172,7 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
                 child: RouteMapPanel(
                   fix: fixAsync.value,
                   routes: lines,
-                  bottomInset: _extent * box.maxHeight,
+                  sheetExtent: _extent,
                   focus: _focus,
                   selectedId: _selectedId,
                   // 지도의 파란 선을 눌러도 길을 고를 수 있다 —
@@ -189,7 +197,9 @@ class _RoutesScreenState extends ConsumerState<RoutesScreen> {
               ),
               NotificationListener<DraggableScrollableNotification>(
                 onNotification: (n) {
-                  if (n.extent != _extent) setState(() => _extent = n.extent);
+                  _extent.value = n.extent;
+                  final expanded = n.extent > _expandedFrom;
+                  if (expanded != _isExpanded) setState(() => _isExpanded = expanded);
                   return false;
                 },
                 child: DraggableScrollableSheet(
