@@ -49,8 +49,17 @@ export function normalizeCycle(raw: string): number[] | null {
   return uniq.length ? uniq : null;
 }
 
-/** 이름에 시장이라는 말이 들어 있는가. 이게 아니면 애초에 후보가 아니다. */
-const MARKET_WORD = /시장|오일장|장터|５일장|5일장/;
+/**
+ * 이름이 시장이라는 말로 **끝나는가** (뒤에 괄호는 허용). 이게 아니면 애초에 후보가 아니다.
+ *
+ * ⚠ '들어 있는가'로 잡았다가 (2026-09-13) **음식점·먹자골목 10곳이 시장이 됐다** —
+ *   봉평장터국밥 · 황룡우시장국밥집 · 국제시장 먹자골목 · 속초관광수산시장 회센터 ….
+ *   시장 이름 뒤에 국밥·골목·회센터가 붙은 건 시장 안의 가게지 시장이 아니다. 그런 곳에 장날을
+ *   얹으면 카드가 "오늘이 마침 봉평장터국밥이에요"라고 말한다.
+ *   제대로 붙는 건 「북평민속오일장 (3, 8일)」「삼척 중앙시장 (2, 7일)」「강릉 동부시장」처럼
+ *   시장 이름으로 끝나는 것뿐이다. 나머지는 새 스팟으로 만드는 게 맞다 — 그게 사실이다.
+ */
+const MARKET_WORD = /(시장|오일장|장터|５일장|5일장)\s*(\(.*?\))?\s*$/;
 
 /**
  * 같은 시장인지.
@@ -134,15 +143,22 @@ async function main() {
   let created = 0;
   const marketRows: Record<string, unknown>[] = [];
 
+  // ⚠ 한 스팟은 한 시장만 차지한다 (2026-09-13). CSV 에 「예산시장」과 「예산상설시장」이 0m 거리로
+  //   따로 있어 둘 다 같은 스팟에 붙었고, 마지막 upsert 가 spot_id 중복으로 통째로 실패했다
+  //   ("ON CONFLICT DO UPDATE command cannot affect row a second time"). 이미 차지된 스팟은
+  //   후보에서 빼고, 두 번째 시장은 제 스팟을 새로 만든다 — 그게 사실이다.
+  const claimed = new Set<string>();
+
   for (const m of markets) {
     const near = spots
       .map((s) => ({ s, d: distMeters(m.lat, m.lng, s.lat, s.lng) }))
-      .filter((x) => x.d <= MATCH_M && nameLooksSame(m.name, x.s.name))
+      .filter((x) => x.d <= MATCH_M && !claimed.has(x.s.id) && nameLooksSame(m.name, x.s.name))
       .sort((a, b) => a.d - b.d)[0];
 
     // 지난 실행에서 우리가 만들어둔 스팟이 있으면 그걸 쓴다 (같은 이름 · 200m 안).
     const mine = spots.find(
-      (x) => x.name === m.name && distMeters(m.lat, m.lng, x.lat, x.lng) <= 200,
+      (x) =>
+        !claimed.has(x.id) && x.name === m.name && distMeters(m.lat, m.lng, x.lat, x.lng) <= 200,
     );
 
     let spotId: string;
@@ -181,7 +197,10 @@ async function main() {
       }
       spotId = data.id;
       created++;
+      // 같은 실행 안에서 같은 이름이 또 오면 이걸 다시 쓴다 — 두 번 만들지 않는다.
+      spots.push({ id: spotId, name: m.name, lat: m.lat, lng: m.lng, type: 'market' });
     }
+    claimed.add(spotId);
 
     marketRows.push({
       spot_id: spotId,
