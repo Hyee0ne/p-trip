@@ -57,6 +57,10 @@ class Env {
   static const demoAvailable = !kReleaseMode || _demoForced;
   static const _demoForced = bool.fromEnvironment('DEMO_BUILD');
 
+  /// 레이더 아래 진단 한 줄 (DR-02). 테스트 빌드에만 — 출시 빌드엔 코드째 빠진다.
+  /// 스크린샷을 찍을 땐 `--dart-define=DIAG=false` 로 끈다 (데모 주행은 필요하고 진단 줄은 안 나와야 하니까).
+  static const diag = demoAvailable && bool.fromEnvironment('DIAG', defaultValue: true);
+
   /// 데모 모드 초깃값. 시연 리허설에서 실주행 경로를 확인할 때
   /// `--dart-define=DEMO=false`로 껐다 켠다. 저장된 설정이 있으면 그쪽이 이긴다.
   static const demoDefault = bool.fromEnvironment('DEMO', defaultValue: true);

@@ -778,7 +778,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
                         const SizedBox(height: AppSpace.x5),
                       ],
                       // 테스트 빌드에만 — "안 뜨는 게 간격 때문인가, 후보가 없어서인가"를 눈으로 본다.
-                      if (Env.demoAvailable) _diagLine(queue, drive),
+                      if (Env.diag) _diagLine(queue, drive),
                       const SizedBox(height: AppSpace.x8),
                       // 내비 앱을 고르기 전엔 마칠 여행이 없다 — 시트를 다시 여는 버튼만.
                       if (_armed) _finishButton() else _handoffButton(),
