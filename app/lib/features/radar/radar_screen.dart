@@ -25,6 +25,7 @@ import '../../core/widgets/spot_image.dart';
 import '../../data/models/models.dart';
 import '../../data/repositories/providers.dart';
 import '../handoff/handoff_sheet.dart';
+import 'card_gap.dart';
 import 'radar_stops.dart';
 import 'radar_view.dart';
 
@@ -59,6 +60,9 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
 
   /// 지금 화면에 떠 있는 발견.
   Discovery? _current;
+
+  /// 카드 사이 간격 (card_gap.dart). 여정이 바뀌면 처음부터.
+  final _gap = CardGap();
 
   /// [_current] 가 뜬 **그 순간**의 현 위치↔스팟 직선거리(km). 좌표가 없으면 null.
   /// ⚠ 한 번 재고 갱신하지 않는다 — 줄어드는 숫자는 카운트다운이다 (원칙 6).
@@ -151,6 +155,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     _noAnswer?.cancel();
     _started = false;
     _shown.clear();
+    _gap.reset();
   }
 
   void _setRunning(bool run) {
@@ -303,6 +308,14 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
       //   이걸 빼면 실데이터에서 Timeliness.sunset이 한 번도 안 붙어
       //   DR-02 일몰 카드도, DR-06 일몰 알림도 영영 안 나온다.
       final d = applySunset(raw, _sky, now);
+      // 간격이 안 찼으면 이번엔 안 내보낸다 — 지나가면서 다시 본다. 시의성은 절반이면 된다.
+      if (!_gap.allows(
+        drivenKm: drive.distanceKm,
+        elapsedSec: drive.elapsedSec,
+        timeliness: d.spot.timeliness,
+      )) {
+        continue;
+      }
       final score = _score(d.spot);
       if (score > bestScore) {
         bestScore = score;
@@ -312,6 +325,7 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
     if (best == null) return;
 
     _shown.add(best.spot.id);
+    _gap.mark(drivenKm: drive.distanceKm, elapsedSec: drive.elapsedSec);
 
     // DR-06 — 앱이 뒤에 있으면 카드 대신 **음성 + 알림**으로 나간다 (2026-08-29 결정).
     // ⚠ 대상도 빈도도 앞에 있을 때와 같다 (2026-08-30). 거르는 건 반경과 `_shown` 뿐이다.
