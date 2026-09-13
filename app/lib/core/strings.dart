@@ -267,6 +267,8 @@ class S {
   static String nextSub(int n) => '10km 안 · $n곳';
   static const nextEmpty = '앞쪽 10km엔 아직 없어요.\n그냥 길로 돌아가도 돼요.';
   static String nextBackToRoute(int id) => '그냥 $id번 국도로 돌아가기';
+  static const nextNotifTitle = '앞쪽 10km에 갈 만한 곳이 있어요';
+  static String nextNotifBody(int n) => '여기서 앞쪽으로 $n곳 · 눌러서 보기';
 
   // ── DR-08 길 바꾸기 (2026-09-13) ──
   static const switchTitle = '길을 바꿀까요?';

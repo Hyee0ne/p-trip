@@ -15,14 +15,16 @@ void main() {
 
   test('라우터가 붙기 전에 눌린 알림은 보관했다가 attach 때 연다 — 콜드 스타트', () async {
     final a = ProximityAlerts.instance;
-    a.onOpenSpot = null;
+    a.onOpen = null;
     final opened = <String>[];
     a.handleTap('spot:early');
     expect(opened, isEmpty, reason: '아직 갈 라우터가 없다');
     await a.attach(opened.add); // 테스트엔 플러그인이 없다 — 보관분만 처리된다
-    expect(opened, ['early']);
+    expect(opened, ['/spot/early']);
     a.handleTap('spot:later');
-    expect(opened, ['early', 'later'], reason: '붙은 뒤엔 바로 연다');
+    expect(opened, ['/spot/early', '/spot/later'], reason: '붙은 뒤엔 바로 연다');
+    a.handleTap('next');
+    expect(opened.last, '/radar', reason: '앞쪽 후보 알림은 레이더로');
     a.handleTap(null);
     expect(opened, ['early', 'later'], reason: '접힘 알림은 아무 데도 안 간다');
   });

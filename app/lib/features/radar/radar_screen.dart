@@ -199,11 +199,14 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
   }
 
   /// 정차 2분 + 들른 곳이 있으면 자동으로 펼치고, 다시 달리면(자동으로 연 것만) 접는다.
+  /// 들른 곳이 없어도 **5분** 서 있으면 펼친다 — 카드 없이 세운 곳도 밥집일 수 있다 (2026-09-13).
+  /// ⚠ 정차 판정은 `DriveNotifier.isStill` — 속도만 보면 GPS 가 튀어 영영 안 찬다.
   void _maybeAutoNext(DriveState d) {
     if (!d.running) return;
     final stops = ref.read(tripLogProvider).active?.stops ?? const <TripStop>[];
     final hasVisited = stops.any((s) => s.kind == StopKind.visited);
-    if (!_nextOpen && !_cardVisible && hasVisited && d.stoppedSec >= _nextStopSec) {
+    final due = (hasVisited && d.stoppedSec >= _nextStopSec) || d.stoppedSec >= _nextStopSec * 2.5;
+    if (!_nextOpen && !_cardVisible && due) {
       _toggleNext(auto: true);
     } else if (_nextOpen && _nextAuto && d.stoppedSec < 5) {
       setState(() {
@@ -239,6 +242,14 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
         _next = list;
         _nextLoading = false;
       });
+      // 앱이 뒤에 있으면(티맵이 앞) 열린 줄 모른다 — 알림 한 번. 눌러 레이더로 온다 (DR-07).
+      if (_nextAuto && _background && list.isNotEmpty) {
+        unawaited(
+          ref
+              .read(proximityAlertsProvider)
+              .notifyNext(title: S.nextNotifTitle, body: S.nextNotifBody(list.length)),
+        );
+      }
     } catch (_) {
       if (mounted) setState(() => _nextLoading = false);
     }

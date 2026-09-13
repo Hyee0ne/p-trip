@@ -272,6 +272,16 @@ class DriveNotifier extends Notifier<DriveState> {
 
   GeoPoint? _lastFix;
 
+  /// 서 있는가. ⚠ 속도만 보면 안 된다 (2026-09-13 실기기) — 서 있어도 GPS 속도가 1~2m/s 로 튀어
+  ///   `< 0.5` 가 매초 리셋되고, 정차 2분(DR-07)이 영영 안 찼다. 속도가 느리고 **자리도 안 옮겼을 때**
+  ///   서 있는 것으로 본다. 속도를 모르면(-1) 자리로만 본다. 4m 는 정차 중 GPS 흔들림 폭이다.
+  static bool isStill(double speedMps, double movedKm) {
+    const slow = 1.5; // m/s ≈ 5.4km/h
+    const jitterKm = 0.004;
+    if (speedMps < 0) return movedKm < jitterKm;
+    return speedMps < slow && movedKm < jitterKm;
+  }
+
   void _onFix(Position p) {
     final here = GeoPoint(p.latitude, p.longitude);
     final moved = _lastFix == null ? 0.0 : _distKm(_lastFix!, here);
@@ -302,7 +312,7 @@ class DriveNotifier extends Notifier<DriveState> {
       //   벗어난 채로 %를 계속 올리면 있지도 않은 진행을 말하게 된다.
       frac: bestD > 0.5 || total <= 0 ? state.frac : _cum[best] / total,
       elapsedSec: state.elapsedSec + 1,
-      stoppedSec: p.speed < 0.5 ? state.stoppedSec + 1 : 0,
+      stoppedSec: isStill(p.speed, moved) ? state.stoppedSec + 1 : 0,
     );
   }
 

@@ -56,8 +56,8 @@ class ProximityAlerts {
     }
   }
 
-  /// 알림을 눌렀을 때 그 스팟으로 보내는 손잡이. 앱이 라우터를 만든 뒤 [attach] 로 꽂는다.
-  void Function(String spotId)? onOpenSpot;
+  /// 알림을 눌렀을 때 갈 경로(`/spot/{id}` · `/radar`)를 넘기는 손잡이. 앱이 라우터를 만든 뒤 [attach] 로 꽂는다.
+  void Function(String route)? onOpen;
 
   /// 라우터가 생기기 전에 눌린 알림. [attach] 때 처리한다.
   String? _pending;
@@ -69,24 +69,32 @@ class ProximityAlerts {
     return id.isEmpty ? null : id;
   }
 
+  /// 페이로드 → 갈 경로. 스팟 알림은 상세, 「앞쪽에 갈 만한 곳」(DR-07) 알림은 레이더. 모르면 null.
+  static String? routeOf(String? payload) {
+    final id = spotIdOf(payload);
+    if (id != null) return '/spot/$id';
+    if (payload == 'next') return '/radar';
+    return null;
+  }
+
   /// 알림 탭. 플러그인 콜백(앱이 살아 있을 때)과 콜드 스타트(앱이 알림으로 켜질 때) 둘 다 여기로 온다.
   ///
   /// ⚠ 소리를 듣고 바로 못 눌러도 알림은 알림 센터에 남는다 — 나중에 눌러도 그 스팟으로 간다.
   ///   기획(DR-06)엔 "탭 → 해당 카드"라고 적혀 있었지만 처리 코드가 없어서 앱만 열렸다 (2026-09-13 실기기).
   void handleTap(String? payload) {
-    final id = spotIdOf(payload);
-    if (id == null) return;
-    final open = onOpenSpot;
+    final route = routeOf(payload);
+    if (route == null) return;
+    final open = onOpen;
     if (open == null) {
-      _pending = id;
+      _pending = route;
       return;
     }
-    open(id);
+    open(route);
   }
 
   /// 라우터가 준비되면 한 번 부른다. 앱이 **알림으로 켜졌으면** 그 스팟으로 간다.
-  Future<void> attach(void Function(String spotId) open) async {
-    onOpenSpot = open;
+  Future<void> attach(void Function(String route) open) async {
+    onOpen = open;
     final p = await _engine();
     String? launched;
     try {
@@ -95,9 +103,9 @@ class ProximityAlerts {
     } catch (_) {
       /* 못 읽어도 앱은 뜬다 */
     }
-    final id = _pending ?? spotIdOf(launched);
+    final route = _pending ?? routeOf(launched);
     _pending = null;
-    if (id != null) open(id);
+    if (route != null) open(route);
   }
 
   /// OS 권한 요청. **DR-06a에서 사용자가 [허용하러 가기]를 눌렀을 때만** 부른다.
@@ -141,6 +149,27 @@ class ProximityAlerts {
         ),
         // 탭하면 그 카드를 연다.
         payload: 'spot:${spot.id}',
+      );
+    } catch (_) {
+      /* 알림 실패가 주행을 막지 않는다 */
+    }
+  }
+
+  /// DR-07 — 들른 뒤 정차 중 앞쪽 후보가 열렸는데 앱이 뒤에 있을 때. 눌러 레이더로 온다 (`next`).
+  /// ⚠ 한 정차에 한 번. 재촉이 아니라 "열려 있다"는 알림이다.
+  Future<void> notifyNext({required String title, required String body}) async {
+    final p = await _engine();
+    if (p == null) return;
+    try {
+      await p.show(
+        1,
+        title,
+        body,
+        const NotificationDetails(
+          android: AndroidNotificationDetails('proximity', '근처 발견'),
+          iOS: DarwinNotificationDetails(),
+        ),
+        payload: 'next',
       );
     } catch (_) {
       /* 알림 실패가 주행을 막지 않는다 */

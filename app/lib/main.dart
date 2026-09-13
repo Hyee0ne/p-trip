@@ -53,7 +53,7 @@ class _PTripAppState extends State<PTripApp> {
     // 앱이 알림으로 켜진 경우도 attach 가 잡는다. 첫 프레임 뒤에 옮겨야 라우터가 붙어 있다.
     unawaited(
       ProximityAlerts.instance.attach(
-        (id) => WidgetsBinding.instance.addPostFrameCallback((_) => _router.go('/spot/$id')),
+        (route) => WidgetsBinding.instance.addPostFrameCallback((_) => _router.go(route)),
       ),
     );
   }
