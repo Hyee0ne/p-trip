@@ -183,7 +183,6 @@ class S {
 
   // ── DR-01 레이더 ──
   static const radarScanning = '주변을 살피는 중';
-  static const radarNotRoute = '경로를 따라가지 않아요. 지금 내 주변만 봅니다 — 길을 바꿔도, 목적지가 바뀌어도 그대로 작동해요.';
 
   /// DR-00 — 실주행인데 위치 권한이 없을 때. 막지 않고 이유만 말한다.
   static const radarNeedsLocation = '위치를 켜야 앞에 뭐가 있는지 볼 수 있어요.';

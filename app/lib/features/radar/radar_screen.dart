@@ -777,7 +777,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
                         ],
                         const SizedBox(height: AppSpace.x5),
                       ],
-                      _notRouteNotice(),
                       // 테스트 빌드에만 — "안 뜨는 게 간격 때문인가, 후보가 없어서인가"를 눈으로 본다.
                       if (Env.demoAvailable) _diagLine(queue, drive),
                       const SizedBox(height: AppSpace.x8),
@@ -1124,16 +1123,6 @@ class _RadarScreenState extends ConsumerState<RadarScreen> with WidgetsBindingOb
             //   국도 출발이면 그 선형은 120km 창(route_path_ahead)이라 사용자에게 뜻이 없다.
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _notRouteNotice() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 18),
-      child: Text(
-        S.radarNotRoute,
-        style: TextStyle(fontSize: 13, height: 1.7, color: AppColors.darkInk2),
       ),
     );
   }
