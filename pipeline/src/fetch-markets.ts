@@ -140,7 +140,7 @@ async function main() {
   );
 
   let matched = 0;
-  let created = 0;
+  let skipped = 0;
   const marketRows: Record<string, unknown>[] = [];
 
   // ⚠ 한 스팟은 한 시장만 차지한다 (2026-09-13). CSV 에 「예산시장」과 「예산상설시장」이 0m 거리로
@@ -174,31 +174,12 @@ async function main() {
       matched++;
       console.log(`  ○ ${m.name} → 기존 스팟 "${near.s.name}" (${Math.round(near.d)}m)`);
     } else {
-      // 없으면 만든다. 사진·개요가 없어 신뢰도는 낮게 잡힌다 — 그게 사실이다.
-      const trust = (m.tel ? 15 : 0) + (m.addr && /\d/.test(m.addr) ? 10 : 0);
-      const { data, error } = await db
-        .from('spots')
-        .insert({
-          type: 'market',
-          name: m.name,
-          lat: m.lat,
-          lng: m.lng,
-          geom: `SRID=4326;POINT(${m.lng} ${m.lat})`,
-          addr: m.addr,
-          tel: m.tel,
-          tags: m.kind ? [m.kind] : [],
-          trust_score: trust,
-        })
-        .select('id')
-        .single();
-      if (error || !data) {
-        console.log(`  ✗ ${m.name}: ${error?.message}`);
-        continue;
-      }
-      spotId = data.id;
-      created++;
-      // 같은 실행 안에서 같은 이름이 또 오면 이걸 다시 쓴다 — 두 번 만들지 않는다.
-      spots.push({ id: spotId, name: m.name, lat: m.lat, lng: m.lng, type: 'market' });
+      // ⚠ **없으면 만들지 않는다** (2026-09-13 결정). 사진·개요가 없는 시장은 10~25점이라
+      //   게이트(60)를 못 넘어 레이더에 영영 안 뜬다 — 그런 스팟을 1,224곳 만들었다가 지웠다.
+      //   시장은 TourAPI 쇼핑(38) 중 5일장·상설시장(A0401*)으로 사진과 함께 들어온다.
+      //   거기 없는 시장은 이 앱에 없는 것이다. 장날만 붙일 곳이 없으면 넘어간다.
+      skipped++;
+      continue;
     }
     claimed.add(spotId);
 
@@ -215,7 +196,7 @@ async function main() {
   if (e2) throw new Error(`markets 적재 실패: ${e2.message}`);
 
   const fiveDay = marketRows.filter((r) => r.open_cycle);
-  console.log(`\n✓ 시장 ${marketRows.length}곳 — 기존 스팟에 붙임 ${matched} · 새로 만듦 ${created}`);
+  console.log(`\n✓ 시장 ${marketRows.length}곳 — 기존 스팟에 붙임 ${matched} · 붙일 스팟 없어 넘김 ${skipped}`);
   console.log(`  장날 있는 곳 ${fiveDay.length} · 상설 ${marketRows.length - fiveDay.length}`);
 
   // 4) 데모 확인 — 북평민속시장 3·8일이 없으면 시연에 쓸 장날이 없다

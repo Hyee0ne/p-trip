@@ -149,10 +149,25 @@ const TYPE_MAP: Record<string, string> = {
 };
 
 /**
+ * 항목의 우리 유형. 쇼핑(38)은 **5일장·상설시장(cat3 A04010100·A04010200)만** 시장으로 받는다 (2026-09-13).
+ *
+ * ⚠ 표준데이터(CSV)로 시장을 새 스팟으로 만들었더니 사진이 없어 10~25점 — 게이트를 못 넘어
+ *   레이더에 영영 안 떴다 (1,224곳 만들었다 지움). 시장은 **여기서 사진과 함께** 들어와야 하고,
+ *   `fetch:markets` 는 그 위에 장날만 얹는다. 나머지 쇼핑(브랜드 매장·아울렛)은 그대로 안 받는다.
+ */
+/** TourAPI 소분류 — 5일장 · 상설시장. ⚠ A0401 로 시작하는 나머지(백화점·대형마트·전문매장·공방·특산물판매점)는 시장이 아니다. */
+const MARKET_CAT3 = ['A04010100', 'A04010200'];
+
+function typeOf(item: Item): string | undefined {
+  if (item.contenttypeid === '38') return MARKET_CAT3.includes(item.cat3 ?? '') ? 'market' : undefined;
+  return TYPE_MAP[item.contenttypeid];
+}
+
+/**
  * 안 받는 유형 (2026-09-03 결정). 지우지 말고 **왜 뺐는지** 남긴다 —
  * 되살릴 때 같은 판단을 다시 하게 하려고.
  *
- * - `38` 쇼핑 (10,743건, 전체의 33%)
+ * - `38` 쇼핑 (10,743건, 전체의 33%) — ⚠ 그중 **5일장·상설시장(cat3 A04010100·A04010200)은 받는다** (2026-09-13, `typeOf`)
  *   실체가 **백화점·아울렛 안의 개별 브랜드 매장**이었다.
  *   "올리브영 송리단길점" · "펜디 현대백화점 압구정본점" · "다이소 대구산격유통단지점".
  *   아울렛 25% · 백화점 15% · 마트 5%. "지나치기엔 아까운 것들"이 아니다.
@@ -431,10 +446,10 @@ async function main() {
    */
   const isView = (i: Item) => i.contenttypeid === '12' && (i.cat1 ?? '') === 'A01';
 
-  const dropped = [...seen].filter(([, i]) =>
-    (DROPPED_TYPES as readonly string[]).includes(i.contenttypeid),
+  const dropped = [...seen].filter(
+    ([, i]) => !typeOf(i) && (DROPPED_TYPES as readonly string[]).includes(i.contenttypeid),
   ).length;
-  const mapped = [...seen].filter(([, i]) => TYPE_MAP[i.contenttypeid]);
+  const mapped = [...seen].filter(([, i]) => typeOf(i));
   const noPhoto = keepNoPhoto ? 0 : mapped.filter(([, i]) => !hasPhoto(i)).length;
   const enough = mapped.filter(([, i]) => hasPhoto(i) && listScore(i) >= 60).length;
   const targets = mapped
@@ -473,7 +488,7 @@ async function main() {
   }
 
   async function fill([id, item]: [string, Item]) {
-    const type = TYPE_MAP[item.contenttypeid]!;
+    const type = typeOf(item)!;
 
     // ⚠ 목록 응답에 이미 사진(84%)·주소(99%)·전화가 들어 있다.
     //   detailCommon2는 **개요 하나 때문에** 부르는 셈인데, 개요는 게이트 10점이라
