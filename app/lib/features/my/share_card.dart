@@ -12,6 +12,7 @@ import '../../core/strings.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/route_badge.dart';
 import '../../data/models/models.dart';
+import '../radar/radar_view.dart';
 import 'route_sketch.dart';
 
 /// 여행기 공유 카드 (SCREENS.md MY-02 §4).
@@ -100,10 +101,18 @@ class ShareCard extends StatelessWidget {
 
   /// ⚠ 자르기는 **여기서** 한다. 호출부가 깜빡해도 집·숙소가 새어 나가지 않는다.
   @override
-  Widget build(BuildContext context) => _card(trimEnds(path));
+  Widget build(BuildContext context) =>
+      LayoutBuilder(builder: (_, c) => _card(trimEnds(path), c.maxWidth));
 
-  Widget _card(List<TripPoint> trimmed) {
+  Widget _card(List<TripPoint> trimmed, double cardWidth) {
     final t = trip;
+    final visited = [
+      for (final s in t.stops)
+        if (s.kind == StopKind.visited) s,
+    ];
+    final hasEnds = t.startName.isNotEmpty && t.endName.isNotEmpty;
+    // 지도는 카드 폭을 다 쓰고 4:3 (2026-09-13). 170pt 세로 상자에 구겨 넣던 걸 폈다.
+    final sketchW = math.max(120.0, cardWidth - 40);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -137,44 +146,51 @@ class ShareCard extends StatelessWidget {
             children: [
               RouteBadge('${t.routeId}', size: BadgeSize.sm),
               const SizedBox(width: 9),
-              Text(
-                '${t.startName} → ${t.endName} · ${t.distanceKm}km',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.ink2,
+              Expanded(
+                child: Text(
+                  hasEnds
+                      ? '${t.startName} → ${t.endName} · ${t.distanceKm}km'
+                      : S.shareMeta(t.routeLabel, t.distanceKm, t.startedAt, t.endedAt),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.ink2,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: AppSpace.x4),
           // 자르고 나서 남는 게 없으면 지도를 그리지 않는다.
-          // ⚠ 상자를 **경로 모양에 맞춘다.** 7번 국도처럼 남북으로 긴 길을 넓은 상자에
-          //   넣으면 가느다란 선 하나에 좌우가 텅 빈다. 장식을 더하는 대신 여백을 없앤다.
+          // ⚠ 상자는 카드 폭 그대로 4:3 (2026-09-13). 전에는 높이 170 × 경로 비율이라 남북 길이면
+          //   105×170 세로 상자가 됐고, 그 안에서 여백까지 빼면 선이 45pt 폭에 구겨졌다.
           if (trimmed.length >= 2)
-            Center(
-              child: RouteSketch(
-                points: trimmed,
-                height: 170,
-                width: 170 * RouteSketch.aspect(trimmed),
-                // 카드엔 제 머리글이 있어 상자 안 거리·뱃지는 끈다. 점·이름·눈금은 같다.
-                stops: t.stops,
-                startName: t.startName,
-                endName: t.endName,
-                startedAt: t.startedAt,
-                endedAt: t.endedAt,
-                header: false,
-              ),
+            RouteSketch(
+              points: trimmed,
+              height: sketchW * 0.75,
+              width: sketchW,
+              // 카드엔 제 머리글이 있어 상자 안 거리·뱃지는 끈다. 점·이름·눈금은 같다.
+              stops: t.stops,
+              startName: t.startName,
+              endName: t.endName,
+              startedAt: t.startedAt,
+              endedAt: t.endedAt,
+              header: false,
             ),
           if (trimmed.length >= 2) const SizedBox(height: AppSpace.x4),
+          // 들른 곳 전부 — 번호·이름·시각. 지도의 번호 점과 같은 순서다.
+          // 지도 위 이름표는 자리가 있을 때만 붙으니, 이름은 **여기서** 빠짐없이 읽힌다.
+          if (visited.isNotEmpty) _stopList(visited),
+          if (visited.isNotEmpty) const SizedBox(height: AppSpace.x4),
           Wrap(
             spacing: 7,
             runSpacing: 7,
             children: [
               _chip('${S.statVisited} ${t.visited}', AppColors.tintGreen, AppColors.onTintGreen),
-              if (t.skunked > 0)
-                _chip('${S.statSkunked} ${t.skunked}번', AppColors.tintSun, AppColors.onTintSun)
-              else if (unplannedMeals > 0)
+              // 허탕 칩은 뺐다 (2026-09-13) — 남에게 보내는 한 장에 실패 횟수를 적을 이유가 없다.
+              if (unplannedMeals > 0)
                 _chip(
                   '${S.statUnplannedMeal} $unplannedMeals',
                   AppColors.tintGreen,
@@ -210,6 +226,59 @@ class ShareCard extends StatelessWidget {
       ),
     );
   }
+
+  /// 2열 목록. 홀수면 마지막 오른쪽 칸은 비운다.
+  static Widget _stopList(List<TripStop> visited) => Column(
+    children: [
+      for (var i = 0; i < visited.length; i += 2)
+        Padding(
+          padding: EdgeInsets.only(top: i == 0 ? 0 : 6),
+          child: Row(
+            children: [
+              Expanded(child: _stopRow(i + 1, visited[i])),
+              const SizedBox(width: 14),
+              Expanded(
+                child: i + 1 < visited.length ? _stopRow(i + 2, visited[i + 1]) : const SizedBox(),
+              ),
+            ],
+          ),
+        ),
+    ],
+  );
+
+  static Widget _stopRow(int n, TripStop s) => Row(
+    children: [
+      Container(
+        width: 17,
+        height: 17,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: radarTypeColors[s.type] ?? AppColors.routeBlue,
+          shape: BoxShape.circle,
+        ),
+        child: Text(
+          '$n',
+          style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Colors.white),
+        ),
+      ),
+      const SizedBox(width: 7),
+      Expanded(
+        child: Text(
+          s.spotName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.ink2),
+        ),
+      ),
+      if (s.at.isNotEmpty) ...[
+        const SizedBox(width: 8),
+        Text(
+          s.at,
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppColors.ink3),
+        ),
+      ],
+    ],
+  );
 
   /// ⚠ width 없는 Container에 alignment를 주면 폭이 최대까지 팽창한다 → Row(min).
   ///   `_statChips`에 같은 주석이 있는데 그대로 밟았다. 골든이 잡았다.

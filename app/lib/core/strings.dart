@@ -293,6 +293,10 @@ class S {
   // ── MY-02 여행기 ──
   static String episode(int n, String date) => 'EP.$n — $date';
   static String tripTitle(String route) => '$route에서 생긴 일';
+
+  /// 공유 카드 머리글 — 국도 출발은 출발·도착 지명이 없다. "43번 국도 · 15km · 10:40–16:10".
+  static String shareMeta(String route, int km, String from, String to) =>
+      from.isEmpty || to.isEmpty ? '$route · ${km}km' : '$route · ${km}km · $from–$to';
   static const tripSub = '오늘의 여행이 한 편의 이야기가 됐어요';
   static const tripTimeline = '지나온 시간';
   static const statVisited = '들른 발견';
