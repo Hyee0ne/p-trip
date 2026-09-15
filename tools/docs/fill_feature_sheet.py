@@ -99,6 +99,8 @@ def add_shot(slide, path, left, top, box_w, box_h, pad=0.06):
 # ──────────────────────────────── 내용 ────────────────────────────────
 TEAM = '라이스쿠키'
 NAME = 'P의 여행'
+APP_STORE_URL = 'https://apps.apple.com/kr/app/id6806749553'
+VIDEO_URL = 'https://youtu.be/q4jvO63vvQA'  # 데모 영상. 비어 있으면 줄을 넣지 않는다.
 
 INTRO = {
     'name': 'P의 여행 — 국도 위의 발견 레이더  (App Store 「P의여행:국도편」)',
@@ -234,6 +236,13 @@ set_cell(t.cell(1, 1), NAME, size=20, align=PP_ALIGN.CENTER)
 t = find_table(S[1]).table
 set_cell(t.cell(0, 1), INTRO['name'], size=16)
 set_cell(t.cell(1, 1), INTRO['type'], size=15)
+# 링크 줄 — 하이퍼링크 런으로 (클릭되게)
+tf = t.cell(1, 1).text_frame
+p = tf.add_paragraph(); r = p.add_run(); r.text = 'App Store  '; r.font.size = Pt(12); r.font.color.rgb = INK
+r = p.add_run(); r.text = APP_STORE_URL; r.font.size = Pt(12); r.hyperlink.address = APP_STORE_URL
+if VIDEO_URL:
+    p = tf.add_paragraph(); r = p.add_run(); r.text = '데모 영상  '; r.font.size = Pt(12); r.font.color.rgb = INK
+    r = p.add_run(); r.text = VIDEO_URL; r.font.size = Pt(12); r.hyperlink.address = VIDEO_URL
 set_cell(t.cell(2, 1), INTRO['summary'], size=14)
 set_cell(t.cell(3, 1), INTRO['why'], size=12.5)
 
@@ -250,11 +259,16 @@ r0, r1 = Emu(t.rows[0].height).inches, Emu(t.rows[1].height).inches
 cw = Emu(t.columns[1].width).inches
 if ICON.exists():
     add_shot(S[3], ICON, left0 + 0.25, top0, 1.9, r0, pad=0.12)
-    tb = S[3].shapes.add_textbox(Inches(left0 + 2.3), Inches(top0 + 0.45), Inches(6), Inches(1.1))
+    tb = S[3].shapes.add_textbox(Inches(left0 + 2.3), Inches(top0 + 0.25), Inches(7.5), Inches(1.6))
     tf = tb.text_frame; tf.word_wrap = True
     p = tf.paragraphs[0]; r = p.add_run(); r.text = 'P의 여행'; r.font.size = Pt(22); r.font.bold = True; r.font.color.rgb = INK
     p = tf.add_paragraph(); r = p.add_run(); r.text = '지나치기엔 아까운 것들이, 길마다 있어요.'; r.font.size = Pt(14); r.font.color.rgb = INK
     p = tf.add_paragraph(); r = p.add_run(); r.text = '국도 표지판 파란 타원이 시그니처. 서체는 Pretendard 하나.'; r.font.size = Pt(11); r.font.color.rgb = INK
+    p = tf.add_paragraph(); r = p.add_run(); r.text = 'App Store  '; r.font.size = Pt(11); r.font.color.rgb = INK
+    r = p.add_run(); r.text = APP_STORE_URL; r.font.size = Pt(11); r.hyperlink.address = APP_STORE_URL
+    if VIDEO_URL:
+        p = tf.add_paragraph(); r = p.add_run(); r.text = '▶ 데모 영상  '; r.font.size = Pt(11); r.font.color.rgb = INK
+        r = p.add_run(); r.text = VIDEO_URL; r.font.size = Pt(11); r.hyperlink.address = VIDEO_URL
 else:
     missing.append(str(ICON))
 detail = ['1_home.png', '2_depart.png', '3_card.png', '4_radar.png', '5_spot.png']
