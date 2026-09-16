@@ -20,6 +20,7 @@ tell application "Keynote"
 end tell
 end timeout
 AS
+python3 tools/docs/shrink_pdf.py docs/기능설명서_P의여행_미리보기.pdf || true
 git add docs/screenshots/case docs/기능설명서_P의여행.pptx docs/기능설명서_P의여행_미리보기.pdf
 git commit -q -m "docs(공모전): 기능설명서 대표 사례 — 북평민속오일장 장날 실제 캡처 ($(date '+%Y-%m-%d'))
 
