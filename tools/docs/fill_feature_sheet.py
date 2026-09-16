@@ -258,17 +258,8 @@ top0 = Emu(t_sh.top).inches
 r0, r1 = Emu(t.rows[0].height).inches, Emu(t.rows[1].height).inches
 cw = Emu(t.columns[1].width).inches
 if ICON.exists():
-    add_shot(S[3], ICON, left0 + 0.25, top0, 1.9, r0, pad=0.12)
-    tb = S[3].shapes.add_textbox(Inches(left0 + 2.3), Inches(top0 + 0.25), Inches(7.5), Inches(1.6))
-    tf = tb.text_frame; tf.word_wrap = True
-    p = tf.paragraphs[0]; r = p.add_run(); r.text = 'P의 여행'; r.font.size = Pt(22); r.font.bold = True; r.font.color.rgb = INK
-    p = tf.add_paragraph(); r = p.add_run(); r.text = '지나치기엔 아까운 것들이, 길마다 있어요.'; r.font.size = Pt(14); r.font.color.rgb = INK
-    p = tf.add_paragraph(); r = p.add_run(); r.text = '국도 표지판 파란 타원이 시그니처. 서체는 Pretendard 하나.'; r.font.size = Pt(11); r.font.color.rgb = INK
-    p = tf.add_paragraph(); r = p.add_run(); r.text = 'App Store  '; r.font.size = Pt(11); r.font.color.rgb = INK
-    r = p.add_run(); r.text = APP_STORE_URL; r.font.size = Pt(11); r.hyperlink.address = APP_STORE_URL
-    if VIDEO_URL:
-        p = tf.add_paragraph(); r = p.add_run(); r.text = '▶ 데모 영상  '; r.font.size = Pt(11); r.font.color.rgb = INK
-        r = p.add_run(); r.text = VIDEO_URL; r.font.size = Pt(11); r.hyperlink.address = VIDEO_URL
+    # 양식은 '로고 또는 대표 이미지 1개' — 아이콘 하나만. 링크·문구는 2번 슬라이드에 있다.
+    add_shot(S[3], ICON, left0, top0, cw, r0, pad=0.12)
 else:
     missing.append(str(ICON))
 detail = ['1_home.png', '2_depart.png', '3_card.png', '4_radar.png', '5_spot.png']
