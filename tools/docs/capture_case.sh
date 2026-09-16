@@ -89,4 +89,10 @@ xcrun simctl install $SIM build/ios/iphonesimulator/Runner.app && echo installed
 xcrun simctl launch $SIM com.ricecookey.pjourney >/dev/null 2>&1
 sleep 8; xcrun simctl io $SIM screenshot "$OUT/case-spot.png" >/dev/null 2>&1 && echo "  case-spot t8"
 xcrun simctl terminate $SIM com.ricecookey.pjourney 2>/dev/null
+python3 - <<'PY'
+import json, datetime, pathlib
+d = datetime.date.today(); md = d.day % 10 in (3, 8)   # 북평민속오일장 3·8일 장
+pathlib.Path('/Users/hyewon/공모전/trip/docs/screenshots/case/meta.json').write_text(json.dumps({'date': d.isoformat(), 'market_day': md}, ensure_ascii=False))
+print('meta', d, md)
+PY
 git status --short lib; echo "##### done $(date '+%T')"
