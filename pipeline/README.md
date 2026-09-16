@@ -39,3 +39,19 @@ PATH 에서 찾다가 죽는다 (`env: node: No such file or directory`). 스크
 
 ⚠ 자정 리셋은 **관측값**이다 (2026-09-03 21:46 에도 `detailIntro2` 가 소진 상태였다).
    로그에 며칠 쌓이면 실제 리셋 시각이 드러난다 — 어긋나면 plist 의 Hour 를 고친다.
+
+## 기능설명서 대표 사례 캡처 — 2026-09-18 장날 예약 (launchd 1회)
+
+북평민속오일장(3·8일 장)이 「오늘이 마침 …이에요」 카드로 뜨는 실제 화면을 장날 아침에 찍어 기능설명서에 넣는다.
+`tools/docs/capture_case.sh`(시뮬레이터 캡처, 임시 주입 후 되돌림) → `tools/docs/fill_feature_sheet.py`(pptx 갱신) → 커밋·푸시.
+래퍼는 `tools/docs/refresh_feature_sheet.sh`, 예약은 `tools/docs/com.ricecookey.ptrip.case-capture.plist` (9/18 09:40 KST).
+
+```bash
+cp tools/docs/com.ricecookey.ptrip.case-capture.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ricecookey.ptrip.case-capture.plist
+launchctl print gui/$(id -u)/com.ricecookey.ptrip.case-capture | grep -E "state|last exit"   # 상태
+tail -30 pipeline/logs/capture_case.log                                                      # 결과
+launchctl bootout gui/$(id -u)/com.ricecookey.ptrip.case-capture                             # 해제 (돌고 나면)
+```
+⚠ 맥이 켜져 있어야 한다(잠자기면 깨어날 때 돈다). Supabase 의 장날 판정은 UTC 날짜라 09:00 KST 이후에 돌려야 한다.
+⚠ 키노트 PDF 미리보기는 launchd 컨텍스트에서 자동화 권한이 없으면 건너뛴다 — 다음 세션에서 다시 뽑는다.
