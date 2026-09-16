@@ -22,7 +22,7 @@ SRC = ROOT / 'docs' / '2026 관광데이터 활용 공모전 웹앱 개발 부�
 OUT = ROOT / 'docs' / '기능설명서_P의여행.pptx'
 SHOTS = ROOT / 'docs' / 'screenshots'
 IMG_DIR = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else None
-ICON = ROOT / 'app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png'
+ICON = ROOT / 'docs/썸네일/썸네일_밝음.png'  # 대표 이미지(썸네일). 아이콘 대신 로고+이름 이미지 (2026-09-16)
 SHARE = ROOT / 'app/test/goldens/share_card_8stops.png'
 
 missing = []
@@ -258,8 +258,8 @@ top0 = Emu(t_sh.top).inches
 r0, r1 = Emu(t.rows[0].height).inches, Emu(t.rows[1].height).inches
 cw = Emu(t.columns[1].width).inches
 if ICON.exists():
-    # 양식은 '로고 또는 대표 이미지 1개' — 아이콘 하나만. 링크·문구는 2번 슬라이드에 있다.
-    add_shot(S[3], ICON, left0, top0, cw, r0, pad=0.12)
+    # 양식은 '로고 또는 대표 이미지 1개' — 썸네일 한 장. 링크·문구는 2번 슬라이드에 있다.
+    add_shot(S[3], ICON, left0, top0, cw, r0, pad=0.1)
 else:
     missing.append(str(ICON))
 detail = ['1_home.png', '2_depart.png', '3_card.png', '4_radar.png', '5_spot.png']
