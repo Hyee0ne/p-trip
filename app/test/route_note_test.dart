@@ -31,11 +31,14 @@ void main() {
     }
   });
 
-  test('변화 문구는 변화를 말한다 — 그게 이 줄의 근거다', () {
-    // 2026-09-16: '발길이 늘었어요' → '함께 찾는 곳이 늘었어요'. 연관 관광지는 방문자 수가 아니라
-    // 함께 찾은 곳의 순위라, 문구도 그만큼만 말한다.
-    expect(S.routeNoteRising, '요즘 함께 찾는 곳이 늘었어요');
-    expect(S.routeNoteRising, contains('늘'));
+  test('두 시점 문구는 최근 기준이라는 것만 말한다 — 증가를 주장하지 않는다', () {
+    // 2026-09-16: '발길이 늘었어요' → '함께 찾는 곳이 늘었어요' → '최근에도 함께 찾는 곳이 많아요'.
+    // 연관 관광지는 함께 찾은 곳의 **순위**라 방문자 수도 증가량도 모른다. 순위 상승 ≠ 증가.
+    expect(S.routeNoteRising, '최근에도 함께 찾는 곳이 많아요');
+    expect(S.routeNoteRising, contains('최근'));
+    for (final word in ['늘', '증가', '많아졌']) {
+      expect(S.routeNoteRising, isNot(contains(word)));
+    }
   });
 
   test("변화 문구는 '관심'이 아니라 발걸음을 말한다", () {
