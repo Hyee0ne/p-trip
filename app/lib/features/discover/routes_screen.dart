@@ -714,7 +714,7 @@ class _RouteRow extends ConsumerWidget {
     //   큐레이션을 홈의 섹션으로 세우지 않고 길에 붙인다 (CO-01 재설계) —
     //   목록이 아니라 길의 속성이라 무엇이 있는지는 안 밝힌다.
     // ⚠ 못 달리는 길에는 한 줄을 붙이지 않는다 (2026-09-07).
-    //   갈 수 없는 길에 '다녀간 사람이 많아요'는 말이 안 된다.
+    //   갈 수 없는 길에 '함께 찾는 곳이 많아요'는 말이 안 된다.
     //   대신 구간을 말한다 — 어디서 어디까지인지가 못 가는 이유를 그대로 설명한다.
     // ⚠ `drivable ? notes?[id] : null` 로 쓰면 파서가 `?[`(널 인덱스)와 삼항을 구분 못 한다.
     final notes = ref.watch(routeNotesProvider).value ?? const <int, RouteNote>{};

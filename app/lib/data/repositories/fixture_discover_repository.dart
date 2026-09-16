@@ -355,7 +355,7 @@ class FixtureDiscoverRepository implements DiscoverRepository {
         spot: byId('nongol-mural'),
         kicker: '차량 유입이 늘고 있어요',
         kickerColor: CardAccent.tracks,
-        body: '언덕을 따라 그려진 벽화 골목. 들른 차들은 다음에 묵호등대로 갔어요.',
+        body: '언덕을 따라 그려진 벽화 골목. 여기 온 사람들은 묵호등대도 함께 찾았어요.',
         meta: '동해 바닷길 · 국도에서 8분',
         route: '/course/donghae-sea',
       ),
@@ -408,7 +408,7 @@ class FixtureDiscoverRepository implements DiscoverRepository {
       ),
       headline: '어달마을에\n물회 골목이 있어요',
       lead: '근처에 있어요',
-      body: '간판 없는 집이 많아요. 들른 차들은 다음에 묵호등대로 갔어요.',
+      body: '간판 없는 집이 많아요. 여기 온 사람들은 묵호등대도 함께 찾았어요.',
     ),
     Discovery(
       spot: Spot(

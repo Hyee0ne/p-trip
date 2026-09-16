@@ -89,12 +89,14 @@ class S {
   ///   연관관광지는 다녀간 기록이라, '관심'으로 말하면 데이터보다 약해지고
   ///   동시에 인기·평가 쪽 언어로 흘러간다 (원칙 3).
   /// ⚠ '돈다'고 하지 않는다 (2026-09-07 교체) — 국도 앱에서 **우회**로 읽힌다.
-  static const routeNoteRising = '요즘 이 길에 발길이 늘었어요';
+  /// ⚠ 근거는 연관 관광지(같은 방문자가 함께 찾은 곳) 순위의 **두 시점 변화**다 (2026-09-16 개정).
+  ///   '발길이 늘었다'는 방문자 수를 아는 말이라 데이터보다 강했다 — 순위가 오른 건 '함께 찾는 곳'이다.
+  static const routeNoteRising = '요즘 함께 찾는 곳이 늘었어요';
 
   /// 변화를 못 쟀지만 흔적이 많은 길 (2026-09-04).
   /// ⚠ '늘었다'고 하지 않는다 — 절대 순위로 뽑힌 길은 요즘 발길이 느는 게 아니다.
   /// ⚠ 별점이 아니라 **이동 흔적**이다. '다녀간' 이 그걸 그대로 말한다.
-  static const routeNotePopular = '이 길로 다녀간 사람이 많아요';
+  static const routeNotePopular = '함께 찾는 곳이 많아요';
 
   /// 코스 진입 — 주인공이 아니라 안전망이라는 게 문장에 있어야 한다.
 
@@ -147,7 +149,9 @@ class S {
   static const trustCall = '전화';
   static const trustReviews = '네이버 후기 보기';
   static const spotShallow = '정보가 아직 얕은 곳이에요';
-  static const spotNextVisits = '들른 차들은 다음에';
+
+  /// ⚠ '들른 차들은 다음에' 였다 (2026-09-16 개정). 연관 관광지는 차량도 순서도 모른다 — 함께 찾은 곳일 뿐이다.
+  static const spotNextVisits = '함께 찾은 곳';
   static const spotNextVisitsSub = '이동 흔적 기준';
   static const spotNavigate = '길 안내';
   static const spotBook = '예약';
@@ -259,7 +263,7 @@ class S {
   }
 
   static String nextMarketDay(int days) => '다음 장은 $days일 뒤예요';
-  static String nextVisited(String spot) => '들른 차들은 다음에 $spot로 갔어요';
+  static String nextVisited(String spot) => '여기 온 사람들은 $spot도 함께 찾았어요';
 
   // ── DR-07 들른 뒤, 다음 (2026-09-13) ──
   static const nextTitle = '여기서 앞쪽으로';

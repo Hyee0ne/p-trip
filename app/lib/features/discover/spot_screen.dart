@@ -19,7 +19,7 @@ import '../handoff/handoff_sheet.dart';
 ///
 /// 마을·밥집·뷰포인트·문화시설·숙박·캠핑장·시장을 **전부 동급**으로 다룬다.
 /// ⚠ 별점·후기 점수·방문자 랭킹을 표기하지 않는다 (원칙 3).
-///   신뢰는 확신도 문구와 '들른 차들은 다음에'로만 만든다.
+///   신뢰는 확신도 문구와 '함께 찾은 곳'(연관 관광지)로만 만든다.
 class SpotScreen extends ConsumerWidget {
   const SpotScreen({super.key, required this.spotId});
   final String spotId;

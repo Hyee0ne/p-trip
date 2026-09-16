@@ -34,7 +34,7 @@ abstract interface class DiscoverRepository {
   /// 텍스트 검색 (SCREENS.md §SR).
   Future<List<Spot>> search(String query, {bool todayOnly, bool nearOnly});
 
-  /// '들른 차들은 다음에' — 연관 관광지(TECH_SPEC spot_links).
+  /// '함께 찾은 곳' — 연관 관광지(TECH_SPEC spot_links). 차량·순서가 아니라 같은 방문자가 함께 찾은 곳이다.
   Future<List<Spot>> nextVisits(String spotId);
 
   /// 「한 곳씩」 덱 — 스팟·코스·노선이 섞여 흐른다.
