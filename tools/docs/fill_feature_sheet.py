@@ -183,7 +183,7 @@ FLOWS = [
         'title': '발견 — 지금 들를 만한 곳을 알려줍니다',
         'desc': ['현재 위치와 진행 방향을 기준으로 주변 장소를 추천합니다. 이동 중에는 음성으로 안내하고, 놓친 발견은 알림 센터에 남깁니다.',
                  '추천 범위는 반경 5km이며, 표시 거리는 직선거리입니다. 대표 사례: 7번 국도 · 북평민속오일장(3·8일 장)'],
-        'shots': ['4_radar.png', ('case-card.png', (0.34, 0.82)), 'notif-lock.png', 'notif-sunset.png'],
+        'shots': ['4_radar.png', ('case-card.png', (0.34, 0.785)), 'notif-lock.png', 'notif-sunset.png'],
         'steps': [
             ['① 진행 방향의 장소 탐색', '- 레이더: 내 위치 기준 앞쪽 스팟'],
             ['② 장날·거리 안내 카드', f'- {CARD_LINE}', f'- {CASE_LABEL}'],
@@ -195,7 +195,7 @@ FLOWS = [
         'title': '방문 — 마음에 들면, 내비로 연결합니다',
         'desc': ['「들르기」 한 번으로 티맵·애플 지도가 그곳까지 안내합니다. 앱은 길안내를 직접 하지 않습니다.',
                  '들른 곳은 「오늘 들른 곳」 자취로 남습니다. 장소 선택은 동승자 또는 정차한 운전자가 진행합니다.'],
-        'shots': [('case-card.png', (0.45, 1.0)), ('case-handoff.png', (0.4, 1.0)), 'case-spot.png', 'radar-t26.png'],
+        'shots': [('case-card.png', (0.45, 1.0)), ('case-handoff.png', (0.4, 1.0)), 'case-spot.png', 'case-trail.png'],
         'steps': [
             ['① 들르기 / 찜', '- 카드 아래 넘기기 · 들르기 · 찜'],
             ['② 내비 연결', '- 「북평민속오일장」 → 티맵 / 애플 지도', f'- {CASE_LABEL}'],
